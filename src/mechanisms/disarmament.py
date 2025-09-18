@@ -23,11 +23,8 @@ class Disarmament(RepetitiveMechanism):
         base_game: Game,
         num_rounds: int,
         discount: float,
-        *,
-        negotiation_workers: int = 1,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
-        self.negotiation_workers = max(1, negotiation_workers)
 
         self.disarm_prompt = textwrap.dedent(
             """
@@ -75,20 +72,20 @@ class Disarmament(RepetitiveMechanism):
         """
         Build the filled prompt:
         - caps_by_agent: {agent_name: [cap_A0, cap_A1, ...]} (ints 0..100)
-        - player_name: the agent whose 'my_caps' will be shown
+        - player_id: identifier for the agent whose 'my_caps' will be shown
         - discount: continuation probability (integer percent)
         """
 
         my_caps_line = self._caps_to_line(self.current_disarm_caps[player_id])
 
+        # Sort opponents to ensure increasing opponent id
+        opponents = sorted(
+            pid for pid in self.current_disarm_caps.keys() if pid != player_id
+        )
         opp_lines = []
-        for opponent_id in sorted(
-            (pid for pid in self.current_disarm_caps.keys() if pid != player_id),
-            key=lambda pid: self._id_to_name.get(pid, str(pid)),
-        ):
-            opp_name = self._id_to_name.get(opponent_id, str(opponent_id))
+        for idx, opponent_id in enumerate(opponents, start=1):
             opp_lines.append(
-                f"\t{opp_name}: {self._caps_to_line(self.current_disarm_caps[opponent_id])}"
+                f"  • Opponent {idx}: {self._caps_to_line(self.current_disarm_caps[opponent_id])}"
             )
         opponents_caps_block = "\n".join(opp_lines)
 
@@ -198,7 +195,6 @@ class Disarmament(RepetitiveMechanism):
                 results = run_tasks(
                     negotiable_players,
                     self._negotiate_disarm_caps,
-                    max_workers=self.negotiation_workers,
                 )
                 negotiation_results = {
                     player.label: result

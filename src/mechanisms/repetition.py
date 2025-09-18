@@ -13,26 +13,48 @@ class Repetition(RepetitiveMechanism):
     Repetition mechanism that allows for multiple rounds of the same game.
     """
 
-    def _parse_history(self, history: list[tuple[dict]]) -> str:
-        """Parse the history of past actions as the mechanism information."""
-        if not history:
-            return (
-                "History: None of the players have played yet, so there is no history."
-            )
+    def _build_history_prompts(
+        self,
+        players: Sequence[Agent],
+        history: list[list[dict]],
+    ) -> list[str]:
+        """Build perspective-specific history prompts for each player."""
 
-        history_str = "History:\n"
-        for i, (players_moves) in enumerate(history):
-            history_str = f"  Round {i + 1}: "
-            for move in players_moves:
-                history_str += f"{move['name']}: {move['action']}, "
-            history_str = history_str[:-2]
-            history_str += "\n"
-
-        return (
-            history_str.strip()
-            + "\n\nNote: This game is repetitive so your chosen action "
-            "will be visible to your opponents in future rounds."
+        note = (
+            "Note: This game is repetitive so your chosen action will be "
+            "visible to the same opponent(s) in future rounds."
         )
+
+        if not history:
+            base = "History: No rounds have been played yet, so there is no history."
+            return [f"{base}\n\n{note}"] * len(players)
+
+        prompts: list[str] = []
+        for focus in players:
+            opponent_labels: dict[str, str] = {}
+            opp_idx = 1
+            for other in players:
+                if other.label == focus.label:
+                    continue
+                opponent_labels[other.label] = f"Opponent {opp_idx}"
+                opp_idx += 1
+
+            lines = ["History:"]
+            for round_idx, round_moves in enumerate(history, start=1):
+                move_map = {move["label"]: move for move in round_moves}
+                parts = []
+                for other in players:
+                    actor = "You"
+                    if other.label != focus.label:
+                        actor = opponent_labels[other.label]
+                    action_taken = move_map[other.label]["action"]
+                    parts.append(f"{actor}: {action_taken}")
+                lines.append(f"  Round {round_idx}: " + ", ".join(parts))
+
+            prompt = "\n".join(lines) + f"\n\n{note}"
+            prompts.append(prompt)
+
+        return prompts
 
     def _play_matchup(
         self, players: Sequence[Agent], payoffs: PopulationPayoffs
@@ -49,9 +71,10 @@ class Repetition(RepetitiveMechanism):
             range(self.num_rounds),
             desc=f"Running {self.__class__.__name__} repetitive rounds",
         ):
-            repetition_information = self._parse_history(history)
+            repetition_information = self._build_history_prompts(players, history)
             moves = self.base_game.play(
-                additional_info=repetition_information, players=players
+                additional_info=repetition_information,
+                players=players,
             )
 
             history.append([move.to_dict() for move in moves])

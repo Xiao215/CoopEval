@@ -20,13 +20,8 @@ class TrustGame(Game):
     def __init__(
         self,
         payoff_matrix: Mapping[str, Sequence[float]],
-        *,
-        parallel_players: bool = False,
     ) -> None:
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
-        self.parallel_players = parallel_players
-
-        action_tokens = [act.to_token() for act in TrustGameAction]
         actions_block = "\n".join(
             [
                 f"- {TrustGameAction.INVEST.to_token()} — Invest / trust the other player",
@@ -80,7 +75,6 @@ class TrustGame(Game):
         results = self._collect_actions(
             players,
             additional_info,
-            parallel=self.parallel_players,
         )
         action_indices = {label: action_idx for label, action_idx, _ in results}
         responses = {label: resp for label, _, resp in results}

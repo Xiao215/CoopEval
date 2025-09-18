@@ -23,10 +23,9 @@ class PublicGoods(Game):
 
     def __init__(
         self,
+        *,
         num_players: int,
         multiplier: float,
-        *,
-        parallel_players: bool = False,
     ) -> None:
 
         if num_players <= 1:
@@ -37,11 +36,10 @@ class PublicGoods(Game):
         self.endowment = 1  # value of endowment does not matter
         self.multiplier = multiplier
         self.num_players = num_players
-        self.parallel_players = parallel_players
 
         self.prompt_template = textwrap.dedent(
             """
-        You are a player named {{player_name}} taking part in an N-player public goods game.
+        You are participating in an N-player public goods game.
         Each player receives an endowment and simultaneously chooses whether to contribute it to a common pool.
         The pool is multiplied and shared equally among all players.
 
@@ -89,7 +87,6 @@ class PublicGoods(Game):
         results = self._collect_actions(
             players,
             additional_info,
-            parallel=self.parallel_players,
         )
         action_indices = {label: action_idx for label, action_idx, _ in results}
         responses = {label: resp for label, _, resp in results}

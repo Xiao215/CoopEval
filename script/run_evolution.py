@@ -14,6 +14,7 @@ from src.registry.game_registry import GAME_REGISTRY
 from src.registry.agent_registry import create_agent
 from src.registry.mechanism_registry import MECHANISM_REGISTRY
 from src.logger_manager import WandBLogger, LOGGER
+from src.utils.concurrency import set_default_max_workers
 
 
 def set_seed(seed=42):
@@ -57,6 +58,9 @@ def main():
     args = parser.parse_args()
 
     config = load_config(filename=args.config)
+
+    concurrency_cfg = config.get("concurrency", {}) or {}
+    set_default_max_workers(concurrency_cfg.get("max_workers"))
 
     game_class = GAME_REGISTRY[config["game"]["type"]]
     mechanism_class = MECHANISM_REGISTRY[config["mechanism"]["type"]]

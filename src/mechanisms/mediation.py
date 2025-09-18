@@ -165,7 +165,6 @@ class Mediation(Mechanism):
         results = run_tasks(
             players,
             play_for_mediator,
-            max_workers=min(self.matchup_workers, len(players)),
         )
         for mediator_name, move_dicts in results:
             history.append({"mediator": mediator_name, "moves": move_dicts})

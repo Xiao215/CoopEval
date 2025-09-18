@@ -207,20 +207,12 @@ class Contracting(Mechanism):
 
             agreement_results = run_tasks(
                 players,
-                lambda ply: (
-                    ply.label,
-                    self._agree_to_contract(player=ply, designer=designer),
-                ),
-                max_workers=(
-                    min(self.matchup_workers, len(players))
-                    if getattr(self, "matchup_workers", 1) > 1
-                    else 1
-                ),
+                lambda p, d=designer: self._agree_to_contract(player=p, designer=d),
             )
 
             all_agree = True
-            for label, (response, agree) in agreement_results:
-                record["agreements"][label] = {
+            for player, (response, agree) in zip(players, agreement_results):
+                record["agreements"][player.label] = {
                     "response": response,
                     "agree": agree,
                 }

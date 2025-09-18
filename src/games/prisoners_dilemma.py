@@ -23,18 +23,15 @@ class PrisonersDilemma(Game):
     def __init__(
         self,
         payoff_matrix: Mapping[str, Sequence[float]],
-        *,
-        parallel_players: bool = False,
     ) -> None:
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
-        self.parallel_players = parallel_players
 
         actions_block = "\n".join(
             [f"- {act.to_token()}" for act in PrisonersDilemmaAction]
         )
         self.prompt_template = textwrap.dedent(
             """
-        You are a player named {{player_name}} who plays in a decision-making game.
+        You are playing a decision-making game against another agent.
         Your objective is to maximise your score in the game described below.
 
         Rule:
@@ -83,7 +80,6 @@ class PrisonersDilemma(Game):
         results = self._collect_actions(
             players,
             additional_info,
-            parallel=self.parallel_players,
         )
         action_indices = {label: action_idx for label, action_idx, _ in results}
         responses = {label: resp for label, _, resp in results}

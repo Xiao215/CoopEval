@@ -115,9 +115,7 @@ class Game(ABC):
 
         Returns the player's raw response.
         """
-        prompt = self.prompt.format(
-            player_name=player.name,
-        )
+        prompt = self.prompt
 
         if mechanism_info:
             prompt += mechanism_info
@@ -201,8 +199,6 @@ class Game(ABC):
         self,
         players: Sequence[Agent],
         info: Sequence[str],
-        *,
-        parallel: bool,
     ) -> list[tuple[str, int, str]]:
         """Prompt players (optionally in parallel) and sample actions."""
 
@@ -217,7 +213,4 @@ class Game(ABC):
             return player.label, action_idx, resp
 
         pairs = list(zip(players, info))
-        if not parallel:
-            return [query(player, extra) for player, extra in pairs]
-
-        return run_tasks(pairs, lambda pair: query(*pair), max_workers=len(players))
+        return run_tasks(pairs, lambda pair: query(*pair))

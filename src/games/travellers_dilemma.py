@@ -33,7 +33,6 @@ class TravellersDilemma(Game):
         num_actions: int,
         claim_spacing: int,
         bonus: float,
-        parallel_players: bool = False,
     ) -> None:
         if num_actions < 2:
             raise ValueError("Travellers Dilemma requires at least 2 actions.")
@@ -44,7 +43,6 @@ class TravellersDilemma(Game):
         claim_spacing = int(claim_spacing)
         self.claims = tuple(min_claim + i * claim_spacing for i in range(num_actions))
         self.bonus = float(bonus)
-        self.parallel_players = parallel_players
 
         self.action_cls = build_travellers_action(self.claims)
 
@@ -64,7 +62,7 @@ class TravellersDilemma(Game):
 
         prompt_template = textwrap.dedent(
             """
-        You are a player named {{player_name}} who plays in a decision-making game.
+        You are playing a decision-making game against another agent.
         Your objective is to maximise your score in the game described below.
 
         Rule:
@@ -116,7 +114,6 @@ class TravellersDilemma(Game):
         results = self._collect_actions(
             players,
             additional_info,
-            parallel=self.parallel_players,
         )
         action_indices = {label: action_idx for label, action_idx, _ in results}
         responses = {label: resp for label, _, resp in results}
