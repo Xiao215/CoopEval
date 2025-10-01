@@ -43,7 +43,8 @@ class PopulationPayoffs:
         x = self.discount
         if x < 1.0:
             weights = np.array([(1 - x) * (x**i) for i in range(n)], dtype=float)
-            weights[-1] = x**n
+            weights[-1] += x**n  # fold in the tail mass so weights sum to one
+            weights /= weights.sum()
         else:
             weights = np.ones(n, dtype=float) / n
         return np.sum(weights[:, None] * cumsum_ave_payoffs, axis=0)
@@ -102,9 +103,12 @@ class PopulationPayoffs:
         for name in base_names:
             usage[name] += 1
             idx_list = self._name_to_indices.get(name)
-            if not idx_list or usage[name] > len(idx_list):
-                raise ValueError(f"Unknown agent name {name!r} or insufficient entries")
-            base_indices_list.append(idx_list[usage[name] - 1])
+            if not idx_list:
+                raise ValueError(f"Unknown agent name {name!r}")
+            # Allow duplicate seat appearances of the same base agent by reusing
+            # the first known index when more seats are observed than base entries.
+            index_pos = min(usage[name] - 1, len(idx_list) - 1)
+            base_indices_list.append(idx_list[index_pos])
         base_indices = tuple(base_indices_list)
         row = np.array([[float(move.points) for move in moves]], dtype=float)
 

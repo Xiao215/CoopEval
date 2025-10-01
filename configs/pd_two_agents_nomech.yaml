@@ -1,0 +1,30 @@
+game:
+  type: PrisonersDilemma
+  kwargs:
+    payoff_matrix:
+      CC: [2, 2]
+      CD: [0, 3]
+      DC: [3, 0]
+      DD: [1, 1]
+
+evolution:
+  initial_population: uniform
+  steps: 25
+
+mechanism:
+  type: NoMechanism
+
+agents:
+  - llm:
+      provider: OpenRouter
+      model: deepseek/deepseek-chat-v3.1
+      kwargs:
+        temperature: 0
+    type: CoTAgent
+
+  - llm:
+      provider: OpenRouter
+      model: google/gemini-2.5-flash
+      kwargs:
+        temperature: 0
+    type: CoTAgent

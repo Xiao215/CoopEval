@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
@@ -20,7 +21,6 @@ from .disarmament import generate_disarmament_report
 from .io import find_runs
 from .models import RunData
 from .parsers import parse_run
-from .plots import plot_agent_metrics, plot_mechanism_summary, plot_pairwise_heatmaps
 
 
 def _build_baseline_map(runs: List[RunData]) -> Dict[str, float]:
@@ -139,11 +139,20 @@ def analyze(root: Path, out_dir: Path, *, disarmament: bool = False) -> Dict[str
     write_json(summary_payload, summary_json)
     outputs["summaries"] = summary_json
 
-    # Generate plots using the newly written tables
-    plot_mechanism_summary(out_dir / "mechanism_summary.csv", out_dir)
-    plot_agent_metrics(out_dir / "agent_metrics.csv", out_dir)
-    plot_pairwise_heatmaps(out_dir / "pairwise_metrics.csv", out_dir)
-    outputs["figures"] = out_dir / "figures"
+    # Generate plots unless explicitly disabled. Some environments (e.g. headless
+    # CI or sandboxed runners without GUI backends) cannot render Matplotlib
+    # figures, so allow skipping via an environment flag.
+    if os.environ.get("SKIP_PLOTS") not in {"1", "true", "True"}:
+        from .plots import (
+            plot_agent_metrics,
+            plot_mechanism_summary,
+            plot_pairwise_heatmaps,
+        )
+
+        plot_mechanism_summary(out_dir / "mechanism_summary.csv", out_dir)
+        plot_agent_metrics(out_dir / "agent_metrics.csv", out_dir)
+        plot_pairwise_heatmaps(out_dir / "pairwise_metrics.csv", out_dir)
+        outputs["figures"] = out_dir / "figures"
 
     if disarmament:
         disarm_outputs = generate_disarmament_report(
