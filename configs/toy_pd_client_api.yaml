@@ -2,9 +2,9 @@ game:
   type: PrisonersDilemma
   kwargs:
     payoff_matrix:
-      CC: [2, 2]
-      CD: [0, 3]
-      DC: [3, 0]
+      CC: [1, 1]
+      CD: [1, 1]
+      DC: [1, 1]
       DD: [1, 1]
 
 evolution:
@@ -14,8 +14,12 @@ evolution:
 mechanism:
   type: Repetition
   kwargs:
-    num_rounds: 2
-    discount: 0.9
+    num_rounds: 3
+    discount: 1
+
+
+concurrency:
+  max_workers: 2
 
 agents:
   # - llm:

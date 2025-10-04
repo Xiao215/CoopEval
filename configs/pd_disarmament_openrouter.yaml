@@ -14,13 +14,14 @@ evolution:
   initial_population: uniform
   steps: 25
 
+concurrency:
+  max_workers: 4
+
 mechanism:
   type: Disarmament
   kwargs:
     num_rounds: 10
     discount: 0.95
-    matchup_workers: 4
-    negotiation_workers: 4
 
 agents:
   - llm:

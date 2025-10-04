@@ -1,13 +1,13 @@
 """Agent abstractions and shared LLM caching utilities."""
 
-import copy
 import itertools
 from abc import ABC, abstractmethod
-from typing import Callable, Any
+from typing import Any, Callable
 
 from src.agents.base import LLM
 from src.agents.client_api_llm import ClientAPILLM
 from src.agents.hf_llm import HFInstance
+from src.agents.test_llm import TestInstance
 
 
 class LLMManager:
@@ -21,9 +21,13 @@ class LLMManager:
         if model_name not in self.llms:
             if provider == "HFInstance":
                 self.llms[model_name] = HFInstance(model_name)
-            else:
+            elif provider == "TestInstance":
+                self.llms[model_name] = TestInstance()
+            elif provider in {"OpenAI", "Gemini", "OpenRouter"}:
                 # Default to OpenAI API based models
                 self.llms[model_name] = ClientAPILLM(model_name, provider)
+            else:
+                raise ValueError(f"Unknown provider {provider} for model {model_name}")
         return self.llms[model_name]
 
 
@@ -41,8 +45,9 @@ class Agent(ABC):
         self.pipeline = type(self).llm_manager.get_llm(
             self.model_type, llm_config["provider"]
         )
-        self.agent_id = next(type(self)._instance_counter)
-        self._label = self.name
+
+        # Agent uid is unique across all models and types
+        self.uid = next(type(self)._instance_counter)
 
     @abstractmethod
     def chat(
@@ -56,24 +61,6 @@ class Agent(ABC):
         """Invoke the agent using the provided messages. No prompting added."""
         response = self.pipeline.invoke(messages, **self.kwargs)
         return response
-
-    def __str__(self):
-        return self.name
-
-    @property
-    def label(self) -> str:
-        """Human-readable identifier for this seat (defaults to base name)."""
-        return self._label
-
-    @label.setter
-    def label(self, value: str) -> None:
-        self._label = value
-
-    def make_seat_clone(self, seat_index: int) -> "Agent":
-        """Return a shallow clone representing one seat in a lineup."""
-        clone = copy.copy(self)
-        clone.label = f"{self.name}#{seat_index}"
-        return clone
 
     def chat_with_retries(
         self,
@@ -125,6 +112,9 @@ class Agent(ABC):
         """Return the name of the agent."""
         raise NotImplementedError
 
+    def __str__(self):
+        return self.name
+
 
 class IOAgent(Agent):
     """Input/Output Agent.
@@ -146,7 +136,7 @@ class IOAgent(Agent):
     @property
     def name(self) -> str:
         """Return the name of the agent."""
-        return f"{self.model_type}(IO)"
+        return f"{self.model_type}(IO)[#{self.uid}]"
 
 
 class CoTAgent(Agent):

@@ -1,10 +1,9 @@
 """Hosted-model :class:`LLM` implementation backed by OpenAI-compatible APIs."""
 
-from typing import Any
 import time
+from typing import Any
 
 from openai import OpenAI
-from openai._base_client import SyncAPIClient
 
 from config import settings
 from src.agents.base import LLM

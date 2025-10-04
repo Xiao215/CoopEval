@@ -115,49 +115,51 @@ class TravellersDilemma(Game):
             players,
             additional_info,
         )
-        action_indices = {label: action_idx for label, action_idx, _ in results}
-        responses = {label: resp for label, _, resp in results}
+        action_indices = {uid: action_idx for uid, action_idx, _ in results}
+        responses = {uid: resp for uid, _, resp in results}
 
         mapped_indices = action_map(action_indices)
-
-        # Map indices to actions (to preserve consistency with Move.action type)
-        final_actions: dict[str, Action] = {
-            lbl: self.action_cls.from_index(idx)
-            for lbl, idx in mapped_indices.items()
+        final_actions: dict[int, Action] = {
+            uid: self.action_cls.from_index(idx) for uid, idx in mapped_indices.items()
         }
 
         # Compute payoffs from claims
-        label1 = player1.label
-        label2 = player2.label
-        c1 = final_actions[label1].value
-        c2 = final_actions[label2].value
-        if c1 == c2:
-            pts1 = pts2 = float(c1)
-        else:
-            m = float(min(c1, c2))
-            if c1 < c2:
-                pts1 = m + self.bonus
-                pts2 = m - self.bonus
-            else:
-                pts1 = m - self.bonus
-                pts2 = m + self.bonus
+        uid1 = player1.uid
+        uid2 = player2.uid
+        c1 = final_actions[uid1].value
+        c2 = final_actions[uid2].value
+        pts1, pts2 = self._calculate_payoffs(c1, c2)
 
         return [
             Move(
-                name=player1.name,
-                label=label1,
-                action=final_actions[label1],
+                player_name=player1.name,
+                uid=uid1,
+                action=final_actions[uid1],
                 points=pts1,
-                response=responses[label1],
+                response=responses[uid1],
             ),
             Move(
-                name=player2.name,
-                label=label2,
-                action=final_actions[label2],
+                player_name=player2.name,
+                uid=uid2,
+                action=final_actions[uid2],
                 points=pts2,
-                response=responses[label2],
+                response=responses[uid2],
             ),
         ]
+
+    def _calculate_payoffs(self, claim_a: int | float, claim_b: int | float) -> tuple[float, float]:
+        """Return payoffs for a pair of claims given the Traveller's Dilemma rules."""
+        if claim_a == claim_b:
+            value = float(claim_a)
+            return value, value
+
+        lower_claim = float(min(claim_a, claim_b))
+        lower_payoff = lower_claim + self.bonus
+        higher_payoff = lower_claim - self.bonus
+
+        if claim_a < claim_b:
+            return lower_payoff, higher_payoff
+        return higher_payoff, lower_payoff
 
     @classmethod
     def parse_raw_payoff_matrix(
@@ -195,7 +197,8 @@ class TravellersDilemma(Game):
                 bi = int(b)
             if not (0 <= ai < num_actions and 0 <= bi < num_actions):
                 raise ValueError(
-                    f"Action indices out of bounds in key {key!r}: got {(ai, bi)} with num_actions={num_actions}"
+                    f"Action indices out of bounds in key {key!r}: "
+                    f"got {(ai, bi)} with num_actions={num_actions}"
                 )
             payoffs[(ai, bi)] = (p1, p2)
         return payoffs

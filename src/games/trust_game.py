@@ -76,33 +76,33 @@ class TrustGame(Game):
             players,
             additional_info,
         )
-        action_indices = {label: action_idx for label, action_idx, _ in results}
-        responses = {label: resp for label, _, resp in results}
+        action_indices = {uid: action_idx for uid, action_idx, _ in results}
+        responses = {uid: resp for uid, _, resp in results}
 
         mapped_indices = action_map(action_indices)
-        final_actions: dict[str, TrustGameAction] = {
-            lbl: TrustGameAction.from_index(action)
-            for lbl, action in mapped_indices.items()
+        final_actions: dict[int, TrustGameAction] = {
+            uid: TrustGameAction.from_index(action)
+            for uid, action in mapped_indices.items()
         }
 
-        label1 = player1.label
-        label2 = player2.label
-        pts1, pts2 = self.payoff_matrix[(final_actions[label1], final_actions[label2])]
+        uid1 = player1.uid
+        uid2 = player2.uid
+        pts1, pts2 = self.payoff_matrix[(final_actions[uid1], final_actions[uid2])]
 
         return [
             Move(
-                name=player1.name,
-                label=label1,
-                action=final_actions[label1],
+                player_name=player1.name,
+                uid=uid1,
+                action=final_actions[uid1],
                 points=pts1,
-                response=responses[label1],
+                response=responses[uid1],
             ),
             Move(
-                name=player2.name,
-                label=label2,
-                action=final_actions[label2],
+                player_name=player2.name,
+                uid=uid2,
+                action=final_actions[uid2],
                 points=pts2,
-                response=responses[label2],
+                response=responses[uid2],
             ),
         ]
 

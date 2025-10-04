@@ -10,6 +10,7 @@ from src.evolution.population_payoffs import PopulationPayoffs
 from src.games.base import Game
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
+from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
 
@@ -21,7 +22,7 @@ class Mediation(Mechanism):
         base_game: Game,
     ) -> None:
         super().__init__(base_game)
-        self.mediators: dict[str, dict[int, int]] = {}
+        self.mediators: dict[int, dict[int, int]] = {}
         self.mediator_design_prompt = textwrap.dedent(
             """
         Instruction:
@@ -127,17 +128,25 @@ class Mediation(Mechanism):
             )
         return "\n".join(lines)
 
-    def run_tournament(self, agents: Sequence[Agent]) -> PopulationPayoffs:
-        mediator_design = {}
-        for agent in agents:
+    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+        agents = [create_agent(cfg) for cfg in agent_cfgs]
+
+        def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, int]]:
             response, mediator = self._design_mediator(agent)
-            self.mediators[agent.name] = mediator
-            mediator_design[agent.label] = {
+            return agent, response, mediator
+
+        results = run_tasks(agents, design_fn)
+
+        self.mediators.clear()
+        mediator_design = {}
+        for agent, response, mediator in results:
+            self.mediators[agent.model_type] = mediator
+            mediator_design[agent.model_type] = {
                 "response": response,
                 "mediator": mediator,
             }
         LOGGER.log_record(record=mediator_design, file_name="mediator_design.json")
-        return super().run_tournament(agents)
+        return super().run_tournament(agent_cfgs)
 
     def _play_matchup(
         self, players: Sequence[Agent], payoffs: PopulationPayoffs
@@ -145,10 +154,7 @@ class Mediation(Mechanism):
         history = []
 
         def play_for_mediator(player: Agent) -> tuple[str, list[dict]]:
-            base_name = player.name
-            if base_name not in self.mediators:
-                raise ValueError(f"Mediator for player {player.name} not found.")
-            mediator = self.mediators[base_name]
+            mediator = self.mediators[player.model_type]
             mediator_description = self._mediator_description(mediator)
             mediator_mechanism = self.mediation_mechanism_prompt.format(
                 mediator_description=mediator_description,
@@ -159,15 +165,15 @@ class Mediation(Mechanism):
                 additional_info=mediator_mechanism,
                 action_map=self.mediator_mapping(mediator),
             )
-            payoffs.add_profile(moves)
-            return player.label, [move.to_dict() for move in moves]
+            payoffs.add_profile([moves])
+            return player.model_type, [move.to_dict() for move in moves]
 
         results = run_tasks(
             players,
             play_for_mediator,
         )
-        for mediator_name, move_dicts in results:
-            history.append({"mediator": mediator_name, "moves": move_dicts})
+        for mediator_model_type, move_dicts in results:
+            history.append({"mediator": mediator_model_type, "moves": move_dicts})
         LOGGER.log_record(record=history, file_name=self.record_file)
 
     def mediator_mapping(self, mediator: dict[int, int]) -> Callable:
@@ -175,7 +181,6 @@ class Mediation(Mechanism):
         Given the original actions and the mediator design, return the final actions
         after applying the mediator's recommendations.
         """
-
         def apply_mediation(player_action_map: dict[str, int]) -> dict[str, int]:
             actions: dict[str, int] = {}
             num_delegating = sum(

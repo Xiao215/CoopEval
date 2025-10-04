@@ -8,16 +8,16 @@ game:
       CD: [0, 3]
       DC: [3, 0]
       DD: [1, 1]
-    parallel_players: true
 
 evolution:
   initial_population: uniform
   steps: 25
 
+concurrency:
+  max_workers: 4
+
 mechanism:
   type: NoMechanism
-  kwargs:
-    matchup_workers: 4
 
 agents:
   - llm:

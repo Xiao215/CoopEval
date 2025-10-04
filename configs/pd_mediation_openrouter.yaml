@@ -16,8 +16,9 @@ evolution:
 
 mechanism:
   type: Mediation
-  kwargs:
-    matchup_workers: 4
+
+concurrency:
+  max_workers: 4
 
 agents:
   - llm:

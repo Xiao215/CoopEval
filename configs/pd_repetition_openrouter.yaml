@@ -8,7 +8,6 @@ game:
       CD: [0, 3]
       DC: [3, 0]
       DD: [1, 1]
-    parallel_players: true
 
 evolution:
   initial_population: uniform
@@ -19,7 +18,6 @@ mechanism:
   kwargs:
     num_rounds: 10
     discount: 0.95
-    matchup_workers: 4
 
 agents:
   - llm:
@@ -35,7 +33,7 @@ agents:
       kwargs:
         temperature: 0
     type: CoTAgent
-  
+
   - llm:
       provider: OpenRouter
       model: qwen/qwen3-next-80b-a3b-instruct

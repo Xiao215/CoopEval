@@ -88,40 +88,35 @@ class PublicGoods(Game):
             players,
             additional_info,
         )
-        action_indices = {label: action_idx for label, action_idx, _ in results}
-        responses = {label: resp for label, _, resp in results}
-        labels_to_names = {
-            label: player.name
-            for player, (label, _, _) in zip(players, results, strict=True)
-        }
+        action_indices = {uid: action_idx for uid, action_idx, _ in results}
+        responses = {uid: resp for uid, _, resp in results}
 
         mapped_indices = action_map(action_indices)
-        final_actions: dict[str, PublicGoodsAction] = {
-            lbl: PublicGoodsAction.from_index(action)
-            for lbl, action in mapped_indices.items()
+        final_actions: dict[int, PublicGoodsAction] = {
+            uid: PublicGoodsAction.from_index(action)
+            for uid, action in mapped_indices.items()
         }
 
         share = self._calculate_share(final_actions)
 
         moves = []
-        for label, action in final_actions.items():
-            name = labels_to_names[label]
+        for player in players:
             moves.append(
                 Move(
-                    name=name,
-                    label=label,
-                    action=action,
+                    player_name=player.name,
+                    uid=player.uid,
+                    action=final_actions[player.uid],
                     points=(
                         share
-                        if action == PublicGoodsAction.CONTRIBUTE
+                        if final_actions[player.uid] == PublicGoodsAction.CONTRIBUTE
                         else self.endowment + share
                     ),
-                    response=responses[label],
+                    response=responses[player.uid],
                 )
             )
         return moves
 
-    def _calculate_share(self, actions: Mapping[str, PublicGoodsAction]) -> float:
+    def _calculate_share(self, actions: Mapping[int, PublicGoodsAction]) -> float:
         """
         Calculate the payoff for each agent based on their contributions.
         """

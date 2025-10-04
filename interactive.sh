@@ -7,3 +7,5 @@ srun --account=aip-rgrosse --time=1:00:00 --gres=gpu:l40s:2 --mem=80G -c 24 --ch
 srun --account=aip-rgrosse --time=1:00:00 --gres=gpu:h100:1 --mem=60G -c 32 --chdir=/project/aip-rgrosse/xiao215/agent-tournament --pty bash
 
 # Increase -c to load model faster
+
+srun --account=aip-rgrosse --time=1:00:00 --mem=24G -c 32 --chdir=/project/aip-rgrosse/xiao215/agent-tournament --pty bash

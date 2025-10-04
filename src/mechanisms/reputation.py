@@ -1,22 +1,22 @@
 """Mechanisms that expose behavioural reputation across repeated rounds."""
 
 import itertools
-import math
 import random
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Sequence
 
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
 from src.evolution.population_payoffs import PopulationPayoffs
-from src.games.base import Game
-from src.games.prisoners_dilemma import PrisonersDilemma, PrisonersDilemmaAction
+from src.games.base import Game, Move
+from src.games.prisoners_dilemma import (PrisonersDilemma,
+                                         PrisonersDilemmaAction)
 from src.games.public_goods import PublicGoods, PublicGoodsAction
 from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
+from src.registry.agent_registry import create_agent
 
 random.seed(42)
 
@@ -64,69 +64,69 @@ class Reputation(RepetitiveMechanism, ABC):
             "`_format_reputation` should be implemented in subclasses."
         )
 
-    def run_tournament(self, agents: Sequence[Agent]) -> PopulationPayoffs:
-        """Run the mechanism over the base game across all players."""
-        payoffs = self._build_payoffs(agents)
+    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+        """Run a multi-round tournament while tracking reputation updates."""
+        players = [
+            create_agent(cfg)
+            for cfg in agent_cfgs
+            for _ in range(self.base_game.num_players)
+        ]
+        payoffs = self._build_payoffs(players)
 
-        for _ in tqdm(
-            range(self.num_rounds),
-            desc=f"Running Reputation Mechanism for {self.base_game.__class__.__name__}",
-        ):
-            self._play_matchup(agents, payoffs)
+        self._play_matchups(players, payoffs)
+
         return payoffs
 
-    def _play_matchup(
+    def _play_matchups(
         self, players: Sequence[Agent], payoffs: PopulationPayoffs
     ) -> None:
+        """Play all matchups while updating reputation after each round."""
+        num_players = self.base_game.num_players
+        all_matchups = list(itertools.combinations(players, r=num_players))
+        random.shuffle(all_matchups)
+
         k = self.base_game.num_players
-        n = len(players)
-        total_matches = math.comb(n, k)
-        combo_iter = list(itertools.combinations_with_replacement(players, k))
-        random.shuffle(combo_iter)
+        matchups = [tuple(lineup) for lineup in itertools.combinations(players, k)]
+        matchup_histories: defaultdict[tuple[int, ...], list[list[Move]]] = defaultdict(
+            list
+        )
 
-        def play_one(lineup: Sequence[Agent]) -> tuple[list[dict], PopulationPayoffs]:
-            local_payoffs = self._build_payoffs(players)
-            moves = self.base_game.play(
-                additional_info=self._format_reputation(lineup), players=lineup
+        round_iter = tqdm(
+            range(1, self.num_rounds + 1),
+            desc=f"Running Reputation Mechanism for {self.base_game.__class__.__name__}",
+        )
+
+        for round_idx in round_iter:
+            # Shuffle matchups before each round, even though order does not impact outcomes
+            matchups_this_round = list(matchups)
+            random.shuffle(matchups_this_round)
+
+            round_matches: list[dict[str, object]] = []
+
+            for matchup in matchups_this_round:
+                reputation_information = self._format_reputation(matchup)
+                moves = self.base_game.play(
+                    additional_info=reputation_information,
+                    players=matchup,
+                )
+
+                round_matches.append(
+                    {
+                        "players": [move.player_name for move in moves],
+                        "moves": [move.to_dict() for move in moves],
+                    }
+                )
+
+                for move in moves:
+                    self._update_reputation(move.player_name, move.action.value)
+
+            LOGGER.log_record(
+                record={"round": round_idx, "matchups": round_matches},
+                file_name=self.record_file,
             )
-            local_payoffs.add_profile(moves)
-            return [move.to_dict() for move in moves], local_payoffs
 
-        moves_per_round: list[list[dict]] = []
-
-        if self.matchup_workers <= 1 or len(combo_iter) <= 1:
-            for lineup in tqdm(
-                combo_iter,
-                total=total_matches,
-                leave=False,
-                position=1,
-                desc="Reputation matches",
-            ):
-                moves_dicts, local = play_one(lineup)
-                moves_per_round.append(moves_dicts)
-                payoffs.merge_from(local)
-        else:
-            with ThreadPoolExecutor(max_workers=self.matchup_workers) as ex:
-                futures = {
-                    ex.submit(play_one, lineup): lineup for lineup in combo_iter
-                }
-                for fut in tqdm(
-                    as_completed(futures),
-                    total=len(futures),
-                    leave=False,
-                    position=1,
-                    desc="Reputation matches",
-                ):
-                    moves_dicts, local = fut.result()
-                    moves_per_round.append(moves_dicts)
-                    payoffs.merge_from(local)
-
-        LOGGER.log_record(record=moves_per_round, file_name=self.record_file)
-
-        # Update reputation score at the end of each round
-        for players_moves in moves_per_round:
-            for move in players_moves:
-                self._update_reputation(move["name"], move["action"])
+        for moves_over_rounds in matchup_histories.values():
+            payoffs.add_profile(moves_over_rounds)
 
     @abstractmethod
     def _update_reputation(self, name: str, action: str) -> None:

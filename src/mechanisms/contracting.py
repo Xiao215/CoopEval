@@ -10,6 +10,7 @@ from src.evolution.population_payoffs import PopulationPayoffs
 from src.games.base import Game
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
+from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
 
@@ -65,7 +66,8 @@ class Contracting(Mechanism):
             Here is the contract:
             {contract_description}
 
-            Since this contract directly change your final payoff, consider the contract when making your decision for the strategy!
+            Since this contract directly change your final payoff,
+            consider the contract when making your decision for the strategy!
             """
         )
 
@@ -96,7 +98,7 @@ class Contracting(Mechanism):
             + "\n"
             + self.contract_confirmation_prompt.format(
                 contract_description=self._contract_description(
-                    self.contracts[designer.name]
+                    self.contracts[designer.model_type]
                 )
             )
         )
@@ -181,17 +183,25 @@ class Contracting(Mechanism):
                 lines.append(f"- If you choose A{idx}, there is no extra payoff.")
         return "\n".join(lines)
 
-    def run_tournament(self, agents: Sequence[Agent]) -> PopulationPayoffs:
-        contract_design = {}
-        for agent in agents:
+    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+        agents = [create_agent(cfg) for cfg in agent_cfgs]
+
+        def design_fn(agent: Agent) -> tuple[Agent, str, list[int]]:
             response, contract = self._design_contract(agent)
-            self.contracts[agent.name] = contract
-            contract_design[agent.label] = {
+            return agent, response, contract
+
+        design_results = run_tasks(agents, design_fn)
+
+        self.contracts.clear()
+        contract_design = {}
+        for agent, response, contract in design_results:
+            self.contracts[agent.model_type] = contract
+            contract_design[agent.model_type] = {
                 "response": response,
                 "contract": contract,
             }
         LOGGER.log_record(record=contract_design, file_name="contract_design.json")
-        return super().run_tournament(agents)
+        return super().run_tournament(agent_cfgs)
 
     def _play_matchup(
         self, players: Sequence[Agent], payoffs: PopulationPayoffs
@@ -212,7 +222,7 @@ class Contracting(Mechanism):
 
             all_agree = True
             for player, (response, agree) in zip(players, agreement_results):
-                record["agreements"][player.label] = {
+                record["agreements"][player.name] = {
                     "response": response,
                     "agree": agree,
                 }
@@ -223,18 +233,18 @@ class Contracting(Mechanism):
             if all_agree:
                 contract_prompt = self.contract_mechanism_prompt.format(
                     contract_description=self._contract_description(
-                        self.contracts[designer.name]
+                        self.contracts[designer.model_type]
                     )
                 )
                 additional_info = [contract_prompt] * len(players)
             else:
-                additional_info = ["None."] * len(players)
+                additional_info = ["None."]
 
             moves = self.base_game.play(
                 additional_info=additional_info,
                 players=players,
             )
-            payoffs.add_profile(moves)
+            payoffs.add_profile([moves])
             record["moves"] = [move.to_dict() for move in moves]
             history.append(record)
 

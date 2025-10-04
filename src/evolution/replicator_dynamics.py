@@ -1,11 +1,10 @@
 """Utilities for running discrete-time replicator dynamics tournaments."""
 
-from typing import Literal
+from typing import Literal, Sequence
 
 import numpy as np
 from tqdm import tqdm
 
-from src.agents.agent_manager import Agent
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
 
@@ -23,12 +22,12 @@ class DiscreteReplicatorDynamics:
 
     def __init__(
         self,
-        agents: list[Agent],
+        agent_cfgs: Sequence[dict],
         mechanism: Mechanism,
     ) -> None:
         """Bind a population of ``agents`` to a tournament ``mechanism``."""
         self.mechanism = mechanism
-        self.agents = agents
+        self.agent_cfgs = agent_cfgs
 
     def population_update(
         self,
@@ -59,7 +58,7 @@ class DiscreteReplicatorDynamics:
         *,
         lr_method: Literal["constant", "sqrt"] = "constant",
         lr_nu: float = 0.1,
-    ) -> list[np.ndarray]:
+    ) -> list[dict[str, float]]:
         """
         Run the multiplicative weights dynamics for a specified number of steps.
         """
@@ -74,36 +73,42 @@ class DiscreteReplicatorDynamics:
         # Initialize population distribution
         if isinstance(initial_population, np.ndarray):
             assert len(initial_population) == len(
-                self.agents
+                self.agent_cfgs
             ), "Initial population distribution must match number of agent types"
             assert np.all(
                 initial_population >= 0
             ), "Initial population distribution must be non-negative"
             population = initial_population
         elif initial_population == "random":
-            population = np.random.exponential(scale=1.0, size=len(self.agents))
+            population = np.random.exponential(scale=1.0, size=len(self.agent_cfgs))
         elif initial_population == "uniform":
-            population = np.ones(len(self.agents))
+            population = np.ones(len(self.agent_cfgs))
         else:
             raise ValueError("initial_population must be a numpy array or 'uniform'")
 
         # Normalize to ensure it is a probability distribution
         population /= population.sum()
-        population_history = [population.copy()]
+        model_types = [
+            str(agent_config["llm"]["model"]) for agent_config in self.agent_cfgs
+        ]
+        population_history = [
+            {model: float(prob) for model, prob in zip(model_types, population)}
+        ]
 
-        population_payoffs = self.mechanism.run_tournament(agents=self.agents)
-        fitness = population_payoffs.fitness(population)
-        print("Initial population fitness:", fitness)
-        print(f"Record is: {population_payoffs.to_record()}")
+        population_payoffs = self.mechanism.run_tournament(agent_cfgs=self.agent_cfgs)
+        model_average_payoff = population_payoffs.model_average_payoff()
 
         LOGGER.log_record(
-            record=population_payoffs.to_record(), file_name="payoffs.json"
+            record=model_average_payoff, file_name="model_average_payoff.json"
         )
 
         for step in tqdm(range(1, steps + 1), desc="Evolution Steps"):
-
-            # average population fitness is the society's average performance
-            ave_population_fitness = np.dot(population, fitness)
+            population_dict = {
+                model: float(prob) for model, prob in zip(model_types, population)
+            }
+            fitness_dict = population_payoffs.fitness(population_dict)
+            fitness = np.array([fitness_dict[model] for model in model_types])
+            ave_population_fitness = float(np.dot(population, fitness))
 
             if np.max(np.abs(fitness - ave_population_fitness)) < tol:
                 print("Converged: approximate equilibrium reached")
@@ -113,9 +118,10 @@ class DiscreteReplicatorDynamics:
                 current_pop=population,
                 fitness=fitness,
                 ave_population_fitness=ave_population_fitness,
-                lr=lr_fct(len(population_history) + 1),
+                lr=lr_fct(step),
             )
-            population_history.append(population.copy())
+            population_history.append(
+                {model: float(prob) for model, prob in zip(model_types, population)}
+            )
 
-        print("Steps limit reached")
         return population_history
