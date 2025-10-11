@@ -131,7 +131,6 @@ class PopulationPayoffs:
     def model_average_payoff(self) -> dict[str, float]:
         """
         Compute the average payoff of each model type in the population.
-
         """
 
         aggregated_payoffs: dict[str, list[float]] = defaultdict(list)
@@ -166,7 +165,6 @@ class PopulationPayoffs:
             model_type: model_average_payoff[model_type] * prob
             for model_type, prob in population.items()
         }
-
         return fitness
 
     def to_json(self) -> dict[str, Any]:

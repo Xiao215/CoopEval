@@ -47,32 +47,33 @@ class TravellersDilemma(Game):
         self.action_cls = build_travellers_action(self.claims)
 
         actions_block = "\n".join(
-            f"- {act.to_token()} — claim {act.value}" for act in self.action_cls
+            f"- {act.to_token()}: correspond to the number {act.value}"
+            for act in self.action_cls
         )
 
         payoff_description = textwrap.dedent(
             f"""
-        Payoff rule:
-        - If both choose the same claim X: both receive X points.
-        - If claims differ (X != Y): let M = min(X, Y).
-          • The lower claimant receives M + {self.bonus}.
-          • The higher claimant receives M - {self.bonus}.
+            Suppose you choose number X and opponent chooses number Y.
+                - If X = Y: you get X points, opponent gets Y (=X) points.
+                - If X < Y: you get X + {self.bonus}, opponent gets X - {self.bonus}.
+                - If X > Y: you get Y - {self.bonus}, opponent gets Y + {self.bonus}.
         """
         ).strip()
 
         prompt_template = textwrap.dedent(
             """
-        You are playing a decision-making game against another agent.
-        Your objective is to maximise your score in the game described below.
+        You are playing a decision-making game against another player.
+        Your objective is to maximise your points received in the game described below.
 
-        Rule:
-        1. You and the opponent each choose a probability for each action, simultaneously.
-        2. After both commitments are locked in, the final action will be drawn from the probability distributions.
-        3. Both players receive the points specified by the rule below.
-
-        Actions (each corresponds to a claim amount):
+        Actions:
         {actions_block}
 
+        Game rules:
+        1. You and the opponent each choose a probability for each action, simultaneously.
+        2. After both decisions are locked in, the final action will be drawn from the probability distributions.
+        3. Both players receive the points specified in the payoff description below.
+
+        Payoff description:
         {payoff_description}
         """
         )

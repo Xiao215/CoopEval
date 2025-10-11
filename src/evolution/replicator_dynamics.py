@@ -98,6 +98,8 @@ class DiscreteReplicatorDynamics:
         population_payoffs = self.mechanism.run_tournament(agent_cfgs=self.agent_cfgs)
         model_average_payoff = population_payoffs.model_average_payoff()
 
+        print(f"Model average payoff: {model_average_payoff}")
+
         LOGGER.log_record(
             record=model_average_payoff, file_name="model_average_payoff.json"
         )
@@ -107,6 +109,7 @@ class DiscreteReplicatorDynamics:
                 model: float(prob) for model, prob in zip(model_types, population)
             }
             fitness_dict = population_payoffs.fitness(population_dict)
+            print(f"Step {step}: Population fitness is {fitness_dict}")
             fitness = np.array([fitness_dict[model] for model in model_types])
             ave_population_fitness = float(np.dot(population, fitness))
 

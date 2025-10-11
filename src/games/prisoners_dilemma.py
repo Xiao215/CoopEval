@@ -31,18 +31,18 @@ class PrisonersDilemma(Game):
         )
         self.prompt_template = textwrap.dedent(
             """
-        You are playing a decision-making game against another agent.
-        Your objective is to maximise your score in the game described below.
-
-        Rule:
-        1. You and the opponent each choose a probability for each action, simultaneously.
-        2. After both commitments are locked in, the final action will be drawn from the probability distributions.
-        3. Both players receive the points specified in the payoff table below.
+        You are playing a decision-making game against another player.
+        Your objective is to maximise your points received in the game described below.
 
         Actions:
         {actions_block}
 
-        Payoff matrix:
+        Game rules:
+        1. You and the opponent each choose a probability for each action, simultaneously.
+        2. After both decisions are locked in, the final action will be drawn from the probability distributions.
+        3. Both players receive the points specified in the payoff description below.
+
+        Payoff description:
         {payoff_description}
         """
         )
@@ -60,7 +60,7 @@ class PrisonersDilemma(Game):
         lines = []
         for (a, b), (pts_a, pts_b) in self.payoff_matrix.items():
             lines.append(
-                f"  • If you choose {a.to_token()} and opponent chooses {b.to_token()}: "
+                f"\t- If you choose {a.to_token()} and opponent chooses {b.to_token()}: "
                 f"you get {pts_a} points, opponent gets {pts_b} points."
             )
         return "\n".join(lines)

@@ -22,22 +22,22 @@ class TrustGame(Game):
         payoff_matrix: Mapping[str, Sequence[float]],
     ) -> None:
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
-        actions_block = "\n".join(
-            [
-                f"- {TrustGameAction.INVEST.to_token()} — Invest / trust the other player",
-                f"- {TrustGameAction.KEEP.to_token()} — Keep your endowment",
-            ]
-        )
+        actions_block = "\n".join([f"- {act.to_token()}" for act in TrustGameAction])
 
         self.prompt_template = textwrap.dedent(
             """
-        You are a participant in a two-player trust game. Both players decide simultaneously
-        whether to invest their endowment (trust) or keep it.
+        You are playing a decision-making game against another player.
+        Your objective is to maximise your points received in the game described below.
 
         Actions:
         {actions_block}
 
-        Payoff outcomes:
+        Game rules:
+        1. You and the opponent each choose a probability for each action, simultaneously.
+        2. After both decisions are locked in, the final action will be drawn from the probability distributions.
+        3. Both players receive the points specified in the payoff description below.
+
+        Payoff description:
         {payoff_description}
         """
         )
@@ -51,12 +51,13 @@ class TrustGame(Game):
             num_actions=len(TrustGameAction),
         )
 
+    # TODO: this is asymmetric
     def _payoff_description(self) -> str:
         lines = []
         for (a, b), (pts_a, pts_b) in self.payoff_matrix.items():
             lines.append(
-                f"  • If you choose {a.to_token()} and your counterpart chooses {b.to_token()}: "
-                f"you get {pts_a} points, they get {pts_b} points."
+                f"\t- If you choose {a.to_token()} and opponent chooses {b.to_token()}: "
+                f"you get {pts_a} points, opponent gets {pts_b} points."
             )
         return "\n".join(lines)
 

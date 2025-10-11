@@ -39,19 +39,22 @@ class PublicGoods(Game):
 
         self.prompt_template = textwrap.dedent(
             """
-        You are participating in an N-player public goods game.
-        Each player receives an endowment and simultaneously chooses whether to contribute it to a common pool.
-        The pool is multiplied and shared equally among all players.
+        You are playing a decision-making game against {num_players} other players.
+        Your objective is to maximise your points received in the game described below.
+
+        Actions:
+        - {contribute_tok}
+        - {free_ride_tok}
 
         Game rules:
-        1. Every player starts with {endowment} dollar(s).
-        2. Each player simultaneously chooses one action.
-        3. Total contributions are multiplied by {multiplier} and divided equally among the group.
-        4. Any money not contributed remains with the player.
+        1. You and the opponents each choose a probability for each action, simultaneously.
+        2. After all decisions are locked in, the final action will be drawn from the probability distributions.
+        3. Both players receive the points specified in the payoff description below.
 
-        Actions (choose exactly one per round):
-        - {contribute_tok} — Contribute your endowment to the pool.
-        - {free_ride_tok} — Keep your endowment.
+        Payoff description:
+        Suppose k out of {num_players} players play {contribute_tok}.
+            If player i plays {contribute_tok}, their payoff is: {multiplier} * k / {num_players}.
+            If player i plays {free_ride_tok}, their payoff is: 1 + ({multiplier} * k / {num_players}).
         """
         )
 
