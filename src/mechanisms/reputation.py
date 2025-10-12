@@ -20,6 +20,7 @@ from src.registry.agent_registry import create_agent
 
 random.seed(42)
 
+# TODO: Outdated for trust game and the reputation mechanism design is TBD
 
 class ReputationStat:
     def __init__(self):

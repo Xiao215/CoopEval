@@ -3,7 +3,7 @@
 import time
 from typing import Any
 
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 from config import settings
 from src.agents.base import LLM
@@ -48,7 +48,6 @@ class ClientAPILLM(LLM):
         """Call the remote chat completion endpoint with basic retry/backoff."""
         # Simple retry/backoff around the API call
         delays = [1, 2, 4, 8]
-        last_exc: Exception | None = None
         for attempt, delay in enumerate([0] + delays):
             if delay:
                 time.sleep(delay)
@@ -59,13 +58,9 @@ class ClientAPILLM(LLM):
                     **kwargs,
                 )
                 return completion.choices[0].message.content
-            except Exception as e:
-                last_exc = e
+            except OpenAIError as e:
                 # On last attempt, re-raise
                 if attempt == len(delays):
-                    raise
+                    raise e
                 continue
-        # Defensive fallback (shouldn't reach)
-        if last_exc:
-            raise last_exc
         raise RuntimeError("Unknown error invoking client API")

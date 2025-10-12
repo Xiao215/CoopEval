@@ -36,30 +36,30 @@ class TrustGame(Game):
         1. You and the opponent each choose a probability for each action, simultaneously.
         2. After both decisions are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff description below.
-
-        Payoff description:
-        {payoff_description}
         """
         )
 
         super().__init__(
             prompt=self.prompt_template.format(
                 actions_block=actions_block,
-                payoff_description=self._payoff_description(),
             ),
             num_players=2,
             num_actions=len(TrustGameAction),
         )
 
-    # TODO: this is asymmetric
-    def _payoff_description(self) -> str:
-        lines = []
+    def _payoff_description(self) -> tuple[str, str]:
+        p1_lines = []
+        p2_lines = []
         for (a, b), (pts_a, pts_b) in self.payoff_matrix.items():
-            lines.append(
+            p1_lines.append(
                 f"\t- If you choose {a.to_token()} and opponent chooses {b.to_token()}: "
-                f"you get {pts_a} points, opponent gets {pts_b} points."
+                f"You get {pts_a} points, opponent gets {pts_b} points."
             )
-        return "\n".join(lines)
+            p2_lines.append(
+                f"\t- If you choose {b.to_token()} and opponent chooses {a.to_token()}: "
+                f"You get {pts_b} points, opponent gets {pts_a} points."
+            )
+        return "\n".join(p1_lines), "\n".join(p2_lines)
 
     def play(
         self,
@@ -73,6 +73,13 @@ class TrustGame(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
 
+        for i, player_payoff_description in enumerate(self._payoff_description()):
+            additional_info[i] = (
+                "\nPayoff description:\n"
+                + player_payoff_description
+                + additional_info[i]
+            )
+
         results = self._collect_actions(
             players,
             additional_info,
@@ -81,7 +88,7 @@ class TrustGame(Game):
         responses = {uid: resp for uid, _, resp in results}
 
         mapped_indices = action_map(action_indices)
-        final_actions: dict[int, TrustGameAction] = {
+        final_actions = {
             uid: TrustGameAction.from_index(action)
             for uid, action in mapped_indices.items()
         }

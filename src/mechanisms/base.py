@@ -56,14 +56,20 @@ class Mechanism(ABC):
             ):
                 pbar.set_postfix_str(matchup_label, refresh=False)
                 t0 = time.perf_counter()
+
                 self._play_matchup(seat_players, payoffs)
+                if self.base_game.__class__.__name__ == "TrustGame":
+                    # Trust game is asymmetric, so also play the reverse
+                    self._play_matchup(seat_players[::-1], payoffs)
+
                 dt = time.perf_counter() - t0
                 if first_duration is None:
                     first_duration = dt
                     # Rough ETA: match-count * per-match duration
                     est_total = dt * len(combo_iter)
                     print(
-                        f"[ETA] ~{est_total/60:.1f} min for {len(combo_iter)} matchups (sequential)."
+                        f"[ETA] ~{est_total/60:.1f} min for "
+                        f"{len(combo_iter)} matchups (sequential)."
                     )
                 pbar.update(1)
         return payoffs

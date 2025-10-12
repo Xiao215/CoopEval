@@ -108,7 +108,7 @@ class Game(ABC):
     def prompt_player_mix_probs(
         self,
         player: Agent,
-        mechanism_info: str | None = None,
+        extra_info: str | None = None,
         output_instruction: str | None = None,
     ) -> tuple[str, dict[int, float]]:
         """
@@ -119,8 +119,8 @@ class Game(ABC):
         """
         prompt = self.prompt
 
-        if mechanism_info:
-            prompt += mechanism_info
+        if extra_info:
+            prompt += extra_info
 
         if output_instruction is None:
             output_instruction = self.default_output_instruction
@@ -210,7 +210,9 @@ class Game(ABC):
             )
 
         def query(player: Agent, extra_info: str) -> tuple[int, int, str]:
-            resp, mix_probs = self.prompt_player_mix_probs(player, extra_info)
+            resp, mix_probs = self.prompt_player_mix_probs(
+                player, extra_info=extra_info
+            )
             action_idx = self._choose_from_mix_strategy(mix_probs)
             return player.uid, action_idx, resp
 
