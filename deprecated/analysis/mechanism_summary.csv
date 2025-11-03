@@ -1,0 +1,6 @@
+agent_count,avg_cooperation_rate,avg_delegate_rate,avg_delta_expected_payoff,avg_expected_payoff,game,mechanism,run_dir
+4,0.15000000000000002,0.875,0.078125,0.515625,PrisonersDilemma,Mediation,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot
+4,0.49999999999999994,0.0,0.21845703124999996,0.6559570312499999,PrisonersDilemma,Disarmament,outputs/2025/09/17/00:15_disarmament__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot
+4,0.0,0.0,-0.013786705837725788,0.4237132941622742,PrisonersDilemma,ReputationPrisonersDilemma,outputs/2025/09/17/00:54_reputationprisonersdilemma__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot
+4,0.07375,0.0,-0.06196831405197664,0.3755316859480234,PrisonersDilemma,Repetition,outputs/2025/09/16/17:07_repetition__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot
+4,0.0,nan,0.0,0.4375,PrisonersDilemma,NoMechanism,outputs/2025/09/16/17:43_nomechanism__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot

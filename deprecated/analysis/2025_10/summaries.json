@@ -1,0 +1,28 @@
+[
+  {
+    "run_dir": "outputs/2025/10/01/23:51_repetition__deepseek-deepseek-chat-v3-1-cot__google-gemini-2-5-flash-cot",
+    "game": "PrisonersDilemma",
+    "mechanism": "Repetition",
+    "agents": [
+      "deepseek/deepseek-chat-v3.1(CoT)",
+      "google/gemini-2.5-flash(CoT)"
+    ],
+    "expected_payoffs": {
+      "deepseek/deepseek-chat-v3.1(CoT)": 0.9253687780486284,
+      "google/gemini-2.5-flash(CoT)": 0.9653391812791635
+    }
+  },
+  {
+    "run_dir": "outputs/2025/10/01/23:48_nomechanism__deepseek-deepseek-chat-v3-1-cot__google-gemini-2-5-flash-cot",
+    "game": "PrisonersDilemma",
+    "mechanism": "NoMechanism",
+    "agents": [
+      "deepseek/deepseek-chat-v3.1(CoT)",
+      "google/gemini-2.5-flash(CoT)"
+    ],
+    "expected_payoffs": {
+      "deepseek/deepseek-chat-v3.1(CoT)": 0.75,
+      "google/gemini-2.5-flash(CoT)": 0.75
+    }
+  }
+]

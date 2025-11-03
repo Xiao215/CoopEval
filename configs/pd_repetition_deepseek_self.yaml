@@ -1,4 +1,4 @@
-# Prisoners' Dilemma with Repetition mechanism using OpenRouter API models
+# Prisoners' Dilemma repetition run with deepseek self-play (probabilistic actions).
 
 game:
   type: PrisonersDilemma
@@ -22,17 +22,8 @@ mechanism:
 agents:
   - llm:
       provider: OpenRouter
-      model: openai/gpt-oss-20b
-      kwargs:
-        temperature: 0
-    type: CoTAgent
-
-  - llm:
-      provider: OpenRouter
       model: deepseek/deepseek-chat-v3.1
       kwargs:
         temperature: 0
     type: CoTAgent
-
-
 

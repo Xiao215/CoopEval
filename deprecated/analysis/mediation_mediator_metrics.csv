@@ -1,0 +1,5 @@
+avg_points,cooperative_outcomes,cooperative_when_all_delegate,evaluations,game,mechanism,mediator,recommendation_one,recommendation_two,run_dir,success_rate,total_points
+1.2,1,False,5,PrisonersDilemma,Mediation,qwen/qwen3-next-80b-a3b-instruct(CoT),,,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,0.2,6.0
+1.0,0,False,5,PrisonersDilemma,Mediation,openai/gpt-5-nano(CoT),,,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,0.0,5.0
+1.0,0,False,5,PrisonersDilemma,Mediation,openai/gpt-oss-20b(CoT),,,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,0.0,5.0
+1.4,2,False,5,PrisonersDilemma,Mediation,deepseek/deepseek-chat-v3.1(CoT),,,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,0.4,7.0

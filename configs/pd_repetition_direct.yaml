@@ -1,7 +1,7 @@
-# Prisoners' Dilemma with Repetition mechanism using OpenRouter API models
+# Prisoners' Dilemma with Repetition mechanism where agents commit to a single action.
 
 game:
-  type: PrisonersDilemma
+  type: PrisonersDilemmaDirect
   kwargs:
     payoff_matrix:
       CC: [2, 2]
@@ -33,6 +33,3 @@ agents:
       kwargs:
         temperature: 0
     type: CoTAgent
-
-
-

@@ -1,4 +1,4 @@
-# Prisoners' Dilemma with Repetition mechanism using OpenRouter API models
+# Repetition Prisoner's Dilemma with four OpenRouter models (probabilistic agents).
 
 game:
   type: PrisonersDilemma
@@ -13,6 +13,9 @@ evolution:
   initial_population: uniform
   steps: 25
 
+concurrency:
+  max_workers: 4
+
 mechanism:
   type: Repetition
   kwargs:
@@ -22,7 +25,7 @@ mechanism:
 agents:
   - llm:
       provider: OpenRouter
-      model: openai/gpt-oss-20b
+      model: google/gemini-2.5-flash
       kwargs:
         temperature: 0
     type: CoTAgent
@@ -34,5 +37,16 @@ agents:
         temperature: 0
     type: CoTAgent
 
+  - llm:
+      provider: OpenRouter
+      model: x-ai/grok-4-fast
+      kwargs:
+        temperature: 0
+    type: CoTAgent
 
-
+  - llm:
+      provider: OpenRouter
+      model: qwen/qwen3-next-80b-a3b-instruct
+      kwargs:
+        temperature: 0
+    type: CoTAgent

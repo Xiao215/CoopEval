@@ -1,0 +1,5 @@
+agent,final_cap_mean,final_cap_sum,game,mechanism,reduction_rounds,rounds,run_dir,total_cap_reduction
+qwen/qwen3-next-80b-a3b-instruct(CoT),50.0,100.0,PrisonersDilemma,Disarmament,1,5,outputs/2025/09/17/00:15_disarmament__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,100.0
+openai/gpt-oss-20b(CoT),50.0,100.0,PrisonersDilemma,Disarmament,2,5,outputs/2025/09/17/00:15_disarmament__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,200.0
+openai/gpt-5-nano(CoT),50.0,100.0,PrisonersDilemma,Disarmament,3,5,outputs/2025/09/17/00:15_disarmament__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,200.0
+deepseek/deepseek-chat-v3.1(CoT),50.0,100.0,PrisonersDilemma,Disarmament,2,5,outputs/2025/09/17/00:15_disarmament__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,100.0

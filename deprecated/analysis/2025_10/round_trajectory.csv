@@ -1,0 +1,4 @@
+avg_pair_coop,game,mechanism,round,run_dir
+0.25,PrisonersDilemma,Repetition,1,outputs/2025/10/01/23:51_repetition__deepseek-deepseek-chat-v3-1-cot__google-gemini-2-5-flash-cot
+0.4,PrisonersDilemma,Repetition,2,outputs/2025/10/01/23:51_repetition__deepseek-deepseek-chat-v3-1-cot__google-gemini-2-5-flash-cot
+0.35,PrisonersDilemma,Repetition,3,outputs/2025/10/01/23:51_repetition__deepseek-deepseek-chat-v3-1-cot__google-gemini-2-5-flash-cot

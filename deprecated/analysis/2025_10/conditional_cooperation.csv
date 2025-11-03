@@ -1,0 +1,3 @@
+agent,game,mechanism,p_coop_given_opp_C,p_coop_given_opp_D,reciprocity_index,run_dir
+deepseek/deepseek-chat-v3.1(CoT),PrisonersDilemma,Repetition,0.0,0.0,0.0,outputs/2025/10/01/23:51_repetition__deepseek-deepseek-chat-v3-1-cot__google-gemini-2-5-flash-cot
+google/gemini-2.5-flash(CoT),PrisonersDilemma,Repetition,0.0,0.0,0.0,outputs/2025/10/01/23:51_repetition__deepseek-deepseek-chat-v3-1-cot__google-gemini-2-5-flash-cot

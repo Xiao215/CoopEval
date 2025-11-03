@@ -1,0 +1,5 @@
+agent,avg_points_delegate,avg_points_independent,delegation_rate,game,mechanism,run_dir
+qwen/qwen3-next-80b-a3b-instruct(CoT),1.4,1.0,0.5,PrisonersDilemma,Mediation,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot
+openai/gpt-5-nano(CoT),1.2,nan,1.0,PrisonersDilemma,Mediation,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot
+openai/gpt-oss-20b(CoT),1.0,nan,1.0,PrisonersDilemma,Mediation,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot
+deepseek/deepseek-chat-v3.1(CoT),1.2,nan,1.0,PrisonersDilemma,Mediation,outputs/2025/09/17/01:26_mediation__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot

@@ -1,0 +1,2 @@
+agents,agents_reduced,avg_final_defect_cap,avg_negotiation_rounds,avg_payoff,first_change_round,game,run_dir,session_count,total_cap_reduction
+qwen/qwen3-next-80b-a3b-instruct(CoT)|openai/gpt-oss-20b(CoT)|openai/gpt-5-nano(CoT)|deepseek/deepseek-chat-v3.1(CoT),4,25.0,5.0,0.6559570312499999,1,PrisonersDilemma,outputs/2025/09/17/00:15_disarmament__openai-gpt-oss-20b-cot__deepseek-deepseek-chat-v3-1-cot__qwen-qwen3-next-80b-a3b-instruct__openai-gpt-5-nano-cot,4,600.0
