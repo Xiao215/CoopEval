@@ -1,6 +1,7 @@
 """Store and aggregate tournament payoffs for evolutionary dynamics."""
 
 import math
+import threading
 import warnings
 from collections import defaultdict
 from typing import Any, Mapping, Sequence
@@ -65,10 +66,12 @@ class PopulationPayoffs:
             frozenset[int],
             np.ndarray,
         ] = {}
+        self._lock = threading.Lock()
 
     def reset(self) -> None:
         """Clear all recorded matchup outcomes."""
-        self._table.clear()
+        with self._lock:
+            self._table.clear()
 
     def add_profile(self, moves_over_rounds: list[list[Move]]) -> None:
         """Record a single matchup outcome consisting of the provided ``moves``.
@@ -80,23 +83,20 @@ class PopulationPayoffs:
         if not moves_over_rounds:
             raise ValueError("Cannot add empty moves list to payoff table")
 
-        # all uids must be consistent across rounds
         k = frozenset(move.uid for move in moves_over_rounds[0])
 
-        # stack points: shape (num_rounds, num_players)
         round_points = []
         for moves_per_round in moves_over_rounds:
-            # keep order consistent with `uids`
             uid_to_points = {m.uid: m.points for m in moves_per_round}
             round_points.append([uid_to_points[uid] for uid in k])
 
-        profile = np.array(round_points, dtype=float)  # shape (R, P)
+        profile = np.array(round_points, dtype=float)
 
-        # store in table: append as new profile (flattened or 2D)
-        if k not in self._table:
-            self._table[k] = profile[None, ...]  # add profile dimension
-        else:
-            self._table[k] = np.vstack([self._table[k], profile[None, ...]])
+        with self._lock:
+            if k not in self._table:
+                self._table[k] = profile[None, ...]
+            else:
+                self._table[k] = np.vstack([self._table[k], profile[None, ...]])
 
     def _average_payoff(self, payoffs: np.ndarray) -> np.ndarray:
         """Apply geometric discounting over the payoff sequence, and average over all profiles ."""
@@ -133,18 +133,18 @@ class PopulationPayoffs:
         Compute the average payoff of each model type in the population.
         """
 
-        aggregated_payoffs: dict[str, list[float]] = defaultdict(list)
-        for uids, payoffs in self._table.items():
-            # Distribute the weighted payoff to each model type involved
-            for uid, payoff in zip(uids, self._average_payoff(payoffs)):
-                model_type = self.uids_to_model_types[uid]
-                aggregated_payoffs[model_type].append(payoff)
+        with self._lock:
+            aggregated_payoffs: dict[str, list[float]] = defaultdict(list)
+            for uids, payoffs in self._table.items():
+                for uid, payoff in zip(uids, self._average_payoff(payoffs)):
+                    model_type = self.uids_to_model_types[uid]
+                    aggregated_payoffs[model_type].append(payoff)
 
-        average_payoff = {
-            model_type: float(np.mean(np.array(payoffs)))
-            for model_type, payoffs in aggregated_payoffs.items()
-        }
-        return average_payoff
+            average_payoff = {
+                model_type: float(np.mean(np.array(payoffs)))
+                for model_type, payoffs in aggregated_payoffs.items()
+            }
+            return average_payoff
 
     def fitness(self, population: dict[str, float]) -> dict[str, float]:
         """
@@ -170,24 +170,25 @@ class PopulationPayoffs:
     def to_json(self) -> dict[str, Any]:
         """Serialize payoff records into a JSON-friendly dictionary."""
 
-        serialized_table = []
-        for uid_set, payoffs in self._table.items():
-            uid_order = list(uid_set)
-            serialized_table.append(
-                {
-                    "uids": [int(uid) for uid in uid_order],
-                    "payoffs": payoffs.tolist(),
-                }
-            )
+        with self._lock:
+            serialized_table = []
+            for uid_set, payoffs in self._table.items():
+                uid_order = list(uid_set)
+                serialized_table.append(
+                    {
+                        "uids": [int(uid) for uid in uid_order],
+                        "payoffs": payoffs.tolist(),
+                    }
+                )
 
-        return {
-            "discount": float(self.discount),
-            "uids_to_model_types": {
-                str(uid): model_type
-                for uid, model_type in self.uids_to_model_types.items()
-            },
-            "matchups": serialized_table,
-        }
+            return {
+                "discount": float(self.discount),
+                "uids_to_model_types": {
+                    str(uid): model_type
+                    for uid, model_type in self.uids_to_model_types.items()
+                },
+                "matchups": serialized_table,
+            }
 
     @classmethod
     def from_json(

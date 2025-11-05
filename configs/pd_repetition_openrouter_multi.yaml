@@ -16,6 +16,9 @@ evolution:
 concurrency:
   max_workers: 4
 
+tournament:
+  match_workers: 4
+
 mechanism:
   type: Repetition
   kwargs:

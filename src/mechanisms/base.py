@@ -2,8 +2,10 @@
 
 import itertools
 import random
+import threading
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Sequence
 
 from tqdm import tqdm
@@ -23,6 +25,7 @@ class Mechanism(ABC):
         self.record_file = (
             f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
         )
+        self.match_workers = 1
 
     def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players)
@@ -34,6 +37,9 @@ class Mechanism(ABC):
             for cfg in agent_cfgs
             for _ in range(self.base_game.num_players)
         ]
+        for player in players:
+            if not hasattr(player, "_match_lock"):
+                player._match_lock = threading.Lock()
         payoffs = self._build_payoffs(players)
 
         k = self.base_game.num_players
@@ -45,33 +51,69 @@ class Mechanism(ABC):
         ]
 
         first_duration = None
+        match_workers = max(1, getattr(self, "match_workers", 1))
+
+        run_reverse = self.base_game.__class__.__name__ == "TrustGame"
+
+        def _play_with_locks(seat_players: Sequence[Agent]) -> float:
+            locks = sorted(
+                (player._match_lock for player in seat_players),
+                key=id,
+            )
+            for lock in locks:
+                lock.acquire()
+            try:
+                t0 = time.perf_counter()
+                self._play_matchup(seat_players, payoffs)
+                if run_reverse:
+                    self._play_matchup(seat_players[::-1], payoffs)
+                return time.perf_counter() - t0
+            finally:
+                for lock in reversed(locks):
+                    lock.release()
+
         with tqdm(
             total=len(combo_iter),
             desc="Tournaments",
             leave=True,
             dynamic_ncols=True,
         ) as pbar:
-            for seat_players, matchup_label in zip(
-                combo_iter, matchup_labels, strict=True
-            ):
-                pbar.set_postfix_str(matchup_label, refresh=False)
-                t0 = time.perf_counter()
-
-                self._play_matchup(seat_players, payoffs)
-                if self.base_game.__class__.__name__ == "TrustGame":
-                    # Trust game is asymmetric, so also play the reverse
-                    self._play_matchup(seat_players[::-1], payoffs)
-
-                dt = time.perf_counter() - t0
-                if first_duration is None:
-                    first_duration = dt
-                    # Rough ETA: match-count * per-match duration
-                    est_total = dt * len(combo_iter)
-                    print(
-                        f"[ETA] ~{est_total/60:.1f} min for "
-                        f"{len(combo_iter)} matchups (sequential)."
-                    )
-                pbar.update(1)
+            if match_workers == 1:
+                for seat_players, matchup_label in zip(
+                    combo_iter, matchup_labels, strict=True
+                ):
+                    pbar.set_postfix_str(matchup_label, refresh=False)
+                    dt = _play_with_locks(seat_players)
+                    if first_duration is None:
+                        first_duration = dt
+                        est_total = dt * len(combo_iter)
+                        print(
+                            f"[ETA] ~{est_total/60:.1f} min for "
+                            f"{len(combo_iter)} matchups (sequential)."
+                        )
+                    pbar.update(1)
+            else:
+                with ThreadPoolExecutor(max_workers=match_workers) as executor:
+                    futures = {}
+                    for seat_players, matchup_label in zip(
+                        combo_iter, matchup_labels, strict=True
+                    ):
+                        future = executor.submit(_play_with_locks, seat_players)
+                        futures[future] = (seat_players, matchup_label)
+                    total_tasks = len(futures)
+                    pbar.total = total_tasks
+                    for future in as_completed(futures):
+                        seat_players, matchup_label = futures[future]
+                        pbar.set_postfix_str(matchup_label, refresh=False)
+                        dt = future.result()
+                        if first_duration is None:
+                            first_duration = dt
+                            esti = dt * total_tasks
+                            print(
+                                f"[ETA] ~{esti/60:.1f} min for "
+                                f"{total_tasks} matchups (parallel)."
+                            )
+                        pbar.update(1)
         return payoffs
 
     @abstractmethod

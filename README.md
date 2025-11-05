@@ -137,6 +137,14 @@ Key files to inspect:
 - **Games** share a `_collect_actions` helper that can prompt agents either sequentially or in parallel (`parallel_players=True`).
 - **Mechanisms** use a common `run_tasks` helper (`src/utils/concurrency.py`) to fan out negotiations, mediator queries, etc.
 - Seat cloning (`Agent.make_seat_clone`) produces human-friendly labels like `Gemma(CoT)#2`, preventing name collisions when identical models face off.
+- You can parallelise *matchups* themselves by setting `tournament.match_workers` in a config. Each worker runs a distinct matchup while holding lightweight locks so that a single agent is never active in two games at once. Example:
+
+```yaml
+tournament:
+  match_workers: 4    # number of concurrent matchups
+concurrency:
+  max_workers: 4      # per-match prompt fan-out
+```
 
 ---
 

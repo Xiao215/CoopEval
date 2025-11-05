@@ -67,6 +67,9 @@ def main():
     game = game_class(**config["game"].get("kwargs", {}))
     mech_kwargs = (config["mechanism"].get("kwargs", {}) or {}).copy()
     mechanism = mechanism_class(base_game=game, **mech_kwargs)
+    tournament_cfg = config.get("tournament", {}) or {}
+    if "match_workers" in tournament_cfg:
+        mechanism.match_workers = max(1, int(tournament_cfg["match_workers"]))
 
     LOGGER.log_record(config, "config.json")
 
