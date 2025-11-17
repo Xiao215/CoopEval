@@ -41,7 +41,10 @@ class HFInstance(LLM):
             {"role": "user", "content": prompt},
         ]
         prompt_ids = self.tokenizer.apply_chat_template(
-            messages, tokenize=True, add_generation_prompt=True, return_tensors="pt"
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
         ).to(self.model.device)
         prompt_len = prompt_ids.shape[1]
         out_ids = self.model.generate(

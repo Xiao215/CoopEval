@@ -111,7 +111,8 @@ class PublicGoods(Game):
                     action=final_actions[player.uid],
                     points=(
                         share
-                        if final_actions[player.uid] == PublicGoodsAction.CONTRIBUTE
+                        if final_actions[player.uid]
+                        == PublicGoodsAction.CONTRIBUTE
                         else self.endowment + share
                     ),
                     response=responses[player.uid],
@@ -119,7 +120,9 @@ class PublicGoods(Game):
             )
         return moves
 
-    def _calculate_share(self, actions: Mapping[int, PublicGoodsAction]) -> float:
+    def _calculate_share(
+        self, actions: Mapping[int, PublicGoodsAction]
+    ) -> float:
         """
         Calculate the payoff for each agent based on their contributions.
         """
@@ -128,4 +131,9 @@ class PublicGoods(Game):
             1 for v in actions.values() if v == PublicGoodsAction.CONTRIBUTE
         )
 
-        return contribution_count * self.endowment * self.multiplier / self.num_players
+        return (
+            contribution_count
+            * self.endowment
+            * self.multiplier
+            / self.num_players
+        )

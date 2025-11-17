@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
 from src.evolution.population_payoffs import PopulationPayoffs
-from src.games.base import Game
+from src.games.base import Action, Game, Move
 from src.registry.agent_registry import create_agent
 
 
@@ -20,9 +20,7 @@ class Mechanism(ABC):
     def __init__(self, base_game: Game):
         self.base_game = base_game
 
-        self.record_file = (
-            f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
-        )
+        self.record_file = f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
 
     def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players)
@@ -38,10 +36,13 @@ class Mechanism(ABC):
 
         k = self.base_game.num_players
         combo_iter = list(itertools.combinations(players, k))
-        random.shuffle(combo_iter)  # The order does not matter, kept just in case
+        random.shuffle(
+            combo_iter
+        )  # The order does not matter, kept just in case
 
         matchup_labels = [
-            " vs ".join(player.name for player in matchup) for matchup in combo_iter
+            " vs ".join(player.name for player in matchup)
+            for matchup in combo_iter
         ]
 
         first_duration = None
@@ -85,21 +86,125 @@ class Mechanism(ABC):
 class RepetitiveMechanism(Mechanism):
     """A mechanism that repeats the game multiple times."""
 
-    def __init__(self, base_game: Game, num_rounds: int, discount: float) -> None:
+    class History:
+        def __init__(self):
+            # core raw storage
+            self.records: list[list[Move]] = []
+
+            # DP indices
+            self.player_round_indices: dict[str, list[int]] = {}
+            self.player_cumulative_actions: dict[
+                str, list[dict[Action, int]]
+            ] = {}
+
+        def append(self, moves: list[Move]) -> None:
+            if not moves:
+                raise ValueError("Each round must have at least one move")
+
+            round_idx = len(self.records)
+            self.records.append(moves)
+
+            # Update DP structures
+            for m in moves:
+                p = m.player_name
+                a = m.action
+
+                # round indices
+                self.player_round_indices.setdefault(p, []).append(round_idx)
+
+                # cumulative action counters
+                if p not in self.player_cumulative_actions:
+                    # first ever round for this player
+                    self.player_cumulative_actions[p] = [{a: 1}]
+                else:
+                    prev = self.player_cumulative_actions[p][-1]
+                    new_counter = prev.copy()
+                    new_counter[a] += 1
+                    self.player_cumulative_actions[p].append(new_counter)
+
+        def get_prior_rounds(
+            self,
+            player_name: str,
+            lookback_rounds: int,
+            lookup_depth: int,
+        ) -> list[list[Move]]:
+            """
+            Return the last `lookup_depth` rounds from the player's
+            history EXCLUDING the most recent `lookback_rounds` rounds,
+            in reverse order.
+
+            Args:
+                player_name: Name of the player.
+                lookback_rounds: Number of most recent rounds to exclude.
+                lookup_depth: Number of rounds to return before the lookback.
+
+            Returns:
+                List of rounds (each a list of Moves) for the player.
+            """
+
+            if lookback_rounds < 0 or lookup_depth <= 0:
+                raise ValueError(
+                    "lookback_rounds must be >= 0 and lookup_depth > 0"
+                )
+
+            indices = self.player_round_indices.get(player_name, [])
+            if not indices:
+                return []
+
+            m = len(indices)
+
+            # Define the allowed window by removing most recent LBR
+            if lookback_rounds >= m:
+                # Early exit if no more record within allowed window
+                return []
+            else:
+                allowed = indices[: m - lookback_rounds]
+
+            # Return last lookup_depth entries of allowed window
+            k = min(lookup_depth, len(allowed))
+            selected = allowed[-k:]
+
+            return [self.records[i] for i in selected]
+
+        def get_prior_action_distribution(
+            self,
+            player_name: str,
+            lookback_rounds: int,
+        ) -> dict[Action, int]:
+            """
+            Return the action distribution over ALL rounds that occurred
+            BEFORE the player's most recent `lookback_rounds` rounds.
+
+            Args:
+                player_name: Name of the player.
+                lookback_rounds: Number of most recent rounds to exclude.
+                lookup_depth: Number of rounds to consider before the lookback.
+
+            Returns:
+                Counter dict of Action to counts, or None if no data.
+            """
+            if lookback_rounds < 0:
+                raise ValueError(
+                    "lookback_rounds must be >= 0 and lookup_depth > 0"
+                )
+            indices = self.player_round_indices.get(player_name, [])
+            if not indices:
+                return {}
+
+            m = len(indices)
+            if m - lookback_rounds - 1 < 0:
+                return {}
+
+            cumulative_idx = m - lookback_rounds - 1
+            return self.player_cumulative_actions[player_name][cumulative_idx]
+
+    def __init__(
+        self, base_game: Game, num_rounds: int, discount: float
+    ) -> None:
         super().__init__(base_game)
         self.num_rounds = num_rounds
         self.discount = discount
+        self.history = self.History()
 
     def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players, discount=self.discount)
-
-
-class NoMechanism(Mechanism):
-    """A mechanism that does nothing."""
-
-    def _play_matchup(
-        self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    ) -> None:
-        """Run the base game without any modifications."""
-        moves = self.base_game.play(additional_info="None.", players=players)
-        payoffs.add_profile([moves])

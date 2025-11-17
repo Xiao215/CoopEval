@@ -57,4 +57,3 @@ def _sanitize_max_workers(value: int | None) -> int | None:
     if value is None:
         return None
     return value if value > 0 else 1
-

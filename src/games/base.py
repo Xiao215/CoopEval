@@ -127,7 +127,9 @@ class Game(ABC):
         prompt += "\n" + output_instruction
 
         LOGGER.write_to_txt(prompt, "game_prompt.txt")
-        resp, mix_probs = player.chat_with_retries(prompt, self._parse_mixed_probs)
+        resp, mix_probs = player.chat_with_retries(
+            prompt, self._parse_mixed_probs
+        )
         return resp, mix_probs
 
     def _parse_mixed_probs(
@@ -143,7 +145,9 @@ class Game(ABC):
         """
         matches = re.findall(r"\{.*?\}", response, re.DOTALL)
         if not matches:
-            raise ValueError(f"No JSON object found in the response {response!r}")
+            raise ValueError(
+                f"No JSON object found in the response {response!r}"
+            )
         json_str = matches[-1]
 
         try:
@@ -157,7 +161,9 @@ class Game(ABC):
             if not isinstance(v, int):
                 raise ValueError(f"Value for {k} must be an integer, got {v!r}")
             if not 0 <= v <= 100:
-                raise ValueError(f"Value for {k} must be between 0 and 100, got {v}")
+                raise ValueError(
+                    f"Value for {k} must be between 0 and 100, got {v}"
+                )
             idx = int(k[1:])  # strip the leading 'A'
             result[idx] = v
             total += v

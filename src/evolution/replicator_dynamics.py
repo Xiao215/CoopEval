@@ -68,7 +68,9 @@ class DiscreteReplicatorDynamics:
         elif lr_method == "sqrt":
             lr_fct = lambda t: lr_nu / np.sqrt(t)
         else:
-            raise ValueError("learning_rate method must be 'constant' or 'sqrt'")
+            raise ValueError(
+                "learning_rate method must be 'constant' or 'sqrt'"
+            )
 
         # Initialize population distribution
         if isinstance(initial_population, np.ndarray):
@@ -80,22 +82,29 @@ class DiscreteReplicatorDynamics:
             ), "Initial population distribution must be non-negative"
             population = initial_population
         elif initial_population == "random":
-            population = np.random.exponential(scale=1.0, size=len(self.agent_cfgs))
+            population = np.random.exponential(
+                scale=1.0, size=len(self.agent_cfgs)
+            )
         elif initial_population == "uniform":
             population = np.ones(len(self.agent_cfgs))
         else:
-            raise ValueError("initial_population must be a numpy array or 'uniform'")
+            raise ValueError(
+                "initial_population must be a numpy array or 'uniform'"
+            )
 
         # Normalize to ensure it is a probability distribution
         population /= population.sum()
         model_types = [
-            str(agent_config["llm"]["model"]) for agent_config in self.agent_cfgs
+            str(agent_config["llm"]["model"])
+            for agent_config in self.agent_cfgs
         ]
         population_history = [
             {model: float(prob) for model, prob in zip(model_types, population)}
         ]
 
-        population_payoffs = self.mechanism.run_tournament(agent_cfgs=self.agent_cfgs)
+        population_payoffs = self.mechanism.run_tournament(
+            agent_cfgs=self.agent_cfgs
+        )
         model_average_payoff = population_payoffs.model_average_payoff()
 
         print(f"Model average payoff: {model_average_payoff}")
@@ -106,7 +115,8 @@ class DiscreteReplicatorDynamics:
 
         for step in tqdm(range(1, steps + 1), desc="Evolution Steps"):
             population_dict = {
-                model: float(prob) for model, prob in zip(model_types, population)
+                model: float(prob)
+                for model, prob in zip(model_types, population)
             }
             fitness_dict = population_payoffs.fitness(population_dict)
             print(f"Step {step}: Population fitness is {fitness_dict}")
@@ -124,7 +134,10 @@ class DiscreteReplicatorDynamics:
                 lr=lr_fct(step),
             )
             population_history.append(
-                {model: float(prob) for model, prob in zip(model_types, population)}
+                {
+                    model: float(prob)
+                    for model, prob in zip(model_types, population)
+                }
             )
 
         return population_history

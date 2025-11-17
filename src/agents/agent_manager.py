@@ -27,7 +27,9 @@ class LLMManager:
                 # Default to OpenAI API based models
                 self.llms[model_name] = ClientAPILLM(model_name, provider)
             else:
-                raise ValueError(f"Unknown provider {provider} for model {model_name}")
+                raise ValueError(
+                    f"Unknown provider {provider} for model {model_name}"
+                )
         return self.llms[model_name]
 
 
@@ -77,7 +79,9 @@ class Agent(ABC):
             if attempt == 0:
                 prompt = base_prompt
             else:
-                prompt = self._build_retry_prompt(base_prompt, response, error_reason)
+                prompt = self._build_retry_prompt(
+                    base_prompt, response, error_reason
+                )
 
             response = self.chat(prompt)
 

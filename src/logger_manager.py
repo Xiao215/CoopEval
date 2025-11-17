@@ -76,6 +76,7 @@ class Logger:
 
 LOGGER = Logger()
 
+
 class WandBLogger:
     """Minimal wrapper so your plotting code never touches wandb directly."""
 

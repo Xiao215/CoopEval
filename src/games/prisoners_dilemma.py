@@ -92,7 +92,9 @@ class PrisonersDilemma(Game):
 
         uid1 = player1.uid
         uid2 = player2.uid
-        pts1, pts2 = self.payoff_matrix[(final_actions[uid1], final_actions[uid2])]
+        pts1, pts2 = self.payoff_matrix[
+            (final_actions[uid1], final_actions[uid2])
+        ]
         return [
             Move(
                 player_name=player1.name,
@@ -115,7 +117,8 @@ class PrisonersDilemma(Game):
         cls,
         raw_payoff: Mapping[str, Sequence[float]],
     ) -> dict[
-        tuple[PrisonersDilemmaAction, PrisonersDilemmaAction], tuple[float, float]
+        tuple[PrisonersDilemmaAction, PrisonersDilemmaAction],
+        tuple[float, float],
     ]:
         """
         Convert a raw payoff matrix with string keys into typed action pairs.

@@ -2,7 +2,6 @@
 
 import json
 import re
-import textwrap
 from typing import Sequence
 
 from src.agents.agent_manager import Agent
@@ -10,6 +9,11 @@ from src.evolution.population_payoffs import PopulationPayoffs
 from src.games.base import Game
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
+from src.mechanisms.prompts import (
+    CONTRACT_CONFIRMATION_PROMPT,
+    CONTRACT_DESIGN_PROMPT,
+    CONTRACT_MECHANISM_PROMPT,
+)
 from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
@@ -23,53 +27,9 @@ class Contracting(Mechanism):
     ) -> None:
         super().__init__(base_game)
         self.contracts: dict[str, list[int]] = {}
-        self.contracts_design_prompt = textwrap.dedent(
-            """
-            Instruction:
-            You are tasked with designing a **contract** for this game.
-            - A contract is an extra payoff agreement.
-            - Each player may choose to sign it or not.
-            - The contract is valid only if all players sign.
-            - For each action:
-                * Positive number (+): the player receives X payoff from others.
-                * Negative number (-): the player pays Y payoff to others.
-                * Zero (0): no extra payoff.
-            - Goal: maximize the total payoff for all players if the contract is signed.
-
-            Output Requirement:
-            - Return exactly **one valid Python dictionary** on a single line.
-            - Format: {"A0": <INT>, "A1": <INT>, ...}
-            - Keys: all available game actions.
-            - Values: integers representing the extra payoff for that action.
-            - Ensure the dictionary is syntactically valid Python.
-            """
-        )
-
-        self.contract_confirmation_prompt = textwrap.dedent(
-            """
-            Contract Rule:
-            On top of the original game instructions, you have the option to sign a contract.
-            A contract is an extra payoff agreement that is valid only if all players sign.
-            Here is the contract:
-            {contract_description}
-
-            Output Requirement:
-            - Respond with a valid JSON object.
-            - Format: {"sign": <BOOL>} where <BOOL> is true or false.
-            """
-        )
-
-        self.contract_mechanism_prompt = textwrap.dedent(
-            """
-            Contract Rule:
-            On top of the original game instructions, everyone has agreed to sign a contract.
-            Here is the contract:
-            {contract_description}
-
-            Since this contract directly change your final payoff,
-            consider the contract when making your decision for the strategy!
-            """
-        )
+        self.contracts_design_prompt = CONTRACT_DESIGN_PROMPT
+        self.contract_confirmation_prompt = CONTRACT_CONFIRMATION_PROMPT
+        self.contract_mechanism_prompt = CONTRACT_MECHANISM_PROMPT
 
     def _design_contract(self, designer: Agent) -> tuple[str, list[int]]:
         """
@@ -89,7 +49,9 @@ class Contracting(Mechanism):
         )
         return response, contract
 
-    def _agree_to_contract(self, *, player: Agent, designer: Agent) -> tuple[str, bool]:
+    def _agree_to_contract(
+        self, *, player: Agent, designer: Agent
+    ) -> tuple[str, bool]:
         """
         Ask the LLM to confirm agreement to the contract with automatic retries.
         """
@@ -115,7 +77,9 @@ class Contracting(Mechanism):
         """
         matches = re.findall(r"\{.*?\}", response, re.DOTALL)
         if not matches:
-            raise ValueError(f"No JSON object found in the response {response!r}")
+            raise ValueError(
+                f"No JSON object found in the response {response!r}"
+            )
         json_str = matches[-1]
 
         try:
@@ -147,7 +111,9 @@ class Contracting(Mechanism):
         """
         matches = re.findall(r"\{.*?\}", response, re.DOTALL)
         if not matches:
-            raise ValueError(f"No JSON object found in the response {response!r}")
+            raise ValueError(
+                f"No JSON object found in the response {response!r}"
+            )
         json_str = matches[-1]
 
         try:
@@ -180,7 +146,9 @@ class Contracting(Mechanism):
                     f"- If you choose A{idx}, you pay a total of {-payoff} to each other player."
                 )
             else:
-                lines.append(f"- If you choose A{idx}, there is no extra payoff.")
+                lines.append(
+                    f"- If you choose A{idx}, there is no extra payoff."
+                )
         return "\n".join(lines)
 
     def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
@@ -200,7 +168,9 @@ class Contracting(Mechanism):
                 "response": response,
                 "contract": contract,
             }
-        LOGGER.log_record(record=contract_design, file_name="contract_design.json")
+        LOGGER.log_record(
+            record=contract_design, file_name="contract_design.json"
+        )
         return super().run_tournament(agent_cfgs)
 
     def _play_matchup(
@@ -217,7 +187,9 @@ class Contracting(Mechanism):
 
             agreement_results = run_tasks(
                 players,
-                lambda p, d=designer: self._agree_to_contract(player=p, designer=d),
+                lambda p, d=designer: self._agree_to_contract(
+                    player=p, designer=d
+                ),
             )
 
             all_agree = True
@@ -244,8 +216,8 @@ class Contracting(Mechanism):
                 additional_info=additional_info,
                 players=players,
             )
-            payoffs.add_profile([moves])
             record["moves"] = [move.to_dict() for move in moves]
+            payoffs.add_profile([record["moves"]])
             history.append(record)
 
         LOGGER.log_record(record=history, file_name=self.record_file)

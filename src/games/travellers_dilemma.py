@@ -14,7 +14,7 @@ def build_travellers_action(claims: Iterable[int]) -> type[Action]:
     if not claims:
         raise ValueError("claims must be a non-empty tuple.")
     members = {f"A{i}": int(claim) for i, claim in enumerate(claims)}
-    return Enum("TravellersDilemmaAction", members, type=Action) # type: ignore[misc]
+    return Enum("TravellersDilemmaAction", members, type=Action)  # type: ignore[misc]
 
 
 class TravellersDilemma(Game):
@@ -41,7 +41,9 @@ class TravellersDilemma(Game):
 
         min_claim = int(min_claim)
         claim_spacing = int(claim_spacing)
-        self.claims = tuple(min_claim + i * claim_spacing for i in range(num_actions))
+        self.claims = tuple(
+            min_claim + i * claim_spacing for i in range(num_actions)
+        )
         self.bonus = float(bonus)
 
         self.action_cls = build_travellers_action(self.claims)
@@ -79,7 +81,10 @@ class TravellersDilemma(Game):
         )
 
         super().__init__(
-            prompt=prompt_template.format(actions_block=actions_block, payoff_description=payoff_description),
+            prompt=prompt_template.format(
+                actions_block=actions_block,
+                payoff_description=payoff_description,
+            ),
             num_players=2,
             num_actions=len(self.claims),
         )
@@ -121,7 +126,8 @@ class TravellersDilemma(Game):
 
         mapped_indices = action_map(action_indices)
         final_actions: dict[int, Action] = {
-            uid: self.action_cls.from_index(idx) for uid, idx in mapped_indices.items()
+            uid: self.action_cls.from_index(idx)
+            for uid, idx in mapped_indices.items()
         }
 
         # Compute payoffs from claims
@@ -148,7 +154,9 @@ class TravellersDilemma(Game):
             ),
         ]
 
-    def _calculate_payoffs(self, claim_a: int | float, claim_b: int | float) -> tuple[float, float]:
+    def _calculate_payoffs(
+        self, claim_a: int | float, claim_b: int | float
+    ) -> tuple[float, float]:
         """Return payoffs for a pair of claims given the Traveller's Dilemma rules."""
         if claim_a == claim_b:
             value = float(claim_a)
@@ -181,7 +189,9 @@ class TravellersDilemma(Game):
         payoffs: dict[tuple[int, int], tuple[float, float]] = {}
         for key, val in raw.items():
             if not isinstance(val, (list, tuple)) or len(val) != 2:
-                raise ValueError(f"Invalid payoff for {key!r}: expected [p1, p2]")
+                raise ValueError(
+                    f"Invalid payoff for {key!r}: expected [p1, p2]"
+                )
             p1, p2 = float(val[0]), float(val[1])
 
             key = key.strip()

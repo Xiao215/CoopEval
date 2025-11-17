@@ -22,7 +22,9 @@ class TrustGame(Game):
         payoff_matrix: Mapping[str, Sequence[float]],
     ) -> None:
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
-        actions_block = "\n".join([f"- {act.to_token()}" for act in TrustGameAction])
+        actions_block = "\n".join(
+            [f"- {act.to_token()}" for act in TrustGameAction]
+        )
 
         self.prompt_template = textwrap.dedent(
             """
@@ -73,7 +75,9 @@ class TrustGame(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
 
-        for i, player_payoff_description in enumerate(self._payoff_description()):
+        for i, player_payoff_description in enumerate(
+            self._payoff_description()
+        ):
             additional_info[i] = (
                 "\nPayoff description:\n"
                 + player_payoff_description
@@ -95,7 +99,9 @@ class TrustGame(Game):
 
         uid1 = player1.uid
         uid2 = player2.uid
-        pts1, pts2 = self.payoff_matrix[(final_actions[uid1], final_actions[uid2])]
+        pts1, pts2 = self.payoff_matrix[
+            (final_actions[uid1], final_actions[uid2])
+        ]
 
         return [
             Move(

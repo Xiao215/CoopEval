@@ -17,7 +17,10 @@ def _ensure_date_dir() -> Path:
     """
     now = datetime.now()
     date_path = (
-        Path(FIGURE_DIR) / now.strftime("%Y") / now.strftime("%m") / now.strftime("%d")
+        Path(FIGURE_DIR)
+        / now.strftime("%Y")
+        / now.strftime("%m")
+        / now.strftime("%d")
     )
     date_path.mkdir(parents=True, exist_ok=True)
     return date_path
@@ -73,7 +76,9 @@ def plot_probability_evolution(
     steps, items = mat.shape
     sums = mat.sum(axis=1)
     if not np.allclose(sums, 1, rtol=1e-3):
-        print(f"Warning: distributions sum to [{sums.min():.4f}, {sums.max():.4f}]")
+        print(
+            f"Warning: distributions sum to [{sums.min():.4f}, {sums.max():.4f}]"
+        )
     cumsum = np.cumsum(mat, axis=1)
     base = np.hstack([np.zeros((steps, 1)), cumsum])
     x = np.arange(steps)

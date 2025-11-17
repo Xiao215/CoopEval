@@ -2,7 +2,6 @@
 
 import json
 import re
-import textwrap
 from typing import Callable, Sequence
 
 from src.agents.agent_manager import Agent
@@ -10,6 +9,10 @@ from src.evolution.population_payoffs import PopulationPayoffs
 from src.games.base import Game
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
+from src.mechanisms.prompts import (
+    MEDIATION_MECHANISM_PROMPT,
+    MEDIATOR_DESIGN_PROMPT,
+)
 from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
@@ -23,39 +26,8 @@ class Mediation(Mechanism):
     ) -> None:
         super().__init__(base_game)
         self.mediators: dict[int, dict[int, int]] = {}
-        self.mediator_design_prompt = textwrap.dedent(
-            """
-        Instruction:
-        You are tasked with designing a **mediator agent** for this game.
-
-        - A mediator is an agent that suggests actions to players.
-        - Each player may choose to **delegate** their move to the mediator or act independently.
-        - The mediator observes number of players delegating to the mediator and then recommends the **same action** to all delegating players.
-        - The mediator's objective is to maximize the payoff of the players who delegate to the mediator.
-
-        Output Format:
-        Return a valid json in a single line:
-        {{"1": <Action>, ..., "{num_players}": <Action>}} where <Action> is a string like "A0", "A1" ...
-
-        - Keys: the number of players delegating (from 1 to {num_players}).
-        - Values: the action the mediator will recommend (e.g., "A0", "A1", ...).
-        - Ensure the dictionary is syntactically valid in Python.
-        """
-        )
-
-        self.mediation_mechanism_prompt = textwrap.dedent(
-            """
-        Additional Information:
-        On top of the original game instructions, you have the option to delegate your move to a mediator agent.
-        If you choose to delegate, the mediator will play an action for you based on how many players have delegated to it.
-        You can also choose to act independently.
-
-        Here is what the mediator would do for the players that delegate to it:
-        {mediator_description}
-
-        Consider A{additional_action_id} as an addtional action "Delegate to Mediator". Your final mixed strategy should include probability for all actions A0, A1, ..., A{additional_action_id}.
-        """
-        )
+        self.mediator_design_prompt = MEDIATOR_DESIGN_PROMPT
+        self.mediation_mechanism_prompt = MEDIATION_MECHANISM_PROMPT
 
     def _design_mediator(
         self,
@@ -88,7 +60,9 @@ class Mediation(Mechanism):
         """
         matches = re.findall(r"\{.*?\}", response, re.DOTALL)
         if not matches:
-            raise ValueError(f"No JSON object found in the response {response!r}")
+            raise ValueError(
+                f"No JSON object found in the response {response!r}"
+            )
         json_str = matches[-1]
 
         try:
@@ -145,7 +119,9 @@ class Mediation(Mechanism):
                 "response": response,
                 "mediator": mediator,
             }
-        LOGGER.log_record(record=mediator_design, file_name="mediator_design.json")
+        LOGGER.log_record(
+            record=mediator_design, file_name="mediator_design.json"
+        )
         return super().run_tournament(agent_cfgs)
 
     def _play_matchup(
@@ -165,15 +141,18 @@ class Mediation(Mechanism):
                 additional_info=mediator_mechanism,
                 action_map=self.mediator_mapping(mediator),
             )
-            payoffs.add_profile([moves])
-            return player.model_type, [move.to_dict() for move in moves]
+            move_dicts = [move.to_dict() for move in moves]
+            payoffs.add_profile([move_dicts])
+            return player.model_type, move_dicts
 
         results = run_tasks(
             players,
             play_for_mediator,
         )
         for mediator_model_type, move_dicts in results:
-            history.append({"mediator": mediator_model_type, "moves": move_dicts})
+            history.append(
+                {"mediator": mediator_model_type, "moves": move_dicts}
+            )
         LOGGER.log_record(record=history, file_name=self.record_file)
 
     def mediator_mapping(self, mediator: dict[int, int]) -> Callable:
@@ -181,10 +160,14 @@ class Mediation(Mechanism):
         Given the original actions and the mediator design, return the final actions
         after applying the mediator's recommendations.
         """
-        def apply_mediation(player_action_map: dict[str, int]) -> dict[str, int]:
+
+        def apply_mediation(
+            player_action_map: dict[str, int],
+        ) -> dict[str, int]:
             actions: dict[str, int] = {}
             num_delegating = sum(
-                a == self.base_game.num_actions for a in player_action_map.values()
+                a == self.base_game.num_actions
+                for a in player_action_map.values()
             )
             if num_delegating == 0:
                 return player_action_map

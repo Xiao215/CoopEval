@@ -8,7 +8,6 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from src.agents.agent_manager import Agent
-from src.games.base import Move
 
 
 class PopulationPayoffs:
@@ -37,7 +36,10 @@ class PopulationPayoffs:
 
         if players is not None:
             players_mapping = {int(p.uid): str(p.model_type) for p in players}
-            if normalized_mapping is not None and normalized_mapping != players_mapping:
+            if (
+                normalized_mapping is not None
+                and normalized_mapping != players_mapping
+            ):
                 raise ValueError(
                     "Provided players and uids_to_model_types contain inconsistent entries."
                 )
@@ -70,7 +72,9 @@ class PopulationPayoffs:
         """Clear all recorded matchup outcomes."""
         self._table.clear()
 
-    def add_profile(self, moves_over_rounds: list[list[Move]]) -> None:
+    def add_profile(
+        self, moves_over_rounds: list[list[dict[str, Any]]]
+    ) -> None:
         """Record a single matchup outcome consisting of the provided ``moves``.
 
         Args:
@@ -81,13 +85,13 @@ class PopulationPayoffs:
             raise ValueError("Cannot add empty moves list to payoff table")
 
         # all uids must be consistent across rounds
-        k = frozenset(move.uid for move in moves_over_rounds[0])
+        k = frozenset(move["uid"] for move in moves_over_rounds[0])
 
         # stack points: shape (num_rounds, num_players)
         round_points = []
         for moves_per_round in moves_over_rounds:
             # keep order consistent with `uids`
-            uid_to_points = {m.uid: m.points for m in moves_per_round}
+            uid_to_points = {m["uid"]: m["points"] for m in moves_per_round}
             round_points.append([uid_to_points[uid] for uid in k])
 
         profile = np.array(round_points, dtype=float)  # shape (R, P)
@@ -118,13 +122,17 @@ class PopulationPayoffs:
                     "Please make sure this is intended."
                 )
 
-            weights = np.array([(1 - d) * (d**i) for i in range(n)], dtype=float)
+            weights = np.array(
+                [(1 - d) * (d**i) for i in range(n)], dtype=float
+            )
             weights[-1] = d ** (n - 1)
             if sum(weights) != 1.0:
                 raise ValueError(
                     f"All discount weights must sum to 1.0, currently the sum is {sum(weights)}"
                 )
-            discounted_payoff = np.sum(weights[:, None] * profile_payoffs, axis=0)
+            discounted_payoff = np.sum(
+                weights[:, None] * profile_payoffs, axis=0
+            )
             discounted_payoffs[i] = discounted_payoff
         return discounted_payoffs.mean(axis=0)
 
@@ -203,11 +211,13 @@ class PopulationPayoffs:
         raw_mapping = payload.get("uids_to_model_types", {})
         if isinstance(raw_mapping, dict):
             uid_mapping = {
-                int(uid): str(model_type) for uid, model_type in raw_mapping.items()
+                int(uid): str(model_type)
+                for uid, model_type in raw_mapping.items()
             }
         else:
             uid_mapping = {
-                int(entry["uid"]): str(entry["model_type"]) for entry in raw_mapping
+                int(entry["uid"]): str(entry["model_type"])
+                for entry in raw_mapping
             }
 
         instance = cls(
@@ -222,7 +232,9 @@ class PopulationPayoffs:
             payoffs = np.array(matchup.get("payoffs", []), dtype=float)
 
             if payoffs.ndim != 3:
-                raise ValueError("Serialized payoff tensor must have three dimensions")
+                raise ValueError(
+                    "Serialized payoff tensor must have three dimensions"
+                )
             if payoffs.shape[-1] != len(stored_order):
                 raise ValueError(
                     "Last dimension of payoff tensor must match number of uids"
@@ -232,7 +244,9 @@ class PopulationPayoffs:
             uid_iteration_order = list(key)
 
             if stored_order != uid_iteration_order:
-                reorder_index = {uid: idx for idx, uid in enumerate(stored_order)}
+                reorder_index = {
+                    uid: idx for idx, uid in enumerate(stored_order)
+                }
                 payoffs = payoffs[
                     ..., [reorder_index[uid] for uid in uid_iteration_order]
                 ]
