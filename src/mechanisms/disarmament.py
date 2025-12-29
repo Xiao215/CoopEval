@@ -238,7 +238,13 @@ class Disarmament(RepetitiveMechanism):
                 [
                     {
                         **r,
-                        **m.to_dict(),
+                        "uid": m.uid,
+                        "player_name": m.player_name,
+                        "action": m.action.value
+                        if hasattr(m.action, "value")
+                        else str(m.action),
+                        "points": m.points,
+                        "response": m.response,
                         "match_id": "|".join(sorted(p.name for p in players)),
                     }
                     for r, m in zip(round_records, moves)
@@ -249,7 +255,7 @@ class Disarmament(RepetitiveMechanism):
             disarmed_cap = new_disarmed_cap
             if not negotiation_continue:
                 break
-        payoffs.add_profile(self.history.get_records())
+        payoffs.add_profile([list(r) for r in self.history.records])
         LOGGER.log_record(
             record=disarmament_records, file_name=self.record_file
         )

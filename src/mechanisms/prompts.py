@@ -120,20 +120,32 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
     Here is what the mediator would do for the players that delegate to it:
     {mediator_description}
 
-    Consider A{additional_action_id} as an addtional action "Delegate to Mediator". Your final mixed strategy should include probability for all actions A0, A1, ..., A{additional_action_id}.
+    Consider A{additional_action_id} as an additional action "Delegate to Mediator". Your final mixed strategy should include probability for all actions A0, A1, ..., A{additional_action_id}.
     """
 )
 
 # Repetition mechanism prompts
-REPETITION_NOTE = (
-    "Note: This game is repetitive so your chosen action will be visible to the "
-    "same opponent(s) in future rounds."
+REPETITION_MECHANISM_PROMPT = textwrap.dedent(
+    """
+    This is a repeated game, so your chosen action will be visible to the same opponent(s) in future rounds and may influence their decisions.
+    You are currently playing round {round_idx} of the game.
+    History:
+    {history_context}
+    """
 )
-REPETITION_ROUND_DESCRIPTION = "This is round {round_idx} of the game.\n"
 REPETITION_NO_HISTORY_DESCRIPTION = (
-    "History: No rounds have been played yet, so there is no history."
+    "You haven't played any rounds with these opponent(s) yet."
 )
-REPETITION_HISTORY_HEADER = "History:"
-REPETITION_ROUND_LINE = "Round {round_idx}:\n{actions}"
+REPETITION_ROUND_LINE = "[Round {round_idx}] \n{actions}"
+REPETITION_RECENT_ROUND_LINE = "[Last {relative_idx} round] \n{actions}"
+REPETITION_RECENT_OPPONENT_DIST_HEADER = (
+    "Opponents' action counts over last {window} round(s):"
+)
+REPETITION_RECENT_HISTORY_PROMPT = textwrap.dedent(
+    """
+    History over the last {window_count} round(s):
+    {recent_history}
+    """
+)
 REPETITION_SELF_LABEL = "\tYou: {action}"
 REPETITION_OPPONENT_LABEL = "\t{opponent}: {action}"

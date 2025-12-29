@@ -11,30 +11,30 @@ class TestPopulationPayoffs(unittest.TestCase):
         self.mapping = {1: "model_a", 2: "model_b"}
         self.first_profile = [
             [
-                make_move(1, 3.0, MockAction.HOLD).to_dict(),
-                make_move(2, 1.0, MockAction.PASS).to_dict(),
+                make_move(1, 3.0, MockAction.HOLD),
+                make_move(2, 1.0, MockAction.PASS),
             ],
             [
-                make_move(1, 1.0, MockAction.PASS).to_dict(),
-                make_move(2, 3.0, MockAction.HOLD).to_dict(),
+                make_move(1, 1.0, MockAction.PASS),
+                make_move(2, 3.0, MockAction.HOLD),
             ],
             [
-                make_move(1, 5.0, MockAction.HOLD).to_dict(),
-                make_move(2, 5.0, MockAction.PASS).to_dict(),
+                make_move(1, 5.0, MockAction.HOLD),
+                make_move(2, 5.0, MockAction.PASS),
             ],
         ]
         self.second_profile = [
             [
-                make_move(1, 6.0, MockAction.PASS).to_dict(),
-                make_move(2, 0.0, MockAction.HOLD).to_dict(),
+                make_move(1, 6.0, MockAction.PASS),
+                make_move(2, 0.0, MockAction.HOLD),
             ],
             [
-                make_move(1, 2.0, MockAction.HOLD).to_dict(),
-                make_move(2, 2.0, MockAction.PASS).to_dict(),
+                make_move(1, 2.0, MockAction.HOLD),
+                make_move(2, 2.0, MockAction.PASS),
             ],
             [
-                make_move(1, 0.0, MockAction.PASS).to_dict(),
-                make_move(2, 6.0, MockAction.HOLD).to_dict(),
+                make_move(1, 0.0, MockAction.PASS),
+                make_move(2, 6.0, MockAction.HOLD),
             ],
         ]
 

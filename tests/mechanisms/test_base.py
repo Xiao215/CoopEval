@@ -33,7 +33,7 @@ class TestRepetitiveMechanismHistory(unittest.TestCase):
         for r in self.rounds:
             self.history.append(r)
 
-    def testAppend_tracksIndicesAndCumulativeCounts(self) -> None:
+    def test_append_tracks_indices_and_cumulative_counts(self) -> None:
         self.history.append(
             [
                 make_move(1, 10.0, MockAction.HOLD),
@@ -42,7 +42,7 @@ class TestRepetitiveMechanismHistory(unittest.TestCase):
             ]
         )
         self.assertEqual(len(self.history.records), 5)
-        self.assertEqual(self.history.player_round_indices["agent-1"], [0, 1, 3, 4, 5])
+        self.assertEqual(self.history.player_round_indices["agent-1"], [0, 1, 3, 4])
         self.assertEqual(self.history.player_round_indices["agent-2"], [0, 2, 3])
 
         self.assertEqual(
@@ -63,12 +63,12 @@ class TestRepetitiveMechanismHistory(unittest.TestCase):
             ],
         )
 
-    def testAppend_rejectEmptyRound(self) -> None:
+    def test_append_reject_empty_round(self) -> None:
         history = RepetitiveMechanism.History()
         with self.assertRaises(ValueError):
             history.append([])
 
-    def testGetPriorRounds_respectsLookbackAndDepth(self) -> None:
+    def test_get_prior_rounds_respects_lookback_and_depth(self) -> None:
         prior = self.history.get_prior_rounds("agent-1", lookback_rounds=1, lookup_depth=2)
         self.assertEqual(prior, self.rounds[:2])
 
@@ -81,12 +81,12 @@ class TestRepetitiveMechanismHistory(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.history.get_prior_rounds("agent-1", lookback_rounds=0, lookup_depth=0)
 
-    def testGetPriorActionDistribution(self) -> None:
+    def test_get_prior_action_distribution(self) -> None:
         dist = self.history.get_prior_action_distribution("agent-1", lookback_rounds=1)
         self.assertEqual(dist, {MockAction.HOLD: 2})
 
         dist_all = self.history.get_prior_action_distribution("agent-2", lookback_rounds=0)
-        self.assertEqual(dist_all, {MockAction.PASS: 3})
+        self.assertEqual(dist_all, {MockAction.PASS: 1, MockAction.HOLD: 2})
 
         self.assertEqual(
             self.history.get_prior_action_distribution("agent-1", lookback_rounds=5), {}

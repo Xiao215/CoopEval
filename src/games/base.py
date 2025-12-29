@@ -62,7 +62,7 @@ class Move:
     def to_dict(self) -> dict[str, Any]:
         """Convert the Move to a dictionary, mostly for logging and record purpose."""
         d = asdict(self)
-        d["action"] = self.action.value
+        d["action"] = str(self.action)
         return d
 
 

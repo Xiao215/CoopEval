@@ -1,19 +1,12 @@
 """Mechanisms that expose behavioural reputation across repeated rounds."""
 
-import itertools
 import random
+
 from abc import ABC
-from collections import defaultdict
-from typing import Sequence
-
-from tqdm import tqdm
-
 from src.agents.agent_manager import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
-from src.games.base import Game, Move
-from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
-from src.registry.agent_registry import create_agent
+from src.games.base import Game
+
 
 random.seed(42)
 
@@ -26,72 +19,91 @@ class Reputation(RepetitiveMechanism, ABC):
     def __init__(self, base_game: Game, num_rounds: int, discount: float):
         super().__init__(base_game, num_rounds, discount)
         self.matchup_workers = 1
+        self.reputation_depth = 3
 
-    def _format_reputation(self, agents: Sequence[Agent]) -> str:
-        """Format the n-hop reputational awareness information into a string."""
+    def _format_reputation(self, players: Agent) -> str:
+        """
+        Format the n-order reputation of each player into a tree structure.
+        """
 
-    # def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
-    #     """Run a multi-round tournament while tracking reputation updates."""
-    #     players = [
-    #         create_agent(cfg)
-    #         for cfg in agent_cfgs
-    #         for _ in range(self.base_game.num_players)
-    #     ]
-    #     payoffs = self._build_payoffs(players)
+        # 1. Get the main player's recent history (Current view)
+        # We use lookback=0 because we want the most recent events
+        recent_rounds = self.history.get_prior_rounds(
+            players.name, lookback_rounds=0, lookup_depth=self.reputation_depth
+        )
 
-    #     self._play_matchups(players, payoffs)
+        if not recent_rounds:
+            return f"Reputation for {players.name}: No history available."
+        lines = [f"Reputation History for {players.name} (Most recent first):"]
 
-    #     return payoffs
+        # 2. Iterate backwards (Most recent -> Oldest)
+        reversed_history = list(enumerate(reversed(recent_rounds), 1))
 
-    # def _play_matchups(
-    #     self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    # ) -> None:
-    #     """Play all matchups while updating reputation after each round."""
-    #     num_players = self.base_game.num_players
-    #     all_matchups = list(itertools.combinations(players, r=num_players))
-    #     random.shuffle(all_matchups)
+        for rounds_ago, round_moves in reversed_history:
+            # Identify self and opponent in this specific round
+            # Assuming round_moves is a list of 2 Moves
+            my_move = next(
+                m for m in round_moves if m.player_name == players.name
+            )
+            opp_move = next(
+                m for m in round_moves if m.player_name != players.name
+            )
 
-    #     k = self.base_game.num_players
-    #     matchups = [
-    #         tuple(lineup) for lineup in itertools.combinations(players, k)
-    #     ]
-    #     matchup_histories: defaultdict[tuple[int, ...], list[list[Move]]] = (
-    #         defaultdict(list)
-    #     )
+            opp_name = opp_move.player_name
 
-    #     round_iter = tqdm(
-    #         range(1, self.num_rounds + 1),
-    #         desc=f"Running Reputation Mechanism for {self.base_game.__class__.__name__}",
-    #     )
+            # --- Level 1: Main Player's History ---
+            lines.append(
+                f"├─ Past {rounds_ago} round(s): {players.name} vs {opp_name}. "
+                f"{players.name} played {my_move.action} ({my_move.points} pts), "
+                f"{opp_name} played {opp_move.action} ({opp_move.points} pts)."
+            )
 
-    #     for round_idx in round_iter:
-    #         # Shuffle matchups before each round, even though order does not impact outcomes
-    #         matchups_this_round = list(matchups)
-    #         random.shuffle(matchups_this_round)
+            # --- Level 2: Opponent's History (Relative to THAT moment) ---
+            # We need to see what the opponent looked like *before* this match occurred.
+            # So lookback = rounds_ago.
+            opp_history = self.history.get_prior_rounds(
+                opp_name,
+                lookback_rounds=rounds_ago,
+                lookup_depth=self.reputation_depth,
+            )
 
-    #         round_matches: list[dict[str, object]] = []
+            if opp_history:
+                lines.append(f"│  └─ History of {opp_name} before this match:")
 
-    #         for matchup in matchups_this_round:
-    #             reputation_information = self._format_reputation(matchup)
-    #             moves = self.base_game.play(
-    #                 additional_info=reputation_information,
-    #                 players=matchup,
-    #             )
+                # Iterate through the opponent's nested history
+                # detailed_rounds_ago tracks how far back from the MAIN match this was
+                for sub_idx, sub_round in enumerate(reversed(opp_history), 1):
 
-    #             round_matches.append(
-    #                 {
-    #                     "players": [move.player_name for move in moves],
-    #                     "moves": [move.to_dict() for move in moves],
-    #                 }
-    #             )
+                    sub_opp_move = next(
+                        m for m in sub_round if m.player_name != opp_name
+                    )
+                    sub_target_move = next(
+                        m for m in sub_round if m.player_name == opp_name
+                    )
+                    third_party_name = sub_opp_move.player_name
 
-    #             for move in moves:
-    #                 self._update_reputation(move.player_name, move.action.value)
+                    # --- Level 3: The Context (Action Distribution) ---
+                    # We want the stats of the 3rd party *before* they met the 2nd party.
+                    # Total lookback = (Main Player offset) + (Opponent offset)
+                    total_lookback = rounds_ago + sub_idx
 
-    #         LOGGER.log_record(
-    #             record={"round": round_idx, "matchups": round_matches},
-    #             file_name=self.record_file,
-    #         )
+                    stats = self.history.get_prior_action_distribution(
+                        third_party_name, lookback_rounds=total_lookback
+                    )
+                    stats_str = (
+                        ", ".join([f"{k}: {v}" for k, v in stats.items()])
+                        if stats is not None
+                        else "No Data"
+                    )
 
-    #     for moves_over_rounds in matchup_histories.values():
-    #         payoffs.add_profile(moves_over_rounds)
+                    lines.append(
+                        f"│     ├─ Past {sub_idx} round(s): {opp_name} vs {third_party_name}. "
+                        f"{opp_name}: {sub_target_move.action}, {third_party_name}: {sub_opp_move.action}. "
+                        f"[Context: {third_party_name} had distr {stats_str}]"
+                    )
+            else:
+                lines.append(
+                    f"│  └─ (No prior history for {opp_name} at this time)"
+                )
+
+        return "\n".join(lines)

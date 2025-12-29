@@ -8,6 +8,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from src.agents.agent_manager import Agent
+from src.games.base import Move
 
 
 class PopulationPayoffs:
@@ -73,9 +74,9 @@ class PopulationPayoffs:
         self._table.clear()
 
     def add_profile(
-        self, moves_over_rounds: list[list[dict[str, Any]]]
+        self, moves_over_rounds: Sequence[Sequence[Move]]
     ) -> None:
-        """Record a single matchup outcome consisting of the provided ``moves``.
+        """Record a single matchup outcome consisting of the provided ``Move`` objects.
 
         Args:
             moves: the list of recorded moves for a specific matchup profile.
@@ -85,13 +86,13 @@ class PopulationPayoffs:
             raise ValueError("Cannot add empty moves list to payoff table")
 
         # all uids must be consistent across rounds
-        k = frozenset(move["uid"] for move in moves_over_rounds[0])
+        k = frozenset(int(move.uid) for move in moves_over_rounds[0])
 
         # stack points: shape (num_rounds, num_players)
         round_points = []
         for moves_per_round in moves_over_rounds:
             # keep order consistent with `uids`
-            uid_to_points = {m["uid"]: m["points"] for m in moves_per_round}
+            uid_to_points = {int(m.uid): float(m.points) for m in moves_per_round}
             round_points.append([uid_to_points[uid] for uid in k])
 
         profile = np.array(round_points, dtype=float)  # shape (R, P)

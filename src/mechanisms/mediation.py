@@ -141,9 +141,20 @@ class Mediation(Mechanism):
                 additional_info=mediator_mechanism,
                 action_map=self.mediator_mapping(mediator),
             )
-            move_dicts = [move.to_dict() for move in moves]
-            payoffs.add_profile([move_dicts])
-            return player.model_type, move_dicts
+            payoffs.add_profile([moves])
+            serialized = [
+                {
+                    "uid": move.uid,
+                    "player_name": move.player_name,
+                    "action": move.action.value
+                    if hasattr(move.action, "value")
+                    else str(move.action),
+                    "points": move.points,
+                    "response": move.response,
+                }
+                for move in moves
+            ]
+            return player.model_type, serialized
 
         results = run_tasks(
             players,

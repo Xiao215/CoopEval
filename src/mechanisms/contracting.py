@@ -216,8 +216,19 @@ class Contracting(Mechanism):
                 additional_info=additional_info,
                 players=players,
             )
-            record["moves"] = [move.to_dict() for move in moves]
-            payoffs.add_profile([record["moves"]])
+            record["moves"] = [
+                {
+                    "uid": move.uid,
+                    "player_name": move.player_name,
+                    "action": move.action.value
+                    if hasattr(move.action, "value")
+                    else str(move.action),
+                    "points": move.points,
+                    "response": move.response,
+                }
+                for move in moves
+            ]
+            payoffs.add_profile([moves])
             history.append(record)
 
         LOGGER.log_record(record=history, file_name=self.record_file)

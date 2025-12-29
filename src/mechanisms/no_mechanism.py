@@ -13,4 +13,4 @@ class NoMechanism(Mechanism):
     ) -> None:
         """Run the base game without any modifications."""
         moves = self.base_game.play(additional_info="None.", players=players)
-        payoffs.add_profile([[move.to_dict() for move in moves]])
+        payoffs.add_profile([moves])
