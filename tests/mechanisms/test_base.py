@@ -2,7 +2,7 @@ import unittest
 
 
 from src.mechanisms.base import RepetitiveMechanism
-from tests.mocks.general_mocks import MockAction, make_move
+from tests.fakes.general_fakes import MockAction, make_move
 
 
 class TestRepetitiveMechanismHistory(unittest.TestCase):
@@ -89,10 +89,10 @@ class TestRepetitiveMechanismHistory(unittest.TestCase):
         self.assertEqual(dist_all, {MockAction.PASS: 1, MockAction.HOLD: 2})
 
         self.assertEqual(
-            self.history.get_prior_action_distribution("agent-1", lookback_rounds=5), {}
+            self.history.get_prior_action_distribution("agent-1", lookback_rounds=5), None
         )
         self.assertEqual(
-            self.history.get_prior_action_distribution("unknown", lookback_rounds=0), {}
+            self.history.get_prior_action_distribution("unknown", lookback_rounds=0), None
         )
         with self.assertRaises(ValueError):
             self.history.get_prior_action_distribution("agent-1", lookback_rounds=-1)

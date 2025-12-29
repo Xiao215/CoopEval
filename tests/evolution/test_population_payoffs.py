@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 from src.evolution.population_payoffs import PopulationPayoffs
-from tests.mocks.general_mocks import MockAgent, MockAction, make_move
+from tests.fakes.general_fakes import MockAgent, MockAction, make_move
 
 
 class TestPopulationPayoffs(unittest.TestCase):

@@ -25,7 +25,7 @@ def make_move(uid: int, points: float, action: MockAction = MockAction.HOLD) -> 
 class MockAgent(Agent):
     """Minimal stand-in for ``Agent`` with the attributes used in tests."""
 
-    def __init__(self, uid: int, model_type: str) -> None:
+    def __init__(self, uid: int, model_type: str="Unset") -> None:
         self.uid = uid
         self.model_type = model_type
 
@@ -35,4 +35,3 @@ class MockAgent(Agent):
     @property
     def name(self) -> str:
         return f"MockAgent-{self.uid}"
-

@@ -26,13 +26,20 @@ class Mechanism(ABC):
     def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players)
 
-    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
-        """Run the mechanism over the base game across all players."""
+    def _create_players_from_cfgs(
+        self, agent_cfgs: Sequence[dict]
+    ) -> list[Agent]:
+        """Create players from the given agent configurations."""
         players = [
             create_agent(cfg)
             for cfg in agent_cfgs
             for _ in range(self.base_game.num_players)
         ]
+        return players
+
+    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+        """Run the mechanism over the base game across all players."""
+        players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
 
         k = self.base_game.num_players

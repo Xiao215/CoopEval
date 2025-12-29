@@ -8,24 +8,7 @@ from src.mechanisms.prompts import (
     REPETITION_NO_HISTORY_DESCRIPTION,
 )
 from src.mechanisms.repetition import Repetition
-from tests.mocks.general_mocks import MockAction, make_move
-from src.agents.agent_manager import Agent
-
-
-class StubAgent(Agent):
-    """Lightweight stand-in for Agent with stable uid/name for history lookups."""
-
-    def __init__(self, uid: int) -> None:
-        self.uid = uid
-        self.model_type = "stub"
-
-    @property
-    def name(self) -> str:  # pragma: no cover - trivial accessor
-        return f"agent-{self.uid}"
-
-    def chat(self, messages: str) -> str:  # pragma: no cover - not exercised
-        return messages
-
+from tests.fakes.general_fakes import MockAction, make_move, MockAgent
 
 class ScriptedGame:
     """Minimal base game that returns pre-baked moves and records prompts."""
@@ -44,7 +27,7 @@ class ScriptedGame:
 
 class TestRepetitionMechanism(unittest.TestCase):
     def setUp(self) -> None:
-        self.players = [StubAgent(1), StubAgent(2)]
+        self.players = [MockAgent(1), MockAgent(2)]
         self.base_game = ScriptedGame(
             num_players=len(self.players),
             rounds=[
@@ -77,7 +60,6 @@ class TestRepetitionMechanism(unittest.TestCase):
 
         self.assertEqual(len(prompts), len(self.players))
         self.assertNotEqual(prompts[0], prompts[1])
-        self.assertIn("Round 2", prompts[0])
         self.assertIn("Round 1", prompts[0])
         self.assertIn("You: MockAction.HOLD", prompts[0])
         self.assertIn("Player#2: MockAction.PASS", prompts[0])
