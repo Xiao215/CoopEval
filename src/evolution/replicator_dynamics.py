@@ -1,36 +1,14 @@
-import itertools
-import json
-import math
-import os
 import random
-from datetime import datetime
 from typing import Literal
 
 import numpy as np
 from tqdm import tqdm
 
-from config import OUTPUTS_DIR
-from src.agent import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.logger_manager import log_record
+from src.agents.agent_manager import Agent
 from src.mechanisms.base import Mechanism
 
-now = datetime.now()
-log_dir = OUTPUTS_DIR / f"{now.year}" / f"{now.month:02}" / f"{now.day:02}"
-os.makedirs(log_dir, exist_ok=True)
-
-evolution_json = open(
-    log_dir / f"{now.hour:02}{now.minute:02}_evolution.jsonl",
-    mode="a",
-    encoding="utf-8",
-)
-
 random.seed(42)
-
-def log_evolution_record(record: dict) -> None:
-    """Log the evolution record to a JSON file."""
-    json.dump(record, evolution_json)
-    evolution_json.write("\n")
-    evolution_json.flush()
 
 
 class DiscreteReplicatorDynamics:
@@ -43,19 +21,14 @@ class DiscreteReplicatorDynamics:
     where η is the learning rate and Z(t) is the normalization constant.
     For learning rate going to zero, this approaches the continuous-time replicator dynamics.
     """
+
     def __init__(
         self,
         agents: list[Agent],
         mechanism: Mechanism,
-        population_payoffs: PopulationPayoffs | None = None,
     ) -> None:
         self.mechanism = mechanism
         self.agents = agents
-        self.population_payoffs = (
-            population_payoffs
-            if population_payoffs is not None
-            else PopulationPayoffs(agent_names=[agent.name for agent in self.agents])
-        )
 
     def population_update(
         self,
@@ -103,7 +76,9 @@ class DiscreteReplicatorDynamics:
             assert len(initial_population) == len(
                 self.agents
             ), "Initial population distribution must match number of agent types"
-            assert np.all(initial_population >= 0), "Initial population distribution must be non-negative"
+            assert np.all(
+                initial_population >= 0
+            ), "Initial population distribution must be non-negative"
             population = initial_population
         elif initial_population == "random":
             population = np.random.exponential(scale=1.0, size=len(self.agents))
@@ -116,54 +91,15 @@ class DiscreteReplicatorDynamics:
         population /= population.sum()
         population_history = [population.copy()]
 
-        n = len(self.agents)
-        k = self.mechanism.base_game.num_players
-        total_matches = math.comb(n, k)
+        population_payoffs = self.mechanism.run_tournament(agents=self.agents)
+        fitness = population_payoffs.fitness(population)
+
+        log_record(record=population_payoffs.to_record(), file_name="payoffs.json")
+
         for step in tqdm(range(1, steps + 1), desc="Evolution Steps"):
-            combo_iter = list(itertools.combinations(self.agents, k))
-            random.shuffle(combo_iter)
-            inner_tqdm_bar = tqdm(
-                combo_iter,
-                desc="Tournaments",
-                total=total_matches,
-                leave=False,
-                position=1,
-            )
 
-            match_records = []
-            for agents in inner_tqdm_bar:
-                match_label = " vs ".join(agent.name for agent in agents)
-                inner_tqdm_bar.set_postfix(match=match_label)
-
-                match_record = self.mechanism.run(
-                    agents=agents,
-                )
-
-                self.population_payoffs.add_profile(
-                    agent_names=[r["name"] for r in match_record],
-                    payoffs=[r["points"] for r in match_record],
-                )
-                match_records.append(match_record)
-            inner_tqdm_bar.close()
-
-            fitness = self.population_payoffs.fitness(population)
             # average population fitness is the society's average performance
             ave_population_fitness = np.dot(population, fitness)
-
-            evolution_record = {
-                "step": step,
-                "stats": [
-                    {
-                        "name": agent.name,
-                        "fitness": fitness[i],
-                        "population": population[i],
-                    }
-                    for i, agent in enumerate(self.agents)
-                ],
-                "average_population_fitness": ave_population_fitness,
-                "match_records": match_records,
-            }
-            log_evolution_record(evolution_record)
 
             if np.max(np.abs(fitness - ave_population_fitness)) < tol:
                 print("Converged: approximate equilibrium reached")
@@ -176,9 +112,6 @@ class DiscreteReplicatorDynamics:
                 lr=lr_fct(len(population_history) + 1),
             )
             population_history.append(population.copy())
-
-            self.population_payoffs.reset()
-            self.mechanism.post_tournament(match_records)
 
         print("Steps limit reached")
         return population_history

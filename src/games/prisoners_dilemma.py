@@ -1,31 +1,14 @@
-import sys
-from enum import Enum
-from typing import Sequence
+from typing import Callable, Sequence
 
-from src.agent import Agent
-from src.games.base import Game
+from src.agents.agent_manager import Agent
+from src.games.base import Action, Game
 
 
-class PrisonersDilemmaAction(Enum):
+class PrisonersDilemmaAction(Action):
     """Possible actions in the Prisoner's Dilemma"""
 
     COOPERATE = "C"
     DEFECT = "D"
-
-    def to_token(self) -> str:
-        """Convert the action to a token (eg, <A1>) for LLM parsing."""
-        idx = list(type(self)).index(self)
-        return f"<A{idx}>"
-
-    @classmethod
-    def from_token(cls, token: str) -> Enum:
-        """Parse an action from a token like "<A1>" or "<A2>"."""
-        try:
-            idx = int(token.strip("<>").lstrip("A"))
-            action = list(cls)[idx]
-        except Exception as exp:
-            raise ValueError(f"Unknown action token {token!r}") from exp
-        return action
 
 
 class PrisonersDilemma(Game):
@@ -42,31 +25,34 @@ class PrisonersDilemma(Game):
 
         self.action_tokens = [act.to_token() for act in PrisonersDilemmaAction]
         actions_block = "\n\t".join(
-            [f"\t• {act_tok}" for act_tok in self.action_tokens]
+            [f"\t- {act_tok}" for act_tok in self.action_tokens]
         )
 
-        prompt = f"""
-        You are a player named {{agent_name}} who plays in a decision-making game.
-        Your objective is to maximise your cumulative score in the game described below.
+        self.prompt_template = """
+        You are a player named {{player_name}} who plays in a decision-making game.
+        Your objective is to maximise your score in the game described below.
 
         Rule:
-        1. You and the opponent each choose exactly one action, simultaneously.
-        2. After both commitments are locked in, the two actions are revealed.
+        1. You and the opponent each choose a probability for each action, simultaneously.
+        2. After both commitments are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff table below.
 
-        Actions (choose exactly one per round):
+        Actions:
         {actions_block}
-        IMPORTANT: Your final printed action must be wrapped by <>, for example: <A1>.
 
         Payoff matrix:
-        {self._payoff_description()}
+        {payoff_description}
 
-        {{additional_info}}
+        {{instruction}}
         """
 
         super().__init__(
-            prompt=prompt,
+            prompt=self.prompt_template.format(
+                actions_block=actions_block,
+                payoff_description=self._payoff_description(),
+            ),
             num_players=2,
+            num_actions=len(PrisonersDilemmaAction),
         )
 
     def _payoff_description(self) -> str:
@@ -78,60 +64,51 @@ class PrisonersDilemma(Game):
             )
         return "\n".join(lines)
 
-    def play(self, additional_info: str, agents: Sequence[Agent]) -> list[Game.Move]:
-        assert len(agents) == 2
-        agent1, agent2 = agents
+    def play(
+        self,
+        additional_info: list[str] | str,
+        players: Sequence[Agent],
+        action_map: Callable = lambda x: x,
+    ) -> list[Game.Move]:
+        assert len(players) == 2
+        player1, player2 = players
 
-        resp1 = self._prompt_agent(agent1, additional_info)
-        resp2 = self._prompt_agent(agent2, additional_info)
+        if isinstance(additional_info, str):
+            additional_info = [additional_info] * 2
 
-        act1 = self._parse_action(agent1, resp1)
-        act2 = self._parse_action(agent2, resp2)
+        responses = {}
+        actions = {}
 
-        pts1, pts2 = self.payoff_matrix[(act1, act2)]
+        for player, info in zip(players, additional_info):
+            resp = self.prompt_player(player, info)
+            responses[player.name] = resp
+
+            prob_distribution = self._extract_mixed_strategy(player, resp, info)
+            action_idx = self._choose_from_mix_strategy(prob_distribution)
+            actions[player.name] = action_idx
+            responses[player.name] = resp
+
+        actions = action_map(actions)
+        actions = {
+            name: PrisonersDilemmaAction.from_index(action)
+            for name, action in actions.items()
+        }
+
+        pts1, pts2 = self.payoff_matrix[(actions[player1.name], actions[player2.name])]
         return [
-            Game.Move(name=agent1.name, action=act1, points=pts1, response=resp1),
-            Game.Move(name=agent2.name, action=act2, points=pts2, response=resp2),
+            Game.Move(
+                name=player1.name,
+                action=actions[player1.name],
+                points=pts1,
+                response=responses[player1.name],
+            ),
+            Game.Move(
+                name=player2.name,
+                action=actions[player2.name],
+                points=pts2,
+                response=responses[player2.name],
+            ),
         ]
-
-    def _parse_action(
-        self, agent: Agent, response: str, max_retries: int = 5
-    ) -> PrisonersDilemmaAction:
-        """
-        Extract the chosen action from the LLM's response, retrying up to max_retries
-        with a clarifying prompt if parsing fails.
-        """
-        def pick_action(text: str) -> PrisonersDilemmaAction:
-            # Find all actions whose token appears at least once
-            matches = [
-                action for action in PrisonersDilemmaAction if action.to_token() in text
-            ]
-            if not matches:
-                raise ValueError(f"[{agent}] No action token found in {text!r}")
-
-            rightmost = max(matches, key=lambda act: text.rfind(act.to_token()))
-            return rightmost
-
-        try:
-            return pick_action(response)
-        except ValueError:
-            pass
-
-        clarification = (
-            "Based on the action chosen in the original response below, output exactly one action token wrapped in angle brackets:\n"
-            f"{', '.join(self.action_tokens)}\n\n"
-            "Do NOT include explanations, `<think>` tags, or whitespace inside the brackets.\n"
-            "Example valid response: `<A1>`\n\n"
-            "Original response:\n"
-            f"{response}"
-        )
-        for i in range(max_retries):
-            response = agent.invoke(clarification + "\n\n")
-            try:
-                return pick_action(response)
-            except ValueError:
-                print(f"[{agent}] Retry {i+1} failed: {response!r}")
-        raise ValueError(f"All retries failed to parse action from {agent}")
 
     @classmethod
     def _parse_payoff_matrix(

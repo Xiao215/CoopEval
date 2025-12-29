@@ -1,15 +1,21 @@
+import itertools
+import math
+import random
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
-from enum import Enum
 from typing import Sequence
 
-from src.agent import Agent
+from tqdm import tqdm
+
+from src.agents.agent_manager import Agent
+from src.evolution.population_payoffs import PopulationPayoffs
 from src.games.base import Game
-from src.games.prisoners_dilemma import (PrisonersDilemma,
-                                         PrisonersDilemmaAction)
-from src.games.public_goods import PublicGoods
-from src.mechanisms.base import Mechanism
+from src.games.prisoners_dilemma import PrisonersDilemma, PrisonersDilemmaAction
+from src.games.public_goods import PublicGoods, PublicGoodsAction
+from src.mechanisms.base import RepetitiveMechanism
+from src.logger_manager import log_record
+
+random.seed(42)
 
 
 class ReputationStat:
@@ -38,65 +44,66 @@ class ReputationStat:
         return {m: (p / t if t else None) for m, (p, t) in self.scores.items()}
 
 
-@dataclass(frozen=True)
-class Record:
-    """A record of a player's move in a game with reputation."""
-
-    name: str
-    action: Enum
-    points: float
-    response: str
-    reputation: ReputationStat
-
-    def to_dict(self) -> dict:
-        """
-        Convert the record to a dictionary for serialization.
-        """
-        return {
-            "name": self.name,
-            "action": self.action.name,
-            "points": self.points,
-            "response": self.response,
-            "reputation": self.reputation.all_rates(),
-        }
-
-
-class Reputation(Mechanism, ABC):
+class Reputation(RepetitiveMechanism, ABC):
     """
     Reputation mechanism that makes each players' reputation visible to all players.
     """
 
-    def __init__(self, base_game: Game):
-        super().__init__(base_game)
+    def __init__(self, base_game: Game, num_rounds: int, discount: float):
+        super().__init__(base_game, num_rounds, discount)
         self.reputation: dict[str, ReputationStat] = defaultdict(ReputationStat)
-
-    def run(self, agents: Sequence[Agent]):
-        """Repeat the base game for a specified number of repetitions."""
-        reputation_information = self._format_reputation(agents)
-        print(reputation_information)
-        players_moves = self.base_game.play(
-            additional_info=reputation_information, agents=agents
-        )
-
-        match_record = [
-            Record(
-                name=move.name,
-                action=move.action,
-                points=move.points,
-                response=move.response,
-                reputation=self.reputation[move.name],
-            ).to_dict()
-            for move in players_moves
-        ]
-
-        return match_record
 
     @abstractmethod
     def _format_reputation(self, agents: Sequence[Agent]) -> str:
         """Format the reputation information into a string."""
-        raise NotImplementedError(
-            "`_format_reputation` should be implemented in subclasses."
+        raise NotImplementedError("`_format_reputation` should be implemented in subclasses.")
+
+    def run_tournament(self, agents: Sequence[Agent]) -> PopulationPayoffs:
+        """Run the mechanism over the base game across all players."""
+        payoffs = self._build_payoffs(agent_names=[agent.name for agent in agents])
+
+        for _ in tqdm(
+            range(self.num_rounds),
+            desc=f"Running Reputation Mechanism for {self.base_game.__class__.__name__}",
+        ):
+            self._play_matchup(agents, payoffs)
+        return payoffs
+
+    def _play_matchup(self, players: Sequence[Agent], payoffs: PopulationPayoffs) -> None:
+        k = self.base_game.num_players
+        n = len(players)
+        total_matches = math.comb(n, k)
+        combo_iter = list(itertools.combinations(players, k))
+        random.shuffle(combo_iter)
+        inner_tqdm_bar = tqdm(
+            combo_iter,
+            total=total_matches,
+            leave=False,
+            position=1,
         )
+        moves_per_round = []
+        for players in inner_tqdm_bar:
+            matchup = " vs ".join(agent.name for agent in players)
+            inner_tqdm_bar.set_description(f"Match: {matchup}")
+
+            players_moves = self.base_game.play(
+                additional_info=self._format_reputation(players), players=players
+            )
+            moves_per_round.append([move.to_dict() for move in players_moves])
+            payoff_map = {player.name: move.points for player, move in zip(players, players_moves)}
+            payoffs.add_profile(payoff_map)
+
+        log_record(record=moves_per_round, file_name=self.record_file)
+
+        # Update reputation score at the end of each round
+        for players_moves in moves_per_round:
+            for move in players_moves:
+                self._update_reputation(move.name, move.action)
+
+    @abstractmethod
+    def _update_reputation(self, name: str, action: str) -> None:
+        """Update the reputation of a player based on their action."""
+        raise NotImplementedError
 
 
 class ReputationPrisonersDilemma(Reputation):
@@ -104,11 +111,9 @@ class ReputationPrisonersDilemma(Reputation):
     Reputation mechanism for the Prisoner's Dilemma game.
     This mechanism tracks the cooperation rates of players.
     """
-    def __init__(
-        self,
-        base_game: PrisonersDilemma,
-    ):
-        super().__init__(base_game)
+
+    def __init__(self, base_game: PrisonersDilemma, num_rounds: int, discount: float):
+        super().__init__(base_game, num_rounds, discount)
         if not isinstance(self.base_game, PrisonersDilemma):
             raise TypeError(
                 f"ReputationPrisonersDilemma can only be used with Prisoner's Dilemma games, "
@@ -143,17 +148,11 @@ class ReputationPrisonersDilemma(Reputation):
             + "\n\tNote: Your chosen action will affect your reputation score."
         )
 
-    def post_tournament(self, match_records: list[list[dict]]) -> None:
-        """Update the global reputation rates based on the live rates."""
-        for record in match_records:
-            for player in record:
-                player_name = player["name"]
-
-                player_stat = self.reputation[player_name]
-                player_stat.record(
-                    "cooperation_rate",
-                    player["action"] == PrisonersDilemmaAction.COOPERATE.name,
-                )
+    def _update_reputation(self, name: str, action: str) -> None:
+        self.reputation[name].record(
+            "cooperation_rate",
+            action == PrisonersDilemmaAction.COOPERATE.name,
+        )
 
 
 class ReputationPublicGoods(Reputation):
@@ -162,8 +161,8 @@ class ReputationPublicGoods(Reputation):
     This mechanism tracks the contribution rates of players.
     """
 
-    def __init__(self, base_game: Game):
-        super().__init__(base_game)
+    def __init__(self, base_game: Game, num_rounds: int, discount: float):
+        super().__init__(base_game, num_rounds=num_rounds, discount=discount)
         if not isinstance(self.base_game, PublicGoods):
             raise TypeError(
                 f"ReputationPublicGoods can only be used with PublicGoodsGame, "
@@ -198,13 +197,8 @@ class ReputationPublicGoods(Reputation):
             + "\n\t\tNote: Your chosen action will affect your reputation score."
         )
 
-    def post_tournament(self, match_records: list[list[dict]]) -> None:
-        """Update the global reputation rates based on the live rates."""
-        for record in match_records:
-            for player in record:
-                player_name = player["name"]
-                player_stat = self.reputation[player_name]
-                player_stat.record(
-                    "contribution_rate",
-                    player["action"] == PrisonersDilemmaAction.COOPERATE.name,
-                )
+    def _update_reputation(self, name: str, action: str) -> None:
+        self.reputation[name].record(
+            "contribution_rate",
+            action == PublicGoodsAction.CONTRIBUTE.name,
+        )

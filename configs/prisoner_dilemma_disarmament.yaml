@@ -1,21 +1,21 @@
 game:
-  type: PublicGoods
+  type: PrisonersDilemma
   kwargs:
-    multiplier: 3
-    num_players: 6
-    endowment: 10
+    payoff_matrix:
+      CC: [2, 2]
+      CD: [0, 3]
+      DC: [3, 0]
+      DD: [1, 1]
 
 evolution:
   initial_population: uniform
-  steps: 300
+  steps: 100
 
 mechanism:
-  type: ReputationPublicGoods
+  type: Disarmament
   kwargs:
-    reputation_alpha: 0.1
-    reputation_beta: 0.9
-    reputation_threshold: 0.5
-    observation_noise: 0.1
+    num_rounds: 20
+    discount: 0.95
 
 agents:
   - llm:

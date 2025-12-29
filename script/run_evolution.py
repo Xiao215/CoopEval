@@ -6,19 +6,17 @@ from pathlib import Path
 
 import yaml
 
-from config import CONFIG_DIR, OUTPUTS_DIR
+from config import CONFIG_DIR
 from src.evolution.replicator_dynamics import DiscreteReplicatorDynamics
 from src.plot import plot_probability_evolution
-from src.registry import GAME_REGISTRY, MECHANISM_REGISTRY, create_agent
-from src.wandb_logger import WandBLogger
-
-now = datetime.now()
-log_dir = OUTPUTS_DIR / f"{now.year}" / f"{now.month:02}" / f"{now.day:02}"
-os.makedirs(log_dir, exist_ok=True)
+from src.registry.game_registry import GAME_REGISTRY
+from src.registry.agent_registry import create_agent
+from src.registry.mechanism_registry import MECHANISM_REGISTRY
+from src.logger_manager import WandBLogger, log_dir
 
 
 def record_config(config: dict) -> None:
-    out_path = log_dir / f"{now.hour:02}{now.minute:02}_config.json"
+    out_path = log_dir / "config.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
 
@@ -39,7 +37,7 @@ def main():
     Build agents and run pairwise IPD matches.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str)
+    parser.add_argument("--config", type=str)
     # parser.add_argument('--log', action='store_true', help='Enable logging')
     parser.add_argument(
         "--wandb", action="store_true", help="Enable Weights & Biases figure saving"
@@ -52,13 +50,8 @@ def main():
     game_class = GAME_REGISTRY[config["game"]["type"]]
     mechanism_class = MECHANISM_REGISTRY[config["mechanism"]["type"]]
 
-    game = game_class(
-        **config["game"].get("kwargs", {})
-    )
-    mechanism = mechanism_class(
-        base_game=game,
-        **config["mechanism"].get("kwargs", {})
-    )
+    game = game_class(**config["game"].get("kwargs", {}))
+    mechanism = mechanism_class(base_game=game, **config["mechanism"].get("kwargs", {}))
 
     agents = [create_agent(agent_cfg) for agent_cfg in config["agents"]]
 
@@ -67,6 +60,11 @@ def main():
         # Create the name field to make frontend easier.
         config["agents"][i]["name"] = agent.name
     record_config(config)
+
+    print(
+        f"Running {config['game']['type']} with mechanism {config['mechanism']['type']}.\n"
+        f"Players: {', '.join(agent.name for agent in agents)}"
+    )
 
     replicator_dynamics = DiscreteReplicatorDynamics(
         agents=agents,
@@ -89,6 +87,7 @@ def main():
         wb=wb,
         save_local=True,
     )
+
 
 if __name__ == "__main__":
     main()

@@ -52,3 +52,7 @@ sbatch-logs/
 figures/
 test/
 wandb/
+
+.venv311/
+.venv310/
+.venv312/

@@ -1,36 +1,31 @@
-from collections import defaultdict
+import random
 from typing import Sequence
 
 from tqdm import tqdm
 
-from src.agent import Agent
-from src.games.base import Game
-from src.mechanisms.base import Mechanism
+from src.agents.agent_manager import Agent
+from src.evolution.population_payoffs import PopulationPayoffs
+from src.mechanisms.base import RepetitiveMechanism
+from src.logger_manager import log_record
+
+random.seed(42)
 
 
-class Repetition(Mechanism):
+class Repetition(RepetitiveMechanism):
     """
     Repetition mechanism that allows for multiple rounds of the same game.
     """
-    def __init__(
-            self,
-            base_game: Game,
-            num_rounds: int,
-        ) -> None:
-        super().__init__(base_game)
-        self.num_rounds = num_rounds
-        self.history = []
 
-    def _parse_history(self)-> str:
+    def _parse_history(self, history: list[tuple[dict]]) -> str:
         """Parse the history of past actions as the mechanism information."""
-        if not self.history:
+        if not history:
             return "History: None of the players have played yet, so there is no history."
 
         history_str = "History:\n"
-        for i, (players_moves) in enumerate(self.history):
+        for i, (players_moves) in enumerate(history):
             history_str = f"  Round {i + 1}: "
             for move in players_moves:
-                history_str += f"{move.name}: {move.action.token}, "
+                history_str += f"{move['name']}: {move['action']}, "
             history_str = history_str[:-2]
             history_str += "\n"
 
@@ -40,24 +35,27 @@ class Repetition(Mechanism):
             "will be visible to your opponents in future rounds."
         )
 
-    def run(self, agents: Sequence[Agent]) -> dict[str, float]:
+    def _play_matchup(
+        self, players: Sequence[Agent], payoffs: PopulationPayoffs
+    ) -> None:
         """Repeat the base game for a specified number of repetitions.
 
         Returns:
-            final_score (dict[str, float]): A dictionary mapping player names to their final scores after all rounds.
+            final_score (dict[str, float]): A dictionary mapping player names to
+            their final scores after all rounds.
         """
-        final_score = defaultdict(float)
+
+        history = []
         for _ in tqdm(
             range(self.num_rounds),
-            desc=f"Running Repetition Mechanism for {self.base_game.__class__.__name__}"
+            desc=f"Running {self.__class__.__name__} repetitive rounds",
         ):
-            repetition_information = self._parse_history()
+            repetition_information = self._parse_history(history)
             players_moves = self.base_game.play(
-                additional_info=repetition_information, agents=agents
+                additional_info=repetition_information, players=players
             )
-            self.history.append(players_moves)
-            for move in players_moves:
-                final_score[move.name] = final_score[move.name] + move.points
 
+            history.append([move.to_dict() for move in players_moves])
+            payoffs.add_profile({move.name: move.points for move in players_moves})
 
-        return final_score
+        log_record(record=history, file_name=self.record_file)

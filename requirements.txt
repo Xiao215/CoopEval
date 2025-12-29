@@ -9,3 +9,5 @@ seaborn
 sentencepiece
 protobuf
 wandb
+isort
+black

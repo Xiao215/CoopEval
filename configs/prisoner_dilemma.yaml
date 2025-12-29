@@ -2,9 +2,9 @@ game:
   type: PrisonersDilemma
   kwargs:
     payoff_matrix:
-      CC: [3, 3]
-      CD: [0, 5]
-      DC: [5, 0]
+      CC: [2, 2]
+      CD: [0, 3]
+      DC: [3, 0]
       DD: [1, 1]
 
 evolution:
@@ -13,6 +13,9 @@ evolution:
 
 mechanism:
   type: ReputationPrisonersDilemma
+  kwargs:
+    num_rounds: 20
+    discount: 0.95
 
 agents:
   - llm:

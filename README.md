@@ -18,11 +18,10 @@ It supports evolutionary-style simulations in which each agent’s population sh
 
 ```bash
 # 1  Activate a virtual environment
-python3.10 -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+python3.12 -m venv .venv312
+source .venv312/bin/activate      # Windows: .venv312\Scripts\activate
 
 # 2  Install dependencies
-```bash
 module load rust
 pip install -r requirements.txt
 ```
