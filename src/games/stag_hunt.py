@@ -7,17 +7,18 @@ from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
 
 
-class PrisonersDilemmaAction(Action):
-    """Possible actions in the Prisoner's Dilemma"""
+class StagHuntAction(Action):
+    """Possible actions in the Stag Hunt"""
 
-    COOPERATE = "C"
-    DEFECT = "D"
+    STAG = "S"
+    HARE = "H"
 
 
-class PrisonersDilemma(Game):
+class StagHunt(Game):
     """
-    Prisoner's Dilemma environment that allows for one round of interaction
-    between two LLM agents.
+    Stag Hunt environment that allows for one round of interaction
+    between two LLM agents. This is a coordination game where players
+    choose between hunting a stag (risky, high reward) or a hare (safe, lower reward).
     """
 
     def __init__(
@@ -27,7 +28,7 @@ class PrisonersDilemma(Game):
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
 
         actions_block = "\n".join(
-            [f"- {act.to_token()}" for act in PrisonersDilemmaAction]
+            [f"- {act.to_token()}" for act in StagHuntAction]
         )
         self.prompt_template = textwrap.dedent(
             """
@@ -53,7 +54,7 @@ class PrisonersDilemma(Game):
                 payoff_description=self._payoff_description(),
             ),
             num_players=2,
-            num_actions=len(PrisonersDilemmaAction),
+            num_actions=len(StagHuntAction),
         )
 
     def _payoff_description(self) -> str:
@@ -85,8 +86,8 @@ class PrisonersDilemma(Game):
         responses = {uid: resp for uid, _, resp in results}
 
         mapped_indices = action_map(action_indices)
-        final_actions: dict[int, PrisonersDilemmaAction] = {
-            uid: PrisonersDilemmaAction.from_index(action)
+        final_actions: dict[int, StagHuntAction] = {
+            uid: StagHuntAction.from_index(action)
             for uid, action in mapped_indices.items()
         }
 
@@ -117,7 +118,7 @@ class PrisonersDilemma(Game):
         cls,
         raw_payoff: Mapping[str, Sequence[float]],
     ) -> dict[
-        tuple[PrisonersDilemmaAction, PrisonersDilemmaAction],
+        tuple[StagHuntAction, StagHuntAction],
         tuple[float, float],
     ]:
         """
@@ -125,7 +126,7 @@ class PrisonersDilemma(Game):
         """
         payoffs = {}
         for key, (p1, p2) in raw_payoff.items():
-            a1 = PrisonersDilemmaAction(key[0])
-            a2 = PrisonersDilemmaAction(key[1])
+            a1 = StagHuntAction(key[0])
+            a2 = StagHuntAction(key[1])
             payoffs[(a1, a2)] = (p1, p2)
         return payoffs
