@@ -78,8 +78,8 @@ class DiscreteReplicatorDynamics:
                 self.agent_cfgs
             ), "Initial population distribution must match number of agent types"
             assert np.all(
-                initial_population >= 0
-            ), "Initial population distribution must be non-negative"
+                initial_population > 0
+            ), "Initial population distribution must be positive everywhere; zero probabilities stay zero in Replicator Dynamics!"
             population = initial_population
         elif initial_population == "random":
             population = np.random.exponential(
@@ -105,9 +105,13 @@ class DiscreteReplicatorDynamics:
         population_payoffs = self.mechanism.run_tournament(
             agent_cfgs=self.agent_cfgs
         )
-        model_average_payoff = population_payoffs.model_average_payoff()
+        population_payoffs.build_payoff_tensor()
 
-        print(f"Model average payoff: {model_average_payoff}")
+        model_average_payoff = population_payoffs.model_average_payoff()
+        
+        # print(f"Population payoffs (JSON): {population_payoffs.to_json()}")
+        # print(f"Population payoffs (tensor):\n{population_payoffs._payoff_tensor}")
+        # print(f"Model average payoff: {model_average_payoff}")
 
         LOGGER.log_record(
             record=model_average_payoff, file_name="model_average_payoff.json"
@@ -119,7 +123,8 @@ class DiscreteReplicatorDynamics:
                 for model, prob in zip(model_types, population)
             }
             fitness_dict = population_payoffs.fitness(population_dict)
-            print(f"Step {step}: Population fitness is {fitness_dict}")
+            if step % 10 == 0 or step == 1:
+                print(f"Step {step}: Population fitness is {fitness_dict}")
             fitness = np.array([fitness_dict[model] for model in model_types])
             ave_population_fitness = float(np.dot(population, fitness))
 

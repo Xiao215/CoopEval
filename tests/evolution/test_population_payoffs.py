@@ -89,12 +89,13 @@ class TestPopulationPayoffs(unittest.TestCase):
         self.assertAlmostEqual(averages["model_a"], 3.25)
         self.assertAlmostEqual(averages["model_b"], 2.25)
 
-    def test_fitness_weights_population_probabilities(self) -> None:
+    def test_fitness_computes_expected_payoff_against_population(self) -> None:
         # Arrange
         payoffs = PopulationPayoffs(
             players=self.players, discount=self.discount
         )
         payoffs.add_profile(self.first_profile)
+        payoffs.build_payoff_tensor()
 
         # Act
         # Fitness = Payoff * Probability
@@ -103,14 +104,20 @@ class TestPopulationPayoffs(unittest.TestCase):
         fitness = payoffs.fitness({"model_a": 0.6, "model_b": 0.4})
 
         # Assert
-        self.assertAlmostEqual(fitness["model_a"], 1.8)
-        self.assertAlmostEqual(fitness["model_b"], 1.0)
+        # fitness[i] = expected payoff for model i against the population
+        # model_a gets 3.0 vs model_b, 0.0 vs model_a (not in data)
+        # fitness[model_a] = 0.0 × 0.6 + 3.0 × 0.4 = 1.2
+        # model_b gets 2.5 vs model_a, 0.0 vs model_b (not in data)
+        # fitness[model_b] = 2.5 × 0.6 + 0.0 × 0.4 = 1.5
+        self.assertAlmostEqual(fitness["model_a"], 1.2)
+        self.assertAlmostEqual(fitness["model_b"], 1.5)
 
     def test_fitness_requires_probabilities_sum_to_one(self) -> None:
         payoffs = PopulationPayoffs(
             players=self.players, discount=self.discount
         )
         payoffs.add_profile(self.first_profile)
+        payoffs.build_payoff_tensor()
 
         with self.assertRaises(ValueError):
             payoffs.fitness({"model_a": 0.6, "model_b": 0.5})
