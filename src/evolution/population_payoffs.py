@@ -3,6 +3,7 @@
 import math
 import warnings
 from collections import defaultdict
+from itertools import permutations
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -68,6 +69,10 @@ class PopulationPayoffs:
             frozenset[int],
             np.ndarray,
         ] = {}
+
+        # Cached payoff tensor (populated by build_payoff_tensor)
+        self._payoff_tensor: np.ndarray | None = None
+        self._tensor_model_types: list[str] | None = None
 
     def reset(self) -> None:
         """Clear all recorded matchup outcomes."""
@@ -155,26 +160,90 @@ class PopulationPayoffs:
         }
         return average_payoff
 
+    def build_payoff_tensor(self) -> None:
+        """
+        Build and cache a payoff tensor of tensor dimension equal to the number of players in the game, and indexed by model types.
+
+        Stores the tensor in self._payoff_tensor and model types in self._tensor_model_types.
+        This should be called once after all matchups are recorded and before calling fitness().
+        """
+
+        all_model_types = sorted(set(self.uids_to_model_types.values()))
+        model_to_idx = {m: i for i, m in enumerate(all_model_types)}
+        k = len(all_model_types)
+
+        # Get number of players from any matchup
+        n_players = len(next(iter(self._table.keys())))
+
+        # Initialize tensor and counts
+        tensor = np.zeros([k] * n_players)
+        counts = np.zeros([k] * n_players)
+
+        for uid_set, payoffs_array in self._table.items():
+            uids = list(uid_set)
+
+            # Get model types for each UID
+            models = [self.uids_to_model_types[uid] for uid in uids]
+
+            # Average payoffs per model type
+            avg_per_uid = self._average_payoff(payoffs_array)
+            model_payoffs = defaultdict(list)
+            for uid, payoff in zip(uids, avg_per_uid):
+                model_payoffs[self.uids_to_model_types[uid]].append(payoff)
+            avg_by_model = {m: np.mean(p) for m, p in model_payoffs.items()}
+
+            # Fill all symmetric positions
+            for perm in set(permutations(models)):
+                focal_model = perm[0]
+                indices = tuple(model_to_idx[m] for m in perm)
+                tensor[indices] += avg_by_model[focal_model]
+                counts[indices] += 1
+
+        # Average if filled multiple times
+        mask = counts > 0
+        tensor[mask] /= counts[mask]
+
+        # Cache the results
+        self._payoff_tensor = tensor
+        self._tensor_model_types = all_model_types
+
     def fitness(self, population: dict[str, float]) -> dict[str, float]:
         """
-        Compute the fitness of each model type in the population.
+        Compute expected payoff for each model type against the current population.
+
+        Uses einsum to compute: fitness[i] = Σ_{j,k,...} tensor[i,j,k,...] × pop[j] × pop[k] × ...
+        This represents the expected payoff for a model i playing against
+        opponents randomly sampled from the population distribution.
 
         Args:
             population: dict mapping model type to its probability.
-                Note the key here would be the model type,
-                not the unique id.
         """
         if not math.isclose(sum(population.values()), 1.0):
             raise ValueError("Population probabilities must sum to 1.0")
 
-        model_average_payoff = self.model_average_payoff()
+        # Ensure tensor has been built
+        assert self._payoff_tensor is not None and self._tensor_model_types is not None, \
+            "Must call build_payoff_tensor() before fitness(). Tensor has not been built yet."
 
-        # Weight the average payoff by the probability of this model type
-        fitness = {
-            model_type: model_average_payoff[model_type] * prob
-            for model_type, prob in population.items()
-        }
-        return fitness
+        tensor = self._payoff_tensor
+        model_types = self._tensor_model_types
+        n_players = tensor.ndim
+
+        # Verify consistency between population and tensor model types
+        assert set(model_types) == set(population.keys()), \
+            f"Model types mismatch: tensor has {set(model_types)}, population has {set(population.keys())}"
+
+        # Build population vector in the same order as tensor indices
+        pop = np.array([population[m] for m in model_types])
+
+        # Create einsum expression: 'ijk...,j,k,...->i'
+        indices = ''.join(chr(ord('a') + i) for i in range(n_players))
+        expr = indices + ',' + ','.join(indices[1:]) + '->' + indices[0]
+
+        # Compute fitness via einsum
+        fitness_vec = np.einsum(expr, tensor, *([pop] * (n_players - 1)))
+
+        return {m: float(fitness_vec[i]) for i, m in enumerate(model_types)}
 
     def to_json(self) -> dict[str, Any]:
         """Serialize payoff records into a JSON-friendly dictionary."""
