@@ -17,6 +17,9 @@ from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
 
+# TODO: EVERYONE PROPOSE ONE MEDIATOR, AND EVERYONE TELLS WHICH ONES THEY WOULD APPROVED.
+# We select one single mediator and that is the one single one they would play.
+
 class Mediation(Mechanism):
     """Mechanism that lets agents delegate their action to a mediator."""
 

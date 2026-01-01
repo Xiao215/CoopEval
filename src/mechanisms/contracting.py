@@ -17,6 +17,7 @@ from src.mechanisms.prompts import (
 from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
+# Adjust just like mediation
 
 class Contracting(Mechanism):
     """Mechanism where players negotiate and optionally sign payoff contracts."""

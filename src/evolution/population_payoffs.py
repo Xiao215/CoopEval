@@ -3,255 +3,218 @@
 import math
 import warnings
 from collections import defaultdict
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence, TypeAlias
 
 import numpy as np
 
 from src.agents.agent_manager import Agent
 from src.games.base import Move
 
+ProfileKey: TypeAlias = tuple[int, ...]
+
 
 class PopulationPayoffs:
-    """Manage payoff tables while tracking seat-level outcomes."""
+    """Manage payoff tables while tracking seat-level outcomes.
+
+    Payoffs are stored by unique match profiles (sorted UIDs). Aggregation
+    by model type is performed lazily using the provided `players` list
+    as the source of truth for agent identities.
+    """
 
     def __init__(
         self,
-        players: Sequence[Agent] | None = None,
+        players: Sequence[Agent],
         *,
         discount: float | None = None,
-        uids_to_model_types: Mapping[int, str] | None = None,
     ) -> None:
-        if players is None and uids_to_model_types is None:
+        """
+        Args:
+            players: List of Agents involved in the tournament.
+                This is required to map UIDs to model types.
+            discount: Geometric discount factor in (0, 1].
+        """
+        if not players:
             raise ValueError(
-                "PopulationPayoffs requires either players or uids_to_model_types."
+                "PopulationPayoffs requires a non-empty sequence of players."
             )
-
-        normalized_mapping = (
-            {
-                int(uid): str(model_type)
-                for uid, model_type in uids_to_model_types.items()
-            }
-            if uids_to_model_types is not None
-            else None
-        )
-
-        if players is not None:
-            players_mapping = {int(p.uid): str(p.model_type) for p in players}
-            if (
-                normalized_mapping is not None
-                and normalized_mapping != players_mapping
-            ):
-                raise ValueError(
-                    "Provided players and uids_to_model_types contain inconsistent entries."
-                )
-            # A game could have multiple players with the same model type.
-            self.uids_to_model_types = normalized_mapping or players_mapping
-        else:
-            if normalized_mapping is None:
-                raise ValueError(
-                    "PopulationPayoffs requires uids_to_model_types when players is None."
-                )
-            # A game could have multiple players with the same model type.
-            self.uids_to_model_types = normalized_mapping
 
         self.discount = discount if discount is not None else 1.0
         if not 0.0 < self.discount <= 1.0:
             warnings.warn(
                 f"Discount factor should be in (0, 1], got {self.discount}. "
-                "Please make sure this is intended."
+                "Ensure this is intended."
             )
 
-        # Maps frozenset of uids to a 3D array of shape (num_profiles, num_rounds, num_players)
-        # Num profiles would be >1 for multiple recorded matchups with single round match up such as
-        # Mediation, Contracting and Disarmament.
-        self._table: dict[
-            frozenset[int],
-            np.ndarray,
-        ] = {}
+        # Single Source of Truth: Build mapping directly from players
+        self._uid_to_model: dict[int, str] = {
+            int(p.uid): str(p.model_type) for p in players
+        }
+
+        # Storage: Map sorted UIDs to a list of match arrays.
+        # Structure: { (1, 2): [ Array(Rounds, Players), ... ] }
+        self._profiles: dict[ProfileKey, list[np.ndarray]] = defaultdict(list)
 
     def reset(self) -> None:
         """Clear all recorded matchup outcomes."""
-        self._table.clear()
+        self._profiles.clear()
 
-    def add_profile(
-        self, moves_over_rounds: Sequence[Sequence[Move]]
-    ) -> None:
-        """Record a single matchup outcome consisting of the provided ``Move`` objects.
+    def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
+        """Record a single matchup outcome.
 
         Args:
-            moves: the list of recorded moves for a specific matchup profile.
-                The later entries would be more discounted.
+            moves_over_rounds: List of Move objects, organized by round.
         """
         if not moves_over_rounds:
             raise ValueError("Cannot add empty moves list to payoff table")
 
-        # all uids must be consistent across rounds
-        k = frozenset(int(move.uid) for move in moves_over_rounds[0])
+        # 1. Determine the key (Canonical Sorted Order)
+        # We assume moves_over_rounds[0] contains all players present in the match.
+        uids_in_match = {int(move.uid) for move in moves_over_rounds[0]}
+        # Sort to ensure column 0 is always lowest UID, column 1 is next, etc.
+        key: ProfileKey = tuple(sorted(uids_in_match))
 
-        # stack points: shape (num_rounds, num_players)
+        # 2. Extract points into a shape (num_rounds, num_players)
+        # We must respect the sorted order of 'key' when extracting points.
         round_points = []
-        for moves_per_round in moves_over_rounds:
-            # keep order consistent with `uids`
-            uid_to_points = {int(m.uid): float(m.points) for m in moves_per_round}
-            round_points.append([uid_to_points[uid] for uid in k])
-
-        profile = np.array(round_points, dtype=float)  # shape (R, P)
-
-        # store in table: append as new profile (flattened or 2D)
-        if k not in self._table:
-            self._table[k] = profile[None, ...]  # add profile dimension
-        else:
-            self._table[k] = np.vstack([self._table[k], profile[None, ...]])
-
-    def _average_payoff(self, payoffs: np.ndarray) -> np.ndarray:
-        """Apply geometric discounting over the payoff sequence, and average over all profiles ."""
-        num_profiles, _, num_players = payoffs.shape
-
-        discounted_payoffs = np.empty((num_profiles, num_players), dtype=float)
-        for i, profile_payoffs in enumerate(payoffs):
-            n = len(profile_payoffs)
-            if n == 0:
+        for round_moves in moves_over_rounds:
+            # Create a quick lookup for this round
+            uid_lookup = {int(m.uid): float(m.points) for m in round_moves}
+            try:
+                # Extract points in the strict order of 'key'
+                ordered_points = [uid_lookup[uid] for uid in key]
+            except KeyError as e:
                 raise ValueError(
-                    "Empty payoffs array, cannot compute discounted average"
-                )
+                    f"Inconsistent player UIDs across rounds. Missing: {e}"
+                ) from e
+            round_points.append(ordered_points)
 
-            d = self.discount
-            if n > 1 and d == 1.0:
-                warnings.warn(
-                    "Discount factor is currently 1, but your payoff record indicates multiple rounds. "
-                    "This means only the last round payoff will be counted. "
-                    "Please make sure this is intended."
-                )
+        # 3. Store
+        self._profiles[key].append(np.array(round_points, dtype=float))
 
-            weights = np.array(
-                [(1 - d) * (d**i) for i in range(n)], dtype=float
+    def _compute_discounted_average(self, payoffs: np.ndarray) -> np.ndarray:
+        """Apply geometric discounting to a 3D payoff array (Matches, Rounds, Players).
+
+        Returns:
+            2D array of shape (Matches, Players)
+        """
+        _, num_rounds, _ = payoffs.shape
+        d = self.discount
+
+        if num_rounds == 0:
+            raise ValueError("Empty payoffs array, cannot compute average")
+
+        if num_rounds > 1 and d == 1.0:
+            warnings.warn(
+                "Discount is 1.0 but multiple rounds detected. "
+                "Only the last round will be counted due to weight logic."
             )
-            weights[-1] = d ** (n - 1)
-            if sum(weights) != 1.0:
-                raise ValueError(
-                    f"All discount weights must sum to 1.0, currently the sum is {sum(weights)}"
-                )
-            discounted_payoff = np.sum(
-                weights[:, None] * profile_payoffs, axis=0
+
+        # Vectorized weight calculation
+        rounds_idx = np.arange(num_rounds)
+        weights = (1 - d) * (d**rounds_idx)
+        # Fix the tail probability to ensure sum is exactly 1.0
+        weights[-1] = d ** (num_rounds - 1)
+
+        if not math.isclose(np.sum(weights), 1.0):
+            raise ValueError(
+                f"Discount weights sum to {np.sum(weights)}, expected 1.0"
             )
-            discounted_payoffs[i] = discounted_payoff
-        return discounted_payoffs.mean(axis=0)
+
+        # Broadcasting weights: (num_rounds, 1) to multiply against (matches, rounds, players)
+        # We sum over axis 1 (rounds)
+        weighted_sums = np.sum(payoffs * weights[None, :, None], axis=1)
+
+        return weighted_sums
 
     def model_average_payoff(self) -> dict[str, float]:
-        """
-        Compute the average payoff of each model type in the population.
-        """
-
+        """Compute the average payoff of each model type in the population."""
         aggregated_payoffs: dict[str, list[float]] = defaultdict(list)
-        for uids, payoffs in self._table.items():
-            # Distribute the weighted payoff to each model type involved
-            for uid, payoff in zip(uids, self._average_payoff(payoffs)):
-                model_type = self.uids_to_model_types[uid]
-                aggregated_payoffs[model_type].append(payoff)
 
-        average_payoff = {
-            model_type: float(np.mean(np.array(payoffs)))
-            for model_type, payoffs in aggregated_payoffs.items()
+        for uids, match_list in self._profiles.items():
+            # Handle potential ragged arrays (different round counts per match)
+            try:
+                matches_array = np.stack(match_list)
+            except ValueError:
+                # Fallback: process individually
+                match_payoffs = [
+                    self._compute_discounted_average(m[None, ...])[0]
+                    for m in match_list
+                ]
+                matches_array = np.array(match_payoffs)
+                discounted_payoffs = matches_array
+            else:
+                discounted_payoffs = self._compute_discounted_average(
+                    matches_array
+                )
+
+            # Average across all matches for this specific profile
+            mean_payoffs = np.mean(discounted_payoffs, axis=0)
+
+            # Map back to model types using the internal mapping
+            for i, uid in enumerate(uids):
+                # If a player was not in the initial `players` list, this will raise KeyError
+                model_type = self._uid_to_model[uid]
+                aggregated_payoffs[model_type].append(mean_payoffs[i])
+
+        return {
+            m_type: float(np.mean(vals))
+            for m_type, vals in aggregated_payoffs.items()
         }
-        return average_payoff
 
     def fitness(self, population: dict[str, float]) -> dict[str, float]:
-        """
-        Compute the fitness of each model type in the population.
-
-        Args:
-            population: dict mapping model type to its probability.
-                Note the key here would be the model type,
-                not the unique id.
-        """
+        """Compute fitness weighted by population probability."""
         if not math.isclose(sum(population.values()), 1.0):
             raise ValueError("Population probabilities must sum to 1.0")
 
-        model_average_payoff = self.model_average_payoff()
+        avg_payoffs = self.model_average_payoff()
 
-        # Weight the average payoff by the probability of this model type
-        fitness = {
-            model_type: model_average_payoff[model_type] * prob
-            for model_type, prob in population.items()
-        }
-        return fitness
+        return {m_type: avg_payoffs[m_type] for m_type in population.keys()}
 
     def to_json(self) -> dict[str, Any]:
-        """Serialize payoff records into a JSON-friendly dictionary."""
+        """Serialize payoff records.
 
-        serialized_table = []
-        for uid_set, payoffs in self._table.items():
-            uid_order = list(uid_set)
-            serialized_table.append(
-                {
-                    "uids": [int(uid) for uid in uid_order],
-                    "payoffs": payoffs.tolist(),
-                }
+        Note: We store the current uid_to_model mapping in the JSON
+        purely for debugging/inspection purposes. It is ignored by from_json.
+        """
+        serialized_matches = []
+
+        for uids, match_list in sorted(self._profiles.items()):
+            payoffs_data = [m.tolist() for m in match_list]
+            serialized_matches.append(
+                {"uids": list(uids), "payoffs": payoffs_data}
             )
 
         return {
-            "discount": float(self.discount),
-            "uids_to_model_types": {
-                str(uid): model_type
-                for uid, model_type in self.uids_to_model_types.items()
-            },
-            "matchups": serialized_table,
+            "discount": self.discount,
+            "debug_uids_map": {
+                str(k): v for k, v in self._uid_to_model.items()
+            },  # for debugging only
+            "matchups": serialized_matches,
         }
 
     @classmethod
     def from_json(
         cls,
         payload: dict[str, Any],
-        *,
-        players: Sequence[Agent] | None = None,
+        players: Sequence[Agent],
     ) -> "PopulationPayoffs":
-        """Reconstruct a ``PopulationPayoffs`` instance from serialized data."""
+        """Reconstruct instance from JSON.
 
-        discount = float(payload.get("discount", 1.0))
-
-        raw_mapping = payload.get("uids_to_model_types", {})
-        if isinstance(raw_mapping, dict):
-            uid_mapping = {
-                int(uid): str(model_type)
-                for uid, model_type in raw_mapping.items()
-            }
-        else:
-            uid_mapping = {
-                int(entry["uid"]): str(entry["model_type"])
-                for entry in raw_mapping
-            }
-
+        Args:
+            payload: The JSON data.
+            players: The list of agents. This is REQUIRED to reconstruct
+                     the uid-to-model mapping.
+        """
+        # We ignore 'debug_uids_map' from JSON and strictly use 'players'
         instance = cls(
             players=players,
-            discount=discount,
-            uids_to_model_types=uid_mapping,
+            discount=payload.get("discount"),
         )
 
-        instance._table.clear()
-        for matchup in payload.get("matchups", []):
-            stored_order = [int(uid) for uid in matchup.get("uids", [])]
-            payoffs = np.array(matchup.get("payoffs", []), dtype=float)
-
-            if payoffs.ndim != 3:
-                raise ValueError(
-                    "Serialized payoff tensor must have three dimensions"
-                )
-            if payoffs.shape[-1] != len(stored_order):
-                raise ValueError(
-                    "Last dimension of payoff tensor must match number of uids"
-                )
-
-            key = frozenset(stored_order)
-            uid_iteration_order = list(key)
-
-            if stored_order != uid_iteration_order:
-                reorder_index = {
-                    uid: idx for idx, uid in enumerate(stored_order)
-                }
-                payoffs = payoffs[
-                    ..., [reorder_index[uid] for uid in uid_iteration_order]
-                ]
-
-            instance._table[key] = payoffs
+        for entry in payload.get("matchups", []):
+            uids = tuple(sorted(entry["uids"]))
+            raw_payoffs = entry["payoffs"]
+            restored_arrays = [np.array(p, dtype=float) for p in raw_payoffs]
+            instance._profiles[uids].extend(restored_arrays)
 
         return instance

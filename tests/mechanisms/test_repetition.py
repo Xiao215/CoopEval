@@ -8,7 +8,7 @@ from src.mechanisms.prompts import (
     REPETITION_NO_HISTORY_DESCRIPTION,
 )
 from src.mechanisms.repetition import Repetition
-from tests.fakes.general_fakes import MockAction, make_move, MockAgent
+from tests.fakes.general_fakes import FakeAction, make_fake_move, FakeAgent
 
 class ScriptedGame:
     """Minimal base game that returns pre-baked moves and records prompts."""
@@ -27,17 +27,17 @@ class ScriptedGame:
 
 class TestRepetitionMechanism(unittest.TestCase):
     def setUp(self) -> None:
-        self.players = [MockAgent(1), MockAgent(2)]
+        self.players = [FakeAgent(1), FakeAgent(2)]
         self.base_game = ScriptedGame(
             num_players=len(self.players),
             rounds=[
                 [
-                    make_move(1, 1.0, MockAction.HOLD),
-                    make_move(2, 2.0, MockAction.PASS),
+                    make_fake_move(1, 1.0, FakeAction.HOLD),
+                    make_fake_move(2, 2.0, FakeAction.PASS),
                 ],
                 [
-                    make_move(1, 1.5, MockAction.PASS),
-                    make_move(2, 2.5, MockAction.HOLD),
+                    make_fake_move(1, 1.5, FakeAction.PASS),
+                    make_fake_move(2, 2.5, FakeAction.HOLD),
                 ],
             ],
         )
@@ -61,10 +61,10 @@ class TestRepetitionMechanism(unittest.TestCase):
         self.assertEqual(len(prompts), len(self.players))
         self.assertNotEqual(prompts[0], prompts[1])
         self.assertIn("Round 1", prompts[0])
-        self.assertIn("You: MockAction.HOLD", prompts[0])
-        self.assertIn("Player#2: MockAction.PASS", prompts[0])
-        self.assertIn("You: MockAction.PASS", prompts[1])
-        self.assertIn("Player#1: MockAction.HOLD", prompts[1])
+        self.assertIn("You: FakeAction.HOLD", prompts[0])
+        self.assertIn("Player#2: FakeAction.PASS", prompts[0])
+        self.assertIn("You: FakeAction.PASS", prompts[1])
+        self.assertIn("Player#1: FakeAction.HOLD", prompts[1])
 
     def test_format_recent_history_rejects_non_positive_depth(self) -> None:
         with self.assertRaises(ValueError):
@@ -73,8 +73,8 @@ class TestRepetitionMechanism(unittest.TestCase):
     def test_serialize_records_converts_moves_to_dicts(self) -> None:
         records = [
             [
-                make_move(1, 3.0, MockAction.HOLD),
-                make_move(2, 4.0, MockAction.PASS),
+                make_fake_move(1, 3.0, FakeAction.HOLD),
+                make_fake_move(2, 4.0, FakeAction.PASS),
             ]
         ]
 
@@ -86,15 +86,15 @@ class TestRepetitionMechanism(unittest.TestCase):
                 [
                     {
                         "uid": 1,
-                        "player_name": "agent-1",
-                        "action": "MockAction.HOLD",
+                        "player_name": "fake-agent-1",
+                        "action": "FakeAction.HOLD",
                         "points": 3.0,
                         "response": "",
                     },
                     {
                         "uid": 2,
-                        "player_name": "agent-2",
-                        "action": "MockAction.PASS",
+                        "player_name": "fake-agent-2",
+                        "action": "FakeAction.PASS",
                         "points": 4.0,
                         "response": "",
                     },
