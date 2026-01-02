@@ -3,7 +3,7 @@
 import math
 import warnings
 from collections import defaultdict
-from itertools import permutations
+from itertools import permutations, product
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -206,6 +206,52 @@ class PopulationPayoffs:
         # Cache the results
         self._payoff_tensor = tensor
         self._tensor_model_types = all_model_types
+
+    def build_full_payoff_tensor(self) -> np.ndarray:
+        """
+        Expand Player 1's payoff tensor to all N players for symmetric games.
+
+        Uses the permutation rule: G_p(a_1, ..., a_p, ..., a_N) = G_1(a_p, a_2, ..., a_{p-1}, a_1, a_{p+1}, ..., a_N)
+
+        Returns:
+            np.ndarray of shape (N, S^N) where:
+            - N is the number of players
+            - S is the number of strategies per player
+            - G[p, i] is the payoff for player p at the i-th joint strategy
+        """
+        if self._payoff_tensor is None:
+            self.build_payoff_tensor()
+
+        tensor = self._payoff_tensor
+        n_players = tensor.ndim
+        n_strategies = tensor.shape[0]
+
+        # Generate all joint strategies as tuples
+        joint_strategies = list(product(range(n_strategies), repeat=n_players))
+        n_joint_strategies = len(joint_strategies)
+
+        # Initialize full payoff matrix: G[player, joint_strategy_index]
+        G = np.zeros((n_players, n_joint_strategies), dtype=float)
+
+        # Fill payoffs for each player
+        for player_idx in range(n_players):
+            for joint_strat_idx, joint_strat in enumerate(joint_strategies):
+                # Apply permutation rule to get payoff for this player
+                # G_p(a_1, ..., a_p, ..., a_N) = G_1(a_p, a_2, ..., a_{p-1}, a_1, a_{p+1}, ..., a_N)
+
+                # Convert joint_strategy tuple to list for manipulation
+                js = list(joint_strat)
+
+                # Create permuted indices: swap position 0 (Player 1) with position player_idx
+                permuted_strat = js.copy()
+                if player_idx != 0:
+                    # Swap: position 0 gets player_idx's strategy, position player_idx gets position 0's strategy
+                    permuted_strat[0], permuted_strat[player_idx] = permuted_strat[player_idx], permuted_strat[0]
+
+                # Look up payoff from Player 1's tensor using permuted indices
+                G[player_idx, joint_strat_idx] = tensor[tuple(permuted_strat)]
+
+        return G
 
     def fitness(self, population: dict[str, float]) -> dict[str, float]:
         """

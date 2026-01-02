@@ -13,3 +13,5 @@ isort
 black
 openai
 pydantic-settings
+gurobipy
+scipy
