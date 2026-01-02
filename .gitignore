@@ -1,5 +1,6 @@
 # Our own additions
 testing_logs/
+not_tracked/
 
 # Python bytecode
 __pycache__/

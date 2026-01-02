@@ -3,8 +3,8 @@
 import unittest
 from typing import Sequence
 
-from src.evolution.deviation_rating import DeviationRating
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.deviation_rating import DeviationRating
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import Mechanism
 from tests.fakes.general_fakes import MockAction, make_move
 

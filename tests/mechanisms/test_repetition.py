@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from src.games.base import Move
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.mechanisms.prompts import (
     REPETITION_MECHANISM_PROMPT,
     REPETITION_NO_HISTORY_DESCRIPTION,

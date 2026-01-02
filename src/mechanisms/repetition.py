@@ -3,7 +3,7 @@ from typing import Sequence
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism

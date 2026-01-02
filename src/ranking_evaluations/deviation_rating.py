@@ -9,7 +9,7 @@ import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
 
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 
 
 class DeviationRating:

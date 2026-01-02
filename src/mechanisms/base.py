@@ -10,7 +10,7 @@ from typing import Sequence, Iterator
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Action, Game, Move
 from src.registry.agent_registry import create_agent
 

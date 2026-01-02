@@ -4,8 +4,8 @@ import unittest
 import numpy as np
 from typing import Sequence
 
-from src.evolution.replicator_dynamics import DiscreteReplicatorDynamics
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import Mechanism
 from tests.fakes.general_fakes import MockAction, make_move
 

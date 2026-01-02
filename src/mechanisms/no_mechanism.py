@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from src.agents.agent_manager import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import Mechanism
 
 
