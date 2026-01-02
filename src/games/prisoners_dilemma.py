@@ -32,7 +32,7 @@ class PrisonersDilemma(Game):
         self.prompt_template = textwrap.dedent(
             """
         You are playing a decision-making game against another player.
-        Your objective is to maximise your points received in the game described below.
+        Your objective is to maximize your points received in the game described below.
 
         Actions:
         {actions_block}

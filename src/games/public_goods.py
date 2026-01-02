@@ -40,7 +40,7 @@ class PublicGoods(Game):
         self.prompt_template = textwrap.dedent(
             """
         You are playing a decision-making game against {num_players} other players.
-        Your objective is to maximise your points received in the game described below.
+        Your objective is to maximize your points received in the game described below.
 
         Actions:
         - {contribute_tok}
