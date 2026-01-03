@@ -10,7 +10,7 @@ from src.games.base import Action, Game, Move
 class TrustGameAction(Action):
     """Available actions for the trust game."""
 
-    INVEST = "I"
+    GIVE = "G"
     KEEP = "K"
 
 

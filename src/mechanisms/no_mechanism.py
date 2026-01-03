@@ -12,5 +12,5 @@ class NoMechanism(Mechanism):
         self, players: Sequence[Agent], payoffs: PopulationPayoffs
     ) -> None:
         """Run the base game without any modifications."""
-        moves = self.base_game.play(additional_info="None.", players=players)
+        moves = self.base_game.play(additional_info="", players=players)
         payoffs.add_profile([moves])
