@@ -178,32 +178,6 @@ class Game(ABC):
 
         return result
 
-    def _build_retry_prompt(
-        self,
-        bad_response: str,
-        error_reason: str,
-    ) -> str:
-        """Restate base prompt, show prior answer + reason, and add a single-line hint."""
-        # Flatten newlines
-        flattened = bad_response.replace("\n", " ")
-
-        # Smart truncation: show beginning and end for long responses
-        if len(flattened) > 1000:
-            br = (
-                flattened[:500]
-                + " [...CONTENT TRUNCATED...] "
-                + flattened[-500:]
-            )
-        else:
-            br = flattened
-
-        return (
-            f"{self.default_output_instruction}\n"
-            f"Your previous response was:\n{br}\n"
-            f"That response is INVALID because: {error_reason}\n"
-            f"Please reflect on the error and provide the mixed strategy again based on the previous response!"
-        )
-
     @staticmethod
     def _choose_from_mix_strategy(probs: dict[int, float]) -> int:
         r = random.random() * sum(probs.values())
