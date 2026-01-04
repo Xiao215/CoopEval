@@ -156,8 +156,9 @@ class Repetition(RepetitiveMechanism):
                     {
                         "uid": move.uid,
                         "player_name": move.player_name,
-                        "action": str(move.action),
-                        "points": move.points,
+                        "action": move.action.value
+                        if hasattr(move.action, "value")
+                        else str(move.action),                        "points": move.points,
                         "response": move.response,
                     }
                 )

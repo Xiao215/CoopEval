@@ -39,6 +39,7 @@ class PublicGoods(Game):
 
         self.prompt_template = textwrap.dedent(
             """
+        Setup:
         You are playing a decision-making game against {num_players} other players.
         Your objective is to maximize your points received in the game described below.
 
@@ -46,7 +47,7 @@ class PublicGoods(Game):
         - {contribute_tok}
         - {free_ride_tok}
 
-        Game rules:
+        Basic game rules:
         1. You and the opponents each choose a probability for each action, simultaneously.
         2. After all decisions are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff description below.
