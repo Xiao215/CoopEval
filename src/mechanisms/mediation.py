@@ -98,7 +98,7 @@ class Mediation(Mechanism):
         for num_delegating, action in mediator.items():
             lines.append(
                 f"\t• If {num_delegating} player(s) delegate to the mediator, "
-                f"it will recommend action A{action}."
+                f"it will play action A{action}."
             )
         return "\n".join(lines)
 

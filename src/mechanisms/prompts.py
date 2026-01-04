@@ -92,28 +92,27 @@ DISARMAMENT_MECHANISM_PROMPT = textwrap.dedent(
 # Mediation mechanism prompts
 MEDIATOR_DESIGN_PROMPT = textwrap.dedent(
     """
-    Instruction:
-    You are tasked with designing a mediator agent for this game.
+    Here is the twist:
+    There will be a mediator for this game, and your task now is to design and propose one.
 
-    - A mediator is an agent that suggests actions to players.
+    - A mediator is an entity that plays actions on behalf of delegating players.
     - Each player may choose to delegate their move to the mediator or act independently.
-    - The mediator observes number of players delegating to the mediator and then recommends the same action to all delegating players.
-    - The mediator's objective is to maximize the payoff of the players who delegate to the mediator.
+    - The mediator observes the number of players delegating to the mediator and then plays the same action for all delegating players.
 
     Output Format:
     Return a valid json in a single line:
     {{"1": <Action>, ..., "{num_players}": <Action>}} where <Action> is a string like "A0", "A1" ...
 
     - Keys: the number of players delegating (from 1 to {num_players}).
-    - Values: the action the mediator will recommend (e.g., "A0", "A1", ...).
+    - Values: the action the mediator will play on behalf of delegating players (e.g., "A0" or "A1" etc.).
     - Ensure the dictionary is syntactically valid in Python.
     """
 )
 
 MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
     """
-    Additional Information:
-    On top of the original game instructions, you have the option to delegate your move to a mediator agent.
+    Here is the twist:
+    On top of the original game instructions, you have the option to delegate your move to a mediator.
     If you choose to delegate, the mediator will play an action for you based on how many players have delegated to it.
     You can also choose to act independently.
 
