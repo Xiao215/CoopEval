@@ -127,7 +127,7 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
 # Repetition mechanism prompts
 REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     """
-    This is a repeated game, so your chosen action will be visible to the same opponent(s) in future rounds and may influence their decisions.
+    This is a repeated game, so the action sampled from your action probability distribution will be visible to the same opponent(s) in future rounds and may influence their decisions.
     You are currently playing round {round_idx} of the game.
     History:
     {history_context}
@@ -137,7 +137,7 @@ REPETITION_NO_HISTORY_DESCRIPTION = (
     "You haven't played any rounds with these opponent(s) yet."
 )
 REPETITION_ROUND_LINE = "[Round {round_idx}] \n{actions}"
-REPETITION_RECENT_ROUND_LINE = "[Last {relative_idx} round] \n{actions}"
+REPETITION_RECENT_ROUND_LINE = "[{relative_idx} round(s) ago] \n{actions}"
 REPETITION_RECENT_OPPONENT_DIST_HEADER = (
     "Opponents' action counts over last {window} round(s):"
 )

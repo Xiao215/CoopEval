@@ -62,7 +62,7 @@ class Repetition(RepetitiveMechanism):
     ) -> str:
         """Format prompt including every recorded round."""
         global_names = {
-            p.uid: f"Player#{i}" for i, p in enumerate(players, start=1)
+            p.uid: f"PlayerID {i}" for i, p in enumerate(players, start=1)
         }
         lines: list[str] = []
         for past_round_index, round_moves in enumerate(self.history, start=1):
@@ -96,7 +96,7 @@ class Repetition(RepetitiveMechanism):
         if lookup_depth <= 0:
             raise ValueError("lookup_depth must be positive")
         global_names = {
-            p.uid: f"Player#{i}" for i, p in enumerate(players, start=1)
+            p.uid: f"PlayerID {i}" for i, p in enumerate(players, start=1)
         }
         player_name = focus.name
         recent_rounds = self.history.get_prior_rounds(
