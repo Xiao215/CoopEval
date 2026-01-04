@@ -6,7 +6,7 @@ from typing import Callable, Sequence
 
 from src.agents.agent_manager import Agent
 from src.evolution.population_payoffs import PopulationPayoffs
-from src.games.base import Game
+from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
 from src.mechanisms.prompts import (
@@ -15,7 +15,6 @@ from src.mechanisms.prompts import (
 )
 from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
-
 
 # TODO: EVERYONE PROPOSE ONE MEDIATOR, AND EVERYONE TELLS WHICH ONES THEY WOULD APPROVED.
 # We select one single mediator and that is the one single one they would play.
@@ -127,47 +126,68 @@ class Mediation(Mechanism):
         )
         return super().run_tournament(agent_cfgs)
 
-    def _play_matchup(
-        self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    ) -> None:
-        history = []
+    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
+        """
+        Have each player act as a mediator for a game round.
 
-        def play_for_mediator(player: Agent) -> tuple[str, list[dict]]:
+        Returns:
+            A list of move sequences (one sequence per mediator round).
+        """
+        records = []
+        matchup_moves = []  # Accumulator for return value
+
+        def play_for_mediator(
+            player: Agent,
+        ) -> tuple[str, list[dict], list[Move]]:
             mediator = self.mediators[player.model_type]
             mediator_description = self._mediator_description(mediator)
             mediator_mechanism = self.mediation_mechanism_prompt.format(
                 mediator_description=mediator_description,
                 additional_action_id=self.base_game.num_actions,
             )
+
+            # 1. Play the game round
             moves = self.base_game.play(
                 players=players,
                 additional_info=mediator_mechanism,
                 action_map=self.mediator_mapping(mediator),
             )
-            payoffs.add_profile([moves])
+
+            # 2. Serialize for logging
             serialized = [
                 {
                     "uid": move.uid,
                     "player_name": move.player_name,
-                    "action": move.action.value
-                    if hasattr(move.action, "value")
-                    else str(move.action),
+                    "action": (
+                        move.action.value
+                        if hasattr(move.action, "value")
+                        else str(move.action)
+                    ),
                     "points": move.points,
+                    # TODO: add the mix strategy
+                    # TODO: add whether they delegated, maybe change the action
                     "response": move.response,
                 }
                 for move in moves
             ]
-            return player.model_type, serialized
+
+            # Return the raw moves object so we can collect it outside the thread
+            return player.model_type, serialized, moves
 
         results = run_tasks(
             players,
             play_for_mediator,
         )
-        for mediator_model_type, move_dicts in results:
-            history.append(
+
+        for mediator_model_type, move_dicts, raw_moves in results:
+            records.append(
                 {"mediator": mediator_model_type, "moves": move_dicts}
             )
-        LOGGER.log_record(record=history, file_name=self.record_file)
+            matchup_moves.append(raw_moves)
+
+        LOGGER.log_record(record=records, file_name=self.record_file)
+
+        return matchup_moves
 
     def mediator_mapping(self, mediator: dict[int, int]) -> Callable:
         """

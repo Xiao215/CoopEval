@@ -8,7 +8,7 @@ from typing import Sequence
 from src.agents.agent_manager import Agent
 from src.evolution.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import RepetitiveMechanism
-from src.games.base import Game
+from src.games.base import Game, Move
 from src.utils.round_robin import RoundRobin
 
 
@@ -121,22 +121,39 @@ class Reputation(RepetitiveMechanism, ABC):
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
 
+        # TODO: for trust game, split into two groups, investor and founder
+        all_tournament_moves = []
         for _ in range(self.num_rounds):
-            self._play_matchup(players, payoffs)
+            round_moves = self._play_matchup(players)
+            all_tournament_moves.extend(round_moves)
+        payoffs.add_profile(all_tournament_moves)
 
         return payoffs
 
-    def _play_matchup(
-        self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    ) -> None:
+    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
+        """
+        Play one set of matchups according to the scheduler.
+        Returns the list of moves generated in this step.
+        """
+        batch_moves = []
         round_robin_scheduler = RoundRobin(players, group_size=2)
+
         for matches_groups in round_robin_scheduler.generate_schedule():
             for match_up in matches_groups:
                 reputation_information = [
                     self._format_reputation(player) for player in match_up
                 ]
+
+                # Play the game
                 moves = self.base_game.play(
                     additional_info=reputation_information,
                     players=match_up,
                 )
+
+                # 1. Update Global History (for Reputation calculation next round)
                 self.history.append(moves)
+
+                # 2. Record Moves for Payoff Calculation
+                batch_moves.append(moves)
+
+        return batch_moves

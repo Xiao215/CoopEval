@@ -7,74 +7,71 @@ from typing import Sequence
 from src.evolution.replicator_dynamics import DiscreteReplicatorDynamics
 from src.evolution.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import Mechanism
-from tests.fakes.general_fakes import MockAction, make_move
-
-
-class DummyMechanism(Mechanism):
-    """Dummy mechanism with hardcoded 3x3 bimatrix payoffs."""
-
-    def __init__(self):
-        """Initialize without a base game."""
-        pass
-
-    def _play_matchup(self, players, payoffs):
-        """Not used in this dummy mechanism."""
-        pass
-
-    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
-        """Return PopulationPayoffs with the hardcoded bimatrix:
-
-              LLM1      LLM2      LLM3
-        LLM1: (1,1)   (0.5,2)   (0,0)
-        LLM2: (2,0.5) (0,0)     (0,0)
-        LLM3: (0,0)   (0,0)     (2,2)
-        """
-        # Create 6 agents (2 per model type) with UIDs 0-5
-        uids_to_model_types = {
-            0: "LLM1", 1: "LLM1",
-            2: "LLM2", 3: "LLM2",
-            4: "LLM3", 5: "LLM3",
-        }
-
-        payoffs = PopulationPayoffs(uids_to_model_types=uids_to_model_types)
-
-        # Hardcoded symmetric bimatrix
-        bimatrix = [
-            [(1, 1), (0.5, 2), (0, 0)],  # LLM1 vs LLM1, LLM2, LLM3
-            [(2, 0.5), (0, 0), (0, 0)],  # LLM2 vs LLM1, LLM2, LLM3
-            [(0, 0), (0, 0), (2, 2)],    # LLM3 vs LLM1, LLM2, LLM3
-        ]
-
-        # Add all 9 matchups
-        uid_map = {"LLM1": (0, 1), "LLM2": (2, 3), "LLM3": (4, 5)}
-        models = ["LLM1", "LLM2", "LLM3"]
-
-        for i, model_i in enumerate(models):
-            for j, model_j in enumerate(models):
-                row_payoff, col_payoff = bimatrix[i][j]
-                uid_i = uid_map[model_i][0]
-                uid_j = uid_map[model_j][1] if i == j else uid_map[model_j][0]
-
-                moves = [
-                    make_move(uid_i, row_payoff, MockAction.HOLD),
-                    make_move(uid_j, col_payoff, MockAction.PASS),
-                ]
-                payoffs.add_profile([moves])
-
-        return payoffs
+from tests.fakes.general_fakes import FakeAction, FakeAgent
+from tests.fakes.fake_move import FakeMove
+from tests.fakes.fake_mechanism import FakeMechanism
 
 
 class TestReplicatorDynamics(unittest.TestCase):
     """Test discrete replicator dynamics with different initial distributions."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """Set up the agents and the payoff matrix data."""
+
         self.agent_cfgs = [
             {"llm": {"model": "LLM1"}},
             {"llm": {"model": "LLM2"}},
             {"llm": {"model": "LLM3"}},
         ]
-        self.mechanism = DummyMechanism()
+
+        # 2. Create the Agents manually (Source of Truth)
+        self.players = []
+        for i, cfg in enumerate(self.agent_cfgs):
+            self.players.append(
+                FakeAgent(uid=i, model_type=cfg["llm"]["model"])
+            )
+
+        # 3. Build the Payoff Table externally
+        self.precomputed_payoffs = self._construct_bimatrix_payoffs()
+        self.mechanism = FakeMechanism(
+            precomputed_payoffs=self.precomputed_payoffs
+        )
+
+    def _construct_bimatrix_payoffs(self) -> PopulationPayoffs:
+        """Helper to construct the 3x3 Rock-Paper-Scissors style matrix."""
+        payoffs = PopulationPayoffs(players=self.players)
+
+        # Matrix Definition:
+        #               FakeAgent1      FakeAgent2      FakeAgent3
+        # FakeAgent1: (1,1)          (0.5,2)          (0,0)
+        # FakeAgent2: (2,0.5)        (0,0)            (0,0)
+        # FakeAgent3: (0,0)          (0,0)            (2,2)
+        moves_over_rounds = [
+            [
+                FakeMove(uid=0, points=1.0, action=FakeAction.HOLD),
+                FakeMove(uid=1, points=1.0, action=FakeAction.PASS),
+            ],
+        ]
+
+        for i, model_i in enumerate(players_by_model.keys()):
+            for j, model_j in enumerate(players_by_model.keys()):
+                row_val, col_val = bimatrix[i][j]
+
+                # Select distinct agents
+                if model_i == model_j:
+                    p1 = players_by_model[model_i][0]
+                    p2 = players_by_model[model_i][1]
+                else:
+                    p1 = players_by_model[model_i][0]
+                    p2 = players_by_model[model_j][0]
+
+                moves = [
+                    make_fake_move(p1.uid, row_val, FakeAction.HOLD),
+                    make_fake_move(p2.uid, col_val, FakeAction.PASS),
+                ]
+                payoffs.add_profile([moves])
+
+        return payoffs
 
     def test_uniform_start(self):
         """Test starting from uniform distribution."""
@@ -82,41 +79,38 @@ class TestReplicatorDynamics(unittest.TestCase):
         dynamics = DiscreteReplicatorDynamics(
             agent_cfgs=self.agent_cfgs, mechanism=self.mechanism
         )
+
         history = dynamics.run_dynamics(
             initial_population="uniform", steps=100, lr_nu=0.1
         )
 
-        # Check initial distribution is uniform
         self.assertTrue(
             np.allclose(
                 [history[0]["LLM1"], history[0]["LLM2"], history[0]["LLM3"]],
                 [1 / 3, 1 / 3, 1 / 3],
             )
         )
-
-        print(f"Initial: {history[0]}")
-        print(f"Final:   {history[-1]}")
+        print(f"Final Distribution: {history[-1]}")
 
     def test_closetollm1_start(self):
-        """Test starting from LLM1 only."""
+        """Test starting from LLM1 skewed distribution."""
         print("\n=== LLM1 Start ===")
         dynamics = DiscreteReplicatorDynamics(
             agent_cfgs=self.agent_cfgs, mechanism=self.mechanism
         )
+
+        target_init = np.array([0.9, 0.05, 0.05])
         history = dynamics.run_dynamics(
-            initial_population=np.array([0.9, 0.05, 0.05]), steps=100, lr_nu=0.1
+            initial_population=target_init, steps=100, lr_nu=0.1
         )
 
-        # Check initial distribution is all LLM1
         self.assertTrue(
             np.allclose(
                 [history[0]["LLM1"], history[0]["LLM2"], history[0]["LLM3"]],
-                [0.9, 0.05, 0.05],
+                target_init,
             )
         )
-
-        print(f"Initial: {history[0]}")
-        print(f"Final:   {history[-1]}")
+        print(f"Final Distribution: {history[-1]}")
 
 
 if __name__ == "__main__":

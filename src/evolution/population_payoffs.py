@@ -52,8 +52,8 @@ class PopulationPayoffs:
         }
 
         # Storage: Map sorted UIDs to a list of match arrays.
-        # Structure: { (1, 2): [ Array(Rounds, Players), ... ] }
-        self._profiles: dict[ProfileKey, np.ndarray] = defaultdict(list)
+        # Structure: { (1, 2): [ ndarray(Point1, Points2, ...), ... ] }
+        self._profiles: dict[ProfileKey, list[np.ndarray]] = defaultdict(list)
 
         # Cached payoff tensor (populated by build_payoff_tensor)
         self._payoff_tensor: np.ndarray | None = None
@@ -64,45 +64,39 @@ class PopulationPayoffs:
         self._profiles.clear()
 
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
-        """Record a single matchup outcome.
+        """
+        Record match outcomes.
 
-        Args:
-            moves_over_rounds: List of Move objects, organized by round.
+        The call to this method should be intended to record all the entire sequence of matches, included repetitive rounds.
+        Multiple calls to this method should be intended for averaging over multiple independent batches of matches.
         """
         if not moves_over_rounds:
             raise ValueError("Cannot add empty moves list to payoff table")
 
-        # 1. Determine the key (Canonical Sorted Order)
-        # We assume moves_over_rounds[0] contains all players present in the match.
-        uids_in_match = {int(move.uid) for move in moves_over_rounds[0]}
-        # Sort to ensure column 0 is always lowest UID, column 1 is next, etc.
-        key: ProfileKey = tuple(sorted(uids_in_match))
+        # Since moves_over_rounds could contain different matchup profiles,
+        # we need to accumulate them first by profile key.
+        match_accumulator: dict[ProfileKey, list[list[float]]] = defaultdict(
+            list
+        )
 
-        # 2. Extract points into a shape (num_rounds, num_players)
-        # We must respect the sorted order of 'key' when extracting points.
-        round_points = []
         for round_moves in moves_over_rounds:
-            # Create a quick lookup for this round
-            uid_lookup = {int(m.uid): float(m.points) for m in round_moves}
-            try:
-                # Extract points in the strict order of 'key'
-                ordered_points = [uid_lookup[uid] for uid in key]
-            except KeyError as e:
-                raise ValueError(
-                    f"Inconsistent player UIDs across rounds. Missing: {e}"
-                ) from e
-            round_points.append(ordered_points)
+            round_data = {int(m.uid): float(m.points) for m in round_moves}
+            key = tuple(sorted(round_data.keys()))
+            ordered_points = [round_data[uid] for uid in key]
+            match_accumulator[key].append(ordered_points)
 
-        # 3. Store
-        self._profiles[key].append(np.array(round_points, dtype=float))
+        # Final Commit: Convert accumulated lists to arrays and store
+        for key, history_list in match_accumulator.items():
+            match_array = np.array(history_list, dtype=float)
+            self._profiles[key].append(match_array)
 
     def _compute_discounted_average(self, payoffs: np.ndarray) -> np.ndarray:
-        """Apply geometric discounting to a 3D payoff array (Matches, Rounds, Players).
+        """Apply geometric discounting to a 2D payoff array (Rounds, Players).
 
         Returns:
-            2D array of shape (Matches, Players)
+            1D array of shape (Players,)
         """
-        _, num_rounds, _ = payoffs.shape
+        num_rounds, _ = payoffs.shape
         d = self.discount
 
         if num_rounds == 0:
@@ -127,7 +121,7 @@ class PopulationPayoffs:
 
         # Broadcasting weights: (num_rounds, 1) to multiply against (matches, rounds, players)
         # We sum over axis 1 (rounds)
-        weighted_sums = np.sum(payoffs * weights[None, :, None], axis=1)
+        weighted_sums = np.sum(payoffs * weights[:, None], axis=0)
 
         return weighted_sums
 
@@ -137,17 +131,18 @@ class PopulationPayoffs:
         """
 
         aggregated_payoffs: dict[str, list[float]] = defaultdict(list)
-        for uids, payoffs in self._profiles.items():
-            # Distribute the weighted payoff to each model type involved
-            for uid, payoff in zip(uids, self._compute_discounted_average(payoffs)):
-                model_type = self._uid_to_model[uid]
-                aggregated_payoffs[model_type].append(payoff)
-
-        average_payoff = {
-            model_type: float(np.mean(np.array(payoffs)))
-            for model_type, payoffs in aggregated_payoffs.items()
+        for uids, payoff_list in self._profiles.items():
+            for rounds_payoff in payoff_list:
+                discounted_score = self._compute_discounted_average(
+                    rounds_payoff
+                )
+                for i, uid in enumerate(uids):
+                    model_type = self._uid_to_model[uid]
+                    aggregated_payoffs[model_type].append(discounted_score[i])
+        return {
+            model_type: float(np.mean(np.array(scores)))
+            for model_type, scores in aggregated_payoffs.items()
         }
-        return average_payoff
 
     def build_payoff_tensor(self) -> None:
         """
@@ -174,7 +169,7 @@ class PopulationPayoffs:
             # Get model types for each UID
             models = [self._uid_to_model[uid] for uid in uids]
             # Average payoffs per model type
-            avg_per_uid = self._compute_discounted_average(payoffs_array)
+            avg_per_uid = np.mean([self._compute_discounted_average(arr) for arr in payoffs_array], axis=0)
             model_payoffs = defaultdict(list)
             for uid, payoff in zip(uids, avg_per_uid):
                 model_payoffs[self._uid_to_model[uid]].append(payoff)

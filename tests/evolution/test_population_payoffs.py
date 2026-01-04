@@ -1,5 +1,4 @@
 import unittest
-import numpy as np
 
 from src.evolution.population_payoffs import PopulationPayoffs
 from tests.fakes.general_fakes import FakeAgent, FakeAction, make_fake_move
@@ -68,7 +67,7 @@ class TestPopulationPayoffs(unittest.TestCase):
         averages = payoffs.model_average_payoff()
 
         # Assert
-        # See calculation in setUp comments
+        #
         self.assertAlmostEqual(averages["model_a"], 3.0)
         self.assertAlmostEqual(averages["model_b"], 2.5)
 
@@ -98,9 +97,8 @@ class TestPopulationPayoffs(unittest.TestCase):
         payoffs.build_payoff_tensor()
 
         # Act
-        # Fitness = Payoff * Probability
-        # A: 3.0 * 0.6 = 1.8
-        # B: 2.5 * 0.4 = 1.0
+        # A: 3.0
+        # B: 2.5
         fitness = payoffs.fitness({"model_a": 0.6, "model_b": 0.4})
 
         # Assert
@@ -174,24 +172,6 @@ class TestPopulationPayoffs(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             payoffs.add_profile([])
-
-    def test_add_profile_handles_inconsistent_uids(self) -> None:
-        """Test that providing moves for uids not in the first round raises error."""
-        payoffs = PopulationPayoffs(
-            players=self.players, discount=self.discount
-        )
-
-        # Round 1 has agent 1 and 2. Round 2 has only agent 1.
-        bad_profile = [
-            [make_fake_move(1, 10), make_fake_move(2, 10)],
-            [make_fake_move(1, 10)],
-        ]
-
-        with self.assertRaises(ValueError) as cm:
-            payoffs.add_profile(bad_profile)
-
-        self.assertIn("Inconsistent player UIDs", str(cm.exception))
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -66,10 +66,13 @@ class Mechanism(ABC):
                 pbar.set_postfix_str(matchup_label, refresh=False)
                 t0 = time.perf_counter()
 
-                self._play_matchup(seat_players, payoffs)
+                match_moves = self._play_matchup(seat_players)
+                payoffs.add_profile(match_moves)
+
                 if self.base_game.__class__.__name__ == "TrustGame":
-                    # Trust game is asymmetric, so also play the reverse
-                    self._play_matchup(seat_players[::-1], payoffs)
+                    # Play the reverse and record those moves separately
+                    reverse_moves = self._play_matchup(seat_players[::-1])
+                    payoffs.add_profile(reverse_moves)
 
                 dt = time.perf_counter() - t0
                 if first_duration is None:
@@ -84,9 +87,7 @@ class Mechanism(ABC):
         return payoffs
 
     @abstractmethod
-    def _play_matchup(
-        self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    ) -> None:
+    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """Play match(es) between the given players."""
         raise NotImplementedError
 
