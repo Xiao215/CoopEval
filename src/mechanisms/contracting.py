@@ -6,7 +6,7 @@ from typing import Sequence
 
 from src.agents.agent_manager import Agent
 from src.ranking_evaluations.population_payoffs import PopulationPayoffs
-from src.games.base import Game
+from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
 from src.mechanisms.prompts import (
@@ -17,6 +17,7 @@ from src.mechanisms.prompts import (
 from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
+# Adjust just like mediation
 
 class Contracting(Mechanism):
     """Mechanism where players negotiate and optionally sign payoff contracts."""
@@ -173,12 +174,15 @@ class Contracting(Mechanism):
         )
         return super().run_tournament(agent_cfgs)
 
-    def _play_matchup(
-        self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    ) -> None:
-        """Have each designer propose a contract and play the base game."""
+    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
+        """Have each designer propose a contract and play the base game.
 
-        history = []
+        Returns:
+            A list of move sequences (one sequence per designer's contract round).
+        """
+        records = []
+        matchup_moves = []
+
         for designer in players:
             record = {
                 "designer": designer.name,
@@ -210,25 +214,32 @@ class Contracting(Mechanism):
                 )
                 additional_info = [contract_prompt] * len(players)
             else:
-                additional_info = ["None."]
+                additional_info = ["None."] * len(players)
 
             moves = self.base_game.play(
                 additional_info=additional_info,
                 players=players,
             )
+
+            # Record keeping for the JSON log
             record["moves"] = [
                 {
                     "uid": move.uid,
                     "player_name": move.player_name,
-                    "action": move.action.value
-                    if hasattr(move.action, "value")
-                    else str(move.action),
+                    "action": (
+                        move.action.value
+                        if hasattr(move.action, "value")
+                        else str(move.action)
+                    ),
                     "points": move.points,
                     "response": move.response,
                 }
                 for move in moves
             ]
-            payoffs.add_profile([moves])
-            history.append(record)
 
-        LOGGER.log_record(record=history, file_name=self.record_file)
+            matchup_moves.append(moves)
+            records.append(record)
+
+        LOGGER.log_record(record=records, file_name=self.record_file)
+
+        return matchup_moves

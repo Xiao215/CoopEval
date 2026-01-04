@@ -2,7 +2,7 @@ import unittest
 from itertools import combinations
 
 from src.utils.round_robin import RoundRobin
-from tests.fakes.general_fakes import MockAgent
+from tests.fakes.general_fakes import FakeAgent
 
 # Assuming your class is in a file named tournament.py
 # from tournament import RoundRobin
@@ -12,8 +12,8 @@ class TestRoundRobin(unittest.TestCase):
 
     def setUp(self):
         """Setup common test data."""
-        self.even_players = [MockAgent(i) for i in range(4)]  # 4 Players
-        self.odd_players = [MockAgent(i) for i in range(5)]  # 5 Players
+        self.even_players = [FakeAgent(i) for i in range(4)]  # 4 Players
+        self.odd_players = [FakeAgent(i) for i in range(5)]  # 5 Players
 
     def _get_all_matches(self, schedule):
         """Helper to flatten the schedule into a list of sorted match tuples."""
@@ -31,7 +31,7 @@ class TestRoundRobin(unittest.TestCase):
         - 2 matches per round.
         - Everyone plays everyone else exactly once.
         """
-        scheduler = RoundRobin(self.even_players, k_size=2)
+        scheduler = RoundRobin(self.even_players, group_size=2)
         schedule = scheduler.generate_schedule(randomize_order=False)
 
         # 1. Check Round Count
@@ -73,7 +73,7 @@ class TestRoundRobin(unittest.TestCase):
         - 2 matches per round (1 player sits out/BYE).
         - Everyone plays everyone else exactly once.
         """
-        scheduler = RoundRobin(self.odd_players, k_size=2)
+        scheduler = RoundRobin(self.odd_players, group_size=2)
         schedule = scheduler.generate_schedule(randomize_order=False)
 
         # 1. Check Round Count
@@ -96,7 +96,7 @@ class TestRoundRobin(unittest.TestCase):
         """
         CRITICAL: Ensure a player never appears twice in the same round.
         """
-        scheduler = RoundRobin(self.odd_players, k_size=2)
+        scheduler = RoundRobin(self.odd_players, group_size=2)
         schedule = scheduler.generate_schedule()
 
         for round_idx, round_matches in enumerate(schedule):
@@ -117,7 +117,7 @@ class TestRoundRobin(unittest.TestCase):
         Expectation: Every unique triplet combination occurs eventually.
         """
         k = 3
-        scheduler = RoundRobin(self.odd_players, k_size=k)
+        scheduler = RoundRobin(self.odd_players, group_size=k)
         schedule = scheduler.generate_schedule()
 
         flat_matches = self._get_all_matches(schedule)
@@ -136,7 +136,7 @@ class TestRoundRobin(unittest.TestCase):
         Verify that randomize_order=False is reproducible,
         and randomize_order=True changes structure.
         """
-        scheduler = RoundRobin(self.even_players, k_size=2)
+        scheduler = RoundRobin(self.even_players, group_size=2)
 
         # Deterministic check
         sched1 = scheduler.generate_schedule(randomize_order=False)

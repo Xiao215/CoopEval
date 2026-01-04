@@ -5,8 +5,7 @@ import re
 from typing import Any, Sequence
 
 from src.agents.agent_manager import Agent
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
-from src.games.base import Game
+from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
 from src.mechanisms.prompts import (
@@ -181,15 +180,25 @@ class Disarmament(RepetitiveMechanism):
             for player, result in zip(negotiable_players, results, strict=True)
         }
 
-    def _play_matchup(
-        self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    ) -> None:
+    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
+        """
+        Run the disarmament negotiation rounds.
 
+        Returns:
+            A list of move sequences (one sequence per round played).
+        """
+        # Ensure we start with fresh caps for this specific match
         disarmed_cap: CapsByPlayer = {
             player.uid: [100.0 for _ in range(self.base_game.num_actions)]
             for player in players
         }
+
         disarmament_records: list[list[dict[str, Any]]] = []
+        matchup_moves = []
+
+        # Note: If self.history persists across matches, ensure it is cleared here
+        # or managed externally. For safety, we just track local moves for the return.
+
         for _ in range(self.num_rounds):
             self.current_disarm_caps = disarmed_cap
 
@@ -240,9 +249,11 @@ class Disarmament(RepetitiveMechanism):
                         **r,
                         "uid": m.uid,
                         "player_name": m.player_name,
-                        "action": m.action.value
-                        if hasattr(m.action, "value")
-                        else str(m.action),
+                        "action": (
+                            m.action.value
+                            if hasattr(m.action, "value")
+                            else str(m.action)
+                        ),
                         "points": m.points,
                         "response": m.response,
                         "match_id": "|".join(sorted(p.name for p in players)),
@@ -250,12 +261,16 @@ class Disarmament(RepetitiveMechanism):
                     for r, m in zip(round_records, moves)
                 ]
             )
+
             self.history.append(moves)
+            matchup_moves.append(moves)
 
             disarmed_cap = new_disarmed_cap
             if not negotiation_continue:
                 break
-        payoffs.add_profile([list(r) for r in self.history.records])
+
         LOGGER.log_record(
             record=disarmament_records, file_name=self.record_file
         )
+
+        return matchup_moves

@@ -131,6 +131,7 @@ class Repetition(RepetitiveMechanism):
                 other.name, lookback_rounds=history_size
             )
             if prior_dist:
+                # TODO: dont directly say their name
                 recent_history.append(
                     f"{global_names[other.uid]}'s action counts from before these {history_size} recent round(s):"
                 )
@@ -165,15 +166,16 @@ class Repetition(RepetitiveMechanism):
             payload.append(round_payload)
         return payload
 
-    def _play_matchup(
-        self, players: Sequence[Agent], payoffs: PopulationPayoffs
-    ) -> None:
+    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """Repeat the base game for a specified number of repetitions.
 
         Returns:
-            final_score (dict[str, float]): A dictionary mapping player names to
-            their final scores after all rounds.
+            records: A list of lists, where each inner list contains the Moves
+            for that specific round.
         """
+        # Clear history to ensure we start fresh for this specific matchup
+        # (Assuming self.history has a clear/reset method, or acts as a fresh buffer)
+        # If your History class persists, ensure it is reset here if needed.
 
         for round_idx in tqdm(
             range(1, self.num_rounds + 1),
@@ -187,8 +189,13 @@ class Repetition(RepetitiveMechanism):
                 players=players,
             )
             self.history.append(moves)
+
+        # Convert history records to a standard list of lists
         records: list[list[Move]] = [list(r) for r in self.history.records]
+
+        # Log the interaction to file
         LOGGER.log_record(
             record=self._serialize_records(records), file_name=self.record_file
         )
-        payoffs.add_profile(records)
+
+        return records
