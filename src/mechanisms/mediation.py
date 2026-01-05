@@ -104,7 +104,7 @@ class Mediation(Mechanism):
             )
         return "\n".join(lines)
 
-    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
         agents = [create_agent(cfg) for cfg in agent_cfgs]
 
         def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, int]]:
