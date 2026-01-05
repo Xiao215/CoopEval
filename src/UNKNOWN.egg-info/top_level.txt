@@ -1,9 +1,0 @@
-__init__
-agents
-games
-logger_manager
-mechanisms
-plot
-ranking_evaluations
-registry
-utils
