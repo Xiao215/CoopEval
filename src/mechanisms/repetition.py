@@ -3,7 +3,6 @@ from typing import Sequence
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
@@ -147,7 +146,7 @@ class Repetition(RepetitiveMechanism):
 
     @staticmethod
     def _serialize_records(
-        records: Sequence[Sequence[Move]],
+        records: list[list[Move]],
     ) -> list[list[dict]]:
         payload: list[list[dict]] = []
         for round_moves in records:
@@ -157,9 +156,12 @@ class Repetition(RepetitiveMechanism):
                     {
                         "uid": move.uid,
                         "player_name": move.player_name,
-                        "action": move.action.value
-                        if hasattr(move.action, "value")
-                        else str(move.action),                        "points": move.points,
+                        "action": (
+                            move.action.value
+                            if hasattr(move.action, "value")
+                            else str(move.action)
+                        ),
+                        "points": move.points,
                         "response": move.response,
                     }
                 )

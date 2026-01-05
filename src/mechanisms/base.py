@@ -5,7 +5,7 @@ import itertools
 import random
 import time
 from abc import ABC, abstractmethod
-from typing import Sequence, Iterator
+from typing import Iterator, Sequence
 
 from tqdm import tqdm
 
@@ -23,12 +23,10 @@ class Mechanism(ABC):
 
         self.record_file = f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
 
-    def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
+    def _build_payoffs(self, players: list[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players)
 
-    def _create_players_from_cfgs(
-        self, agent_cfgs: Sequence[dict]
-    ) -> list[Agent]:
+    def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
         """Create players from the given agent configurations."""
         players = [
             create_agent(cfg)
@@ -37,7 +35,7 @@ class Mechanism(ABC):
         ]
         return players
 
-    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
         """Run the mechanism over the base game across all players."""
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
