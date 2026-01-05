@@ -62,6 +62,8 @@ class PopulationPayoffs:
     def reset(self) -> None:
         """Clear all recorded matchup outcomes."""
         self._profiles.clear()
+        self._payoff_tensor = None
+        self._tensor_model_types = None
 
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
         """
