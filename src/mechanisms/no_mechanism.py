@@ -10,5 +10,5 @@ class NoMechanism(Mechanism):
 
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """Run the base game without any modifications."""
-        moves = self.base_game.play(additional_info="None.", players=players)
+        moves = self.base_game.play(additional_info="", players=players)
         return [moves]

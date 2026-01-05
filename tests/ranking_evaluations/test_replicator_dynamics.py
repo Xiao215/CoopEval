@@ -4,12 +4,19 @@ import unittest
 import numpy as np
 from typing import Sequence
 
-from src.evolution.replicator_dynamics import DiscreteReplicatorDynamics
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import Mechanism
 from tests.fakes.general_fakes import FakeAction, FakeAgent
 from tests.fakes.fake_move import FakeMove
 from tests.fakes.fake_mechanism import FakeMechanism
+
+
+bimatrix = [
+    [(1, 1), (0.5, 2), (0, 0)],  # LLM1 vs LLM1, LLM2, LLM3
+    [(2, 0.5), (0, 0), (0, 0)],  # LLM2 vs LLM1, LLM2, LLM3
+    [(0, 0), (0, 0), (2, 2)],    # LLM3 vs LLM1, LLM2, LLM3
+]
 
 
 class TestReplicatorDynamics(unittest.TestCase):
@@ -90,6 +97,7 @@ class TestReplicatorDynamics(unittest.TestCase):
                 [1 / 3, 1 / 3, 1 / 3],
             )
         )
+        print(f"Initial: {history[0]}")
         print(f"Final Distribution: {history[-1]}")
 
     def test_closetollm1_start(self):
@@ -110,6 +118,7 @@ class TestReplicatorDynamics(unittest.TestCase):
                 target_init,
             )
         )
+        print(f"Initial: {history[0]}")
         print(f"Final Distribution: {history[-1]}")
 
 

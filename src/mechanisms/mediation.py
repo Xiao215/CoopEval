@@ -5,7 +5,7 @@ import re
 from typing import Callable, Sequence
 
 from src.agents.agent_manager import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
@@ -100,7 +100,7 @@ class Mediation(Mechanism):
         for num_delegating, action in mediator.items():
             lines.append(
                 f"\t• If {num_delegating} player(s) delegate to the mediator, "
-                f"it will recommend action A{action}."
+                f"it will play action A{action}."
             )
         return "\n".join(lines)
 

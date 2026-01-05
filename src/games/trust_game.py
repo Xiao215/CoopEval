@@ -10,7 +10,7 @@ from src.games.base import Action, Game, Move
 class TrustGameAction(Action):
     """Available actions for the trust game."""
 
-    INVEST = "I"
+    GIVE = "G"
     KEEP = "K"
 
 
@@ -28,13 +28,14 @@ class TrustGame(Game):
 
         self.prompt_template = textwrap.dedent(
             """
+        Setup:
         You are playing a decision-making game against another player.
-        Your objective is to maximise your points received in the game described below.
+        Your objective is to maximize your points received in the game described below.
 
         Actions:
         {actions_block}
 
-        Game rules:
+        Basic game rules:
         1. You and the opponent each choose a probability for each action, simultaneously.
         2. After both decisions are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff description below.

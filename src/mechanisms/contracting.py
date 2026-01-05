@@ -5,7 +5,7 @@ import re
 from typing import Sequence
 
 from src.agents.agent_manager import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism

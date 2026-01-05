@@ -3,7 +3,7 @@ from typing import Sequence
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
@@ -62,7 +62,7 @@ class Repetition(RepetitiveMechanism):
     ) -> str:
         """Format prompt including every recorded round."""
         global_names = {
-            p.uid: f"Player#{i}" for i, p in enumerate(players, start=1)
+            p.uid: f"PlayerID {i}" for i, p in enumerate(players, start=1)
         }
         lines: list[str] = []
         for past_round_index, round_moves in enumerate(self.history, start=1):
@@ -96,7 +96,7 @@ class Repetition(RepetitiveMechanism):
         if lookup_depth <= 0:
             raise ValueError("lookup_depth must be positive")
         global_names = {
-            p.uid: f"Player#{i}" for i, p in enumerate(players, start=1)
+            p.uid: f"PlayerID {i}" for i, p in enumerate(players, start=1)
         }
         player_name = focus.name
         recent_rounds = self.history.get_prior_rounds(
@@ -157,8 +157,9 @@ class Repetition(RepetitiveMechanism):
                     {
                         "uid": move.uid,
                         "player_name": move.player_name,
-                        "action": str(move.action),
-                        "points": move.points,
+                        "action": move.action.value
+                        if hasattr(move.action, "value")
+                        else str(move.action),                        "points": move.points,
                         "response": move.response,
                     }
                 )

@@ -1,6 +1,6 @@
 import unittest
 
-from src.evolution.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from tests.fakes.general_fakes import FakeAgent, FakeAction, make_fake_move
 
 

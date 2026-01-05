@@ -87,7 +87,7 @@ class Game(ABC):
         - Output must contain a valid JSON object at the end.
         - Keys must be the action names exactly as given.
         - Values must be integers between 0 and 100.
-        - The two values must sum to exactly 100.
+        - The values must sum to exactly 100.
 
         Format requirement:
         Return exactly one JSON object, for example:
@@ -178,30 +178,20 @@ class Game(ABC):
 
         return result
 
-    def _build_retry_prompt(
-        self,
-        bad_response: str,
-        error_reason: str,
-    ) -> str:
-        """Restate base prompt, show prior answer + reason, and add a single-line hint."""
-        br = bad_response.replace("\n", " ")[:500]
-        return (
-            f"{self.default_output_instruction}\n"
-            f"Your previous response was:\n{br}\n"
-            f"That response is INVALID because: {error_reason}\n"
-            f"Please reflect on the error and provide the mixed strategy again based on the previous response!"
-        )
-
     @staticmethod
     def _choose_from_mix_strategy(probs: dict[int, float]) -> int:
         r = random.random() * sum(probs.values())
         acc = 0.0
+        last_key = None
         for k, w in probs.items():
+            last_key = k
             acc += w
             if r <= acc:
                 return k
-        # floating-point edge case fallback
-        return next(reversed(probs))
+        # Floating-point edge case fallback: return last key considered
+        # This ensures we return a valid action even if floating-point errors
+        # prevent exact matching (e.g., r=99.9999... but acc=100.0)
+        return last_key
 
     def _collect_actions(
         self,

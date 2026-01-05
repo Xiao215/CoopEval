@@ -8,7 +8,7 @@ import torch
 import yaml
 
 from config import CONFIG_DIR
-from src.evolution.replicator_dynamics import DiscreteReplicatorDynamics
+from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
 from src.plot import plot_probability_evolution
 from src.registry.game_registry import GAME_REGISTRY
 from src.registry.mechanism_registry import MECHANISM_REGISTRY

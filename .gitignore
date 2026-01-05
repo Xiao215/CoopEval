@@ -1,5 +1,8 @@
 # Our own additions
 testing_logs/
+not_tracked/
+*.egg-info
+*.egg-info/
 
 # Python bytecode
 __pycache__/
