@@ -180,18 +180,9 @@ class Game(ABC):
 
     @staticmethod
     def _choose_from_mix_strategy(probs: dict[int, float]) -> int:
-        r = random.random() * sum(probs.values())
-        acc = 0.0
-        last_key = None
-        for k, w in probs.items():
-            last_key = k
-            acc += w
-            if r <= acc:
-                return k
-        # Floating-point edge case fallback: return last key considered
-        # This ensures we return a valid action even if floating-point errors
-        # prevent exact matching (e.g., r=99.9999... but acc=100.0)
-        return last_key
+        keys = list(probs.keys())
+        weights = list(probs.values())
+        return random.choices(keys, weights=weights, k=1)[0]
 
     def _collect_actions(
         self,
