@@ -117,7 +117,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
         return "\n".join(lines)
 
-    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
 
