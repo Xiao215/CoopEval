@@ -1,6 +1,6 @@
 """Utilities for running discrete-time replicator dynamics tournaments."""
 
-from typing import Literal, Sequence
+from typing import Literal
 
 import numpy as np
 from tqdm import tqdm
@@ -22,7 +22,7 @@ class DiscreteReplicatorDynamics:
 
     def __init__(
         self,
-        agent_cfgs: Sequence[dict],
+        agent_cfgs: list[dict],
         mechanism: Mechanism,
     ) -> None:
         """Bind a population of ``agents`` to a tournament ``mechanism``."""
@@ -108,7 +108,7 @@ class DiscreteReplicatorDynamics:
         population_payoffs.build_payoff_tensor()
 
         model_average_payoff = population_payoffs.model_average_payoff()
-        
+
         # print(f"Population payoffs (JSON): {population_payoffs.to_json()}")
         # print(f"Population payoffs (tensor):\n{population_payoffs._payoff_tensor}")
         # print(f"Model average payoff: {model_average_payoff}")

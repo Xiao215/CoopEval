@@ -163,4 +163,4 @@ class CoTAgent(Agent):
     @property
     def name(self) -> str:
         """Return the name of the agent."""
-        return f"{self.model_type}(CoT)"
+        return f"{self.model_type}(CoT)[#{self.uid}]"
