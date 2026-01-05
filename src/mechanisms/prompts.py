@@ -109,6 +109,28 @@ MEDIATOR_DESIGN_PROMPT = textwrap.dedent(
     """
 )
 
+MEDIATOR_APPROVAL_VOTE_PROMPT = textwrap.dedent(
+    """
+    Here is the twist:
+    On top of the original game instructions, you will have the option to delegate your move to a mediator.
+    If you choose to delegate, the mediator will play an action for you based on how many players have delegated to it.
+    You can also choose to act independently.
+
+    But first, you and the other player have to decide via an approval voting process which mediator will be present in the game. Your task now is to review each mediator and decide which ones you approve of. The winning mediator will be selected uniform at random from those with the maximum number of approvals.
+    
+    Here are the mediator designs that have been proposed:
+    {all_mediators_description}
+
+    Output Format:
+    Return a valid JSON object with your approvals:
+    {{"M1": <true/false>, "M2": <true/false>, ...}}
+
+    - Keys: mediator identifiers (e.g., "M1", "M2", ...)
+    - Values: `true` if you approve, `false` if you don't
+    - Ensure all mediators have an entry
+    """
+)
+
 MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
@@ -122,6 +144,7 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
     Consider A{additional_action_id} as an additional action "Delegate to Mediator". Your final mixed strategy should include probability for all actions A0, A1, ..., A{additional_action_id}.
     """
 )
+
 
 # Repetition mechanism prompts
 REPETITION_MECHANISM_PROMPT = textwrap.dedent(
