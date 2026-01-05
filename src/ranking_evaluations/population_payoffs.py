@@ -10,6 +10,7 @@ import numpy as np
 
 from src.agents.agent_manager import Agent
 from src.games.base import Move
+from src.registry.agent_registry import create_agent
 
 ProfileKey: TypeAlias = tuple[int, ...]
 
@@ -50,6 +51,7 @@ class PopulationPayoffs:
         self._uid_to_model: dict[int, str] = {
             int(p.uid): str(p.model_type) for p in players
         }
+        self._player_configs = [p.get_agent_config() for p in players]
 
         # Storage: Map sorted UIDs to a list of match arrays.
         # Structure: { (1, 2): [ ndarray(Point1, Points2, ...), ... ] }
@@ -297,8 +299,8 @@ class PopulationPayoffs:
     def to_json(self) -> dict[str, Any]:
         """Serialize payoff records.
 
-        Note: We store the current uid_to_model mapping in the JSON
-        purely for debugging/inspection purposes. It is ignored by from_json.
+        Note: We store the current uid_to_model mapping and player configs
+        in the JSON so from_json can reconstruct when players are not provided.
         """
         serialized_matches = []
 
@@ -310,6 +312,7 @@ class PopulationPayoffs:
 
         return {
             "discount": self.discount,
+            "player_configs": self._player_configs,
             "debug_uids_map": {
                 str(k): v for k, v in self._uid_to_model.items()
             },  # for debugging only
@@ -319,23 +322,16 @@ class PopulationPayoffs:
     @classmethod
     def from_json(
         cls,
-        payload: dict[str, Any],
-        players: Sequence[Agent],
+        json_data: dict[str, Any],
     ) -> "PopulationPayoffs":
-        """Reconstruct instance from JSON.
-
-        Args:
-            payload: The JSON data.
-            players: The list of agents. This is REQUIRED to reconstruct
-                     the uid-to-model mapping.
-        """
-        # We ignore 'debug_uids_map' from JSON and strictly use 'players'
+        """Reconstruct instance from JSON."""
+        players = [create_agent(cfg) for cfg in json_data["player_configs"]]
         instance = cls(
             players=players,
-            discount=payload.get("discount"),
+            discount=json_data["discount"],
         )
 
-        for entry in payload.get("matchups", []):
+        for entry in json_data.get("matchups", []):
             uids = tuple(sorted(entry["uids"]))
             raw_payoffs = entry["payoffs"]
             restored_arrays = [np.array(p, dtype=float) for p in raw_payoffs]

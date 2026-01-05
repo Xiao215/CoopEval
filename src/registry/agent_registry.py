@@ -12,6 +12,6 @@ def create_agent(agent_config: dict) -> Agent:
     if agent_class is None:
         raise ValueError(f"Unknown agent type: {agent_config['type']}")
 
-    agent = agent_class(llm_config=agent_config["llm"])
+    agent = agent_class(agent_config=agent_config)
 
     return agent

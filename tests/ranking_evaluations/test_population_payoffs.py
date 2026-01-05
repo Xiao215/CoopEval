@@ -9,8 +9,8 @@ class TestPopulationPayoffs(unittest.TestCase):
         self.discount = 0.5
 
         # Define Agents (The source of truth)
-        self.agent_1 = FakeAgent(uid=1, model_type="model_a")
-        self.agent_2 = FakeAgent(uid=2, model_type="model_b")
+        self.agent_1 = FakeAgent({"model": "model_a", "uid": 1})
+        self.agent_2 = FakeAgent({"model": "model_b", "uid": 2})
         self.players = [self.agent_1, self.agent_2]
 
         # Profile 1: 3 rounds
@@ -150,10 +150,7 @@ class TestPopulationPayoffs(unittest.TestCase):
         self.assertEqual(len(stored_matchup["payoffs"]), 2)
 
         # Act: Reconstruct
-        # NOTE: We must provide players to from_json now!
-        reconstructed = PopulationPayoffs.from_json(
-            payload, players=self.players
-        )
+        reconstructed = PopulationPayoffs.from_json(payload)
         reconstructed_average = reconstructed.model_average_payoff()
 
         # Assert Logic Preservation

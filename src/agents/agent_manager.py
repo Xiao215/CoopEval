@@ -41,15 +41,24 @@ class Agent(ABC):
     llm_manager = LLMManager()
     _instance_counter = itertools.count(1)
 
-    def __init__(self, llm_config: dict) -> None:
+    def __init__(self, agent_config: dict) -> None:
+        llm_config = agent_config["llm"]
         self.model_type = llm_config["model"]
         self.kwargs = llm_config.get("kwargs", {})
         self.pipeline = type(self).llm_manager.get_llm(
             self.model_type, llm_config["provider"]
         )
 
-        # Agent uid is unique across all models and types
-        self.uid = next(type(self)._instance_counter)
+        if llm_config.get("uid") is None:
+            self.uid = next(type(self)._instance_counter)
+            llm_config["uid"] = self.uid
+        else:
+            # UID is provided only for reconstructing from a prior run
+            self.uid = int(llm_config["uid"])
+            next_uid = next(type(self)._instance_counter)
+            while next_uid <= self.uid:
+                next_uid = next(type(self)._instance_counter)
+        self.agent_config = agent_config
 
     @abstractmethod
     def chat(
@@ -115,6 +124,10 @@ class Agent(ABC):
     def name(self) -> str:
         """Return the name of the agent."""
         raise NotImplementedError
+
+    def get_agent_config(self) -> dict:
+        """Return the LLM configuration dictionary for this agent."""
+        return self.agent_config
 
     def __str__(self):
         return self.name

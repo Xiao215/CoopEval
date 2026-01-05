@@ -27,7 +27,7 @@
 
 # class TestRepetitionMechanism(unittest.TestCase):
 #     def setUp(self) -> None:
-#         self.players = [FakeAgent(1), FakeAgent(2)]
+#         self.players = [FakeAgent({"uid": 1}), FakeAgent({"uid": 2})]
 #         self.base_game = ScriptedGame(
 #             num_players=len(self.players),
 #             rounds=[

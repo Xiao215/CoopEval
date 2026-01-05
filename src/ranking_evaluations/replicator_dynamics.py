@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.logger_manager import LOGGER
-from src.mechanisms.base import Mechanism
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 
 
 class DiscreteReplicatorDynamics:
@@ -23,11 +23,12 @@ class DiscreteReplicatorDynamics:
     def __init__(
         self,
         agent_cfgs: list[dict],
-        mechanism: Mechanism,
+        *,
+        population_payoffs: PopulationPayoffs | None = None,
     ) -> None:
-        """Bind a population of ``agents`` to a tournament ``mechanism``."""
-        self.mechanism = mechanism
+        """Bind a population of ``agents`` to the tournament payoffs."""
         self.agent_cfgs = agent_cfgs
+        self.population_payoffs = population_payoffs
 
     def population_update(
         self,
@@ -58,6 +59,7 @@ class DiscreteReplicatorDynamics:
         *,
         lr_method: Literal["constant", "sqrt"] = "constant",
         lr_nu: float = 0.1,
+        population_payoffs: PopulationPayoffs | None = None,
     ) -> list[dict[str, float]]:
         """
         Run the multiplicative weights dynamics for a specified number of steps.
@@ -102,10 +104,14 @@ class DiscreteReplicatorDynamics:
             {model: float(prob) for model, prob in zip(model_types, population)}
         ]
 
-        population_payoffs = self.mechanism.run_tournament(
-            agent_cfgs=self.agent_cfgs
-        )
-        population_payoffs.build_payoff_tensor()
+        population_payoffs = population_payoffs or self.population_payoffs
+        if population_payoffs is None:
+            raise ValueError(
+                "Population payoffs must be provided before running dynamics."
+            )
+
+        if population_payoffs._payoff_tensor is None:
+            population_payoffs.build_payoff_tensor()
 
         model_average_payoff = population_payoffs.model_average_payoff()
 
