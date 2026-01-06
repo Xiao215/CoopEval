@@ -5,49 +5,65 @@ import textwrap
 # Contracting mechanism prompts
 CONTRACT_DESIGN_PROMPT = textwrap.dedent(
     """
-    Instruction:
-    You are tasked with designing a **contract** for this game.
-    - A contract is an extra payoff agreement.
-    - Each player may choose to sign it or not.
-    - The contract is valid only if all players sign.
-    - For each action:
-        * Positive number (+): the player receives X payoff from others.
-        * Negative number (-): the player pays Y payoff to others.
-        * Zero (0): no extra payoff.
-    - Goal: maximize the total payoff for all players if the contract is signed.
+    Here is the twist:
+    There will be the option for a payment contract in this game, and your task now is to design and propose one.
 
-    Output Requirement:
-    - Return exactly **one valid Python dictionary** on a single line.
-    - Format: {"A0": <INT>, "A1": <INT>, ...}
+    - A contract is an additional payoff agreement on top of the original game payoffs. It specifies a number for each action that a player can play, indicating one of three cases:
+        * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other players.
+        * Negative number (-): the player pays an additional payment of Y points in total, distributed equally among the other players.
+        * Zero (0): no additional payments in either direction.    
+    - Each player may choose to accept the contract as a whole or not.
+    - The contract becomes active only if all players accept.
+
+    The other players will also design and propose a contract. Only one will be present in the game though. Which one this is will be decided in a separate step later via an approval voting process by you and the other players. The winning contract will be selected uniform at random from those with the maximum number of approvals.
+
+    Output Format:
+    Return a valid JSON object in a single line:
+    {{"A0": <INT>, "A1": <INT>, ...}}
+
     - Keys: all available game actions.
     - Values: integers representing the extra payoff for that action.
-    - Ensure the dictionary is syntactically valid Python.
     """
 )
 
 CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
     """
-    Contract Rule:
-    On top of the original game instructions, you have the option to sign a contract.
-    A contract is an extra payoff agreement that is valid only if all players sign.
+    Here is the twist:
+    On top of the original game rules, you have the option to sign a payment contract. The contract specifies a number for each action that a player can play, indicating one of three cases:
+        * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other players.
+        * Negative number (-): the player pays an additional payment of Y points in total, distributed equally among the other players.
+        * Zero (0): no additional payments in either direction.  
+
     Here is the contract:
     {contract_description}
 
+    At this stage, you are asked to decide whether to sign the contract. The contract becomes active only if all players sign it.
+
     Output Requirement:
     - Respond with a valid JSON object.
-    - Format: {"sign": <BOOL>} where <BOOL> is true or false.
+    - Format: {{"sign": <BOOL>}} where <BOOL> is true or false.
     """
 )
 
 CONTRACT_MECHANISM_PROMPT = textwrap.dedent(
     """
-    Contract Rule:
-    On top of the original game instructions, everyone has agreed to sign a contract.
-    Here is the contract:
+    Here is the twist:
+    On top of the original game rules, there is a payment contract in place because every player signed it in beforehand. Here is the contract:
     {contract_description}
 
-    Since this contract directly change your final payoff,
-    consider the contract when making your decision for the strategy!
+    Since this contract directly affects your final payoff, consider the contract when making your strategy decisions!
+    """
+)
+
+CONTRACT_REJECTION_PROMPT = textwrap.dedent(
+    """
+    Here is the twist:
+    On top of the original game rules, a payment contract was proposed to the players. It is NOT activate though because some players rejected it. Here is the proposed contract:
+    {contract_description}
+
+    The number of players who rejected it is {num_rejectors}.
+
+    You will now play the original game without any contract modifications.
     """
 )
 
@@ -99,20 +115,21 @@ MEDIATOR_DESIGN_PROMPT = textwrap.dedent(
     - Each player may choose to delegate their move to the mediator or act independently.
     - The mediator observes the number of players delegating to the mediator and then plays the same action for all delegating players.
 
+    The other players will also design and propose a mediator. Only one will be present in the game though. Which one this is will be decided in a separate step later via an approval voting process by you and the other players. The winning mediator will be selected uniform at random from those with the maximum number of approvals.
+
     Output Format:
-    Return a valid json in a single line:
+    Return a valid JSON object in a single line:
     {{"1": <Action>, ..., "{num_players}": <Action>}} where <Action> is a string like "A0", "A1" ...
 
     - Keys: the number of players delegating (from 1 to {num_players}).
     - Values: the action the mediator will play on behalf of delegating players (e.g., "A0" or "A1" etc.).
-    - Ensure the dictionary is syntactically valid in Python.
     """
 )
 
 MEDIATOR_APPROVAL_VOTE_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game instructions, you will have the option to delegate your move to a mediator.
+    On top of the original game rules, you will have the option to delegate your move to a mediator.
     If you choose to delegate, the mediator will play an action for you based on how many players have delegated to it.
     You can also choose to act independently.
 
@@ -134,7 +151,7 @@ MEDIATOR_APPROVAL_VOTE_PROMPT = textwrap.dedent(
 MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game instructions, you have the option to delegate your move to a mediator.
+    On top of the original game rules, you have the option to delegate your move to a mediator.
     If you choose to delegate, the mediator will play an action for you based on how many players have delegated to it.
     You can also choose to act independently.
 
@@ -149,7 +166,8 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
 # Repetition mechanism prompts
 REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     """
-    This is a repeated game, so the action sampled from your action probability distribution will be visible to the same opponent(s) in future rounds and may influence their decisions.
+    Here is the twist:
+    You are playing this game repeatedly with the same players. The action sampled from your action probability distribution will be visible to those players in future rounds and may influence their decisions.
     You are currently playing round {round_idx} of the game.
     History:
     {history_context}

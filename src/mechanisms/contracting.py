@@ -13,6 +13,7 @@ from src.mechanisms.prompts import (
     CONTRACT_CONFIRMATION_PROMPT,
     CONTRACT_DESIGN_PROMPT,
     CONTRACT_MECHANISM_PROMPT,
+    CONTRACT_REJECTION_PROMPT,
 )
 from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
@@ -140,15 +141,15 @@ class Contracting(Mechanism):
         for idx, payoff in enumerate(contract):
             if payoff > 0:
                 lines.append(
-                    f"- If you choose A{idx}, you receive a total of {payoff} from each other player."
+                    f"- If you choose A{idx}, you receive an additional payment of {payoff} point(s), drawn equally from the other players."
                 )
             elif payoff < 0:
                 lines.append(
-                    f"- If you choose A{idx}, you pay a total of {-payoff} to each other player."
+                    f"- If you choose A{idx}, you pay an additional payment of {-payoff} point(s), distributed equally among the other players."
                 )
             else:
                 lines.append(
-                    f"- If you choose A{idx}, there is no extra payoff."
+                    f"- If you choose A{idx}, there is no additional payments in either direction."
                 )
         return "\n".join(lines)
 
@@ -197,6 +198,7 @@ class Contracting(Mechanism):
             )
 
             all_agree = True
+            rejectors = []
             for player, (response, agree) in zip(players, agreement_results):
                 record["agreements"][player.name] = {
                     "response": response,
@@ -204,6 +206,7 @@ class Contracting(Mechanism):
                 }
                 if not agree:
                     all_agree = False
+                    rejectors.append(player.name)
             record["all_agree"] = all_agree
 
             if all_agree:
@@ -214,7 +217,13 @@ class Contracting(Mechanism):
                 )
                 additional_info = [contract_prompt] * len(players)
             else:
-                additional_info = ["None."] * len(players)
+                rejection_prompt = CONTRACT_REJECTION_PROMPT.format(
+                    contract_description=self._contract_description(
+                        self.contracts[designer.model_type]
+                    ),
+                    num_rejectors=len(rejectors),
+                )
+                additional_info = [rejection_prompt] * len(players)
 
             moves = self.base_game.play(
                 additional_info=additional_info,

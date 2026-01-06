@@ -107,8 +107,8 @@ class Mediation(Mechanism):
         """Format all mediators for the voting prompt."""
         lines = []
         for i, player in enumerate(players, start=1):
-            mediator = self.mediators[player.model_type]
-            lines.append(f"Mediator {i} (proposed by {player.model_type}):")
+            mediator = self.mediators[player.uid]
+            lines.append(f"Mediator proposed by PlayerID {i}::")
             lines.append(self._mediator_description(mediator))
             lines.append("")  # Blank line between mediators
         return "\n".join(lines)
@@ -200,7 +200,13 @@ class Mediation(Mechanism):
         return winning_idx, winning_agent
 
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
-        agents = [create_agent(cfg) for cfg in agent_cfgs]
+        # Create num_players agents per config (same as base mechanism)
+        # This ensures each agent designs their own unique mediator
+        agents = [
+            create_agent(cfg)
+            for cfg in agent_cfgs
+            for _ in range(self.base_game.num_players)
+        ]
 
         def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, int]]:
             response, mediator = self._design_mediator(agent)
@@ -211,8 +217,10 @@ class Mediation(Mechanism):
         self.mediators.clear()
         mediator_design = {}
         for agent, response, mediator in results:
-            self.mediators[agent.model_type] = mediator
-            mediator_design[agent.model_type] = {
+            self.mediators[agent.uid] = mediator
+            mediator_design[agent.uid] = {
+                "agent_name": agent.name,
+                "model_type": agent.model_type,
                 "response": response,
                 "mediator": mediator,
             }
@@ -249,7 +257,7 @@ class Mediation(Mechanism):
 
         # Step 3: Select winning mediator
         winning_idx, winning_agent = self._select_mediator(players, all_votes)
-        winning_mediator = self.mediators[winning_agent.model_type]
+        winning_mediator = self.mediators[winning_agent.uid]
 
         # Step 4: Play game once under selected mediator
         mediator_description = self._mediator_description(winning_mediator)
@@ -286,7 +294,8 @@ class Mediation(Mechanism):
         record = {
             "votes": vote_records,
             "selected_mediator_index": winning_idx,
-            "selected_mediator_designer": winning_agent.model_type,
+            "selected_mediator_designer_uid": winning_agent.uid,
+            "selected_mediator_designer_name": winning_agent.name,
             "moves": serialized_moves,
         }
         LOGGER.log_record(record=[record], file_name=self.record_file)
