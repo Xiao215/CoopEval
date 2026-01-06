@@ -35,15 +35,6 @@ def load_config(filename: str) -> dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-
-def _slugify(text: str, *, max_len: int = 40) -> str:
-    slug = re.sub(r"[^A-Za-z0-9]+", "-", text.strip())
-    slug = slug.strip("-")
-    if max_len and len(slug) > max_len:
-        slug = slug[:max_len].rstrip("-")
-    return slug.lower() or "item"
-
-
 def _load_population_payoffs_from_file(path: Path) -> PopulationPayoffs:
     if not path.exists():
         raise FileNotFoundError(
