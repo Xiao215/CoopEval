@@ -10,12 +10,12 @@ CONTRACT_DESIGN_PROMPT = textwrap.dedent(
 
     - A contract is an additional payoff agreement on top of the original game payoffs. It specifies a number for each action that a player can play, indicating one of three cases:
         * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other players.
-        * Negative number (-): the player pays an additional payment of Y points in total, distributed equally among the other players.
+        * Negative number (-): the player pays an additional payment of X points in total, distributed equally among the other players.
         * Zero (0): no additional payments in either direction.    
     - Each player may choose to accept the contract as a whole or not.
     - The contract becomes active only if all players accept.
 
-    The other players will also design and propose a contract. Only one will be present in the game though. Which one this is will be decided in a separate step later via an approval voting process by you and the other players. The winning contract will be selected uniform at random from those with the maximum number of approvals.
+    The other players will also design and propose a contract. Only one will be present in the game though. Which one will be decided in a separate step later via an approval voting process by you and the other players. The winning contract will be selected uniform at random from those with the maximum number of approvals.
 
     Output Format:
     Return a valid JSON object in a single line:
@@ -31,8 +31,8 @@ CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
     Here is the twist:
     On top of the original game rules, you have the option to sign a payment contract. The contract specifies a number for each action that a player can play, indicating one of three cases:
         * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other players.
-        * Negative number (-): the player pays an additional payment of Y points in total, distributed equally among the other players.
-        * Zero (0): no additional payments in either direction.  
+        * Negative number (-): the player pays an additional payment of X points in total, distributed equally among the other players.
+        * Zero (0): no additional payments in either direction.
 
     Here is the contract:
     {contract_description}
@@ -42,6 +42,26 @@ CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
     Output Requirement:
     - Respond with a valid JSON object.
     - Format: {{"sign": <BOOL>}} where <BOOL> is true or false.
+    """
+)
+
+CONTRACT_APPROVAL_VOTE_PROMPT = textwrap.dedent(
+    """
+    Here is the twist:
+    On top of the original game rules, a payment contract can be put in place if players agree to it via an approval voting process. A contract specifies a payment value for each action that a player can play.
+
+    Your task now is to review each proposed contract and decide which ones you approve of. The winning contract will be selected uniform at random from those with the maximum number of approvals.
+
+    Here are the contract designs that have been proposed:
+    {all_contracts_description}
+
+    Output Format:
+    Return a valid JSON object with your approvals:
+    {{"C1": <true/false>, "C2": <true/false>, ...}}
+
+    - Keys: contract identifiers (e.g., "C1", "C2", ...)
+    - Values: `true` if you approve, `false` if you don't
+    - Ensure all contracts have an entry
     """
 )
 
@@ -115,7 +135,7 @@ MEDIATOR_DESIGN_PROMPT = textwrap.dedent(
     - Each player may choose to delegate their move to the mediator or act independently.
     - The mediator observes the number of players delegating to the mediator and then plays the same action for all delegating players.
 
-    The other players will also design and propose a mediator. Only one will be present in the game though. Which one this is will be decided in a separate step later via an approval voting process by you and the other players. The winning mediator will be selected uniform at random from those with the maximum number of approvals.
+    The other players will also design and propose a mediator. Only one will be present in the game though. Which one will be decided in a separate step later via an approval voting process by you and the other players. The winning mediator will be selected uniform at random from those with the maximum number of approvals.
 
     Output Format:
     Return a valid JSON object in a single line:

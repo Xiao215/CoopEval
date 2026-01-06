@@ -10,6 +10,7 @@ from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
 from src.mechanisms.prompts import (
+    CONTRACT_APPROVAL_VOTE_PROMPT,
     CONTRACT_CONFIRMATION_PROMPT,
     CONTRACT_DESIGN_PROMPT,
     CONTRACT_MECHANISM_PROMPT,
@@ -28,7 +29,7 @@ class Contracting(Mechanism):
         base_game: Game,
     ) -> None:
         super().__init__(base_game)
-        self.contracts: dict[str, list[int]] = {}
+        self.contracts: dict[int, list[int]] = {}
         self.contracts_design_prompt = CONTRACT_DESIGN_PROMPT
         self.contract_confirmation_prompt = CONTRACT_CONFIRMATION_PROMPT
         self.contract_mechanism_prompt = CONTRACT_MECHANISM_PROMPT
@@ -62,7 +63,7 @@ class Contracting(Mechanism):
             + "\n"
             + self.contract_confirmation_prompt.format(
                 contract_description=self._contract_description(
-                    self.contracts[designer.model_type]
+                    self.contracts[designer.uid]
                 )
             )
         )
@@ -153,8 +154,110 @@ class Contracting(Mechanism):
                 )
         return "\n".join(lines)
 
+    def _all_contracts_description(self, players: Sequence[Agent]) -> str:
+        """Format all contracts for the voting prompt."""
+        lines = []
+        for i, player in enumerate(players, start=1):
+            contract = self.contracts[player.uid]
+            lines.append(f"Contract {i}:")
+            lines.append(self._contract_description(contract))
+            lines.append("")  # Blank line between contracts
+        return "\n".join(lines)
+
+    def _collect_vote(
+        self,
+        voter: Agent,
+        players: Sequence[Agent]
+    ) -> tuple[str, dict[int, bool]]:
+        """
+        Ask an agent to vote on which contracts they approve.
+
+        Returns:
+            response (str): The raw response from the voter
+            votes (dict[int, bool]): Mapping from contract index to approval (True/False)
+        """
+        all_contracts = self._all_contracts_description(players)
+        vote_prompt = (
+            self.base_game.prompt
+            + "\n"
+            + CONTRACT_APPROVAL_VOTE_PROMPT.format(
+                all_contracts_description=all_contracts
+            )
+        )
+
+        def parse_votes(response: str) -> dict[int, bool]:
+            matches = re.findall(r"\{.*?\}", response, re.DOTALL)
+            if not matches:
+                raise ValueError(f"No JSON object found in response {response!r}")
+
+            json_str = matches[-1]
+            try:
+                json_obj = json.loads(json_str)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON: {e.msg}") from e
+
+            # Convert C1, C2, ... to integer indices
+            votes = {}
+            for i in range(1, len(players) + 1):
+                key = f"C{i}"
+                if key not in json_obj:
+                    raise ValueError(f"Missing vote for {key}")
+                if not isinstance(json_obj[key], bool):
+                    raise ValueError(f"Vote for {key} must be boolean, got {json_obj[key]!r}")
+                votes[i] = json_obj[key]
+
+            return votes
+
+        response, votes = voter.chat_with_retries(
+            base_prompt=vote_prompt,
+            parse_func=parse_votes,
+        )
+        return response, votes
+
+    def _select_contract(
+        self,
+        players: Sequence[Agent],
+        all_votes: dict[int, dict[int, bool]]
+    ) -> tuple[int, Agent]:
+        """
+        Select winning contract based on approval votes.
+
+        Args:
+            players: Sequence of players in the matchup
+            all_votes: {voter_uid: {contract_index: approval}}
+
+        Returns:
+            (winning_index, winning_agent): Index (1-based) and Agent who designed winner
+        """
+        import random
+
+        # Count approvals per contract
+        approval_counts = {i: 0 for i in range(1, len(players) + 1)}
+        for _voter_uid, votes in all_votes.items():
+            for contract_idx, approved in votes.items():
+                if approved:
+                    approval_counts[contract_idx] += 1
+
+        # Find max approvals
+        max_approvals = max(approval_counts.values())
+
+        # Get all contracts with max approvals (for tie-breaking)
+        winners = [idx for idx, count in approval_counts.items() if count == max_approvals]
+
+        # Break ties uniformly at random
+        winning_idx = random.choice(winners)
+        winning_agent = players[winning_idx - 1]  # Convert 1-based to 0-based
+
+        return winning_idx, winning_agent
+
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
-        agents = [create_agent(cfg) for cfg in agent_cfgs]
+        # Create num_players agents per config (same as base mechanism)
+        # This ensures each agent designs their own unique contract
+        agents = [
+            create_agent(cfg)
+            for cfg in agent_cfgs
+            for _ in range(self.base_game.num_players)
+        ]
 
         def design_fn(agent: Agent) -> tuple[Agent, str, list[int]]:
             response, contract = self._design_contract(agent)
@@ -165,8 +268,10 @@ class Contracting(Mechanism):
         self.contracts.clear()
         contract_design = {}
         for agent, response, contract in design_results:
-            self.contracts[agent.model_type] = contract
-            contract_design[agent.model_type] = {
+            self.contracts[agent.uid] = contract
+            contract_design[agent.uid] = {
+                "agent_name": agent.name,
+                "model_type": agent.model_type,
                 "response": response,
                 "contract": contract,
             }
@@ -176,79 +281,102 @@ class Contracting(Mechanism):
         return super().run_tournament(agent_cfgs)
 
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
-        """Have each designer propose a contract and play the base game.
+        """
+        Have players vote on contracts, select winner, get signatures, and play once.
 
         Returns:
-            A list of move sequences (one sequence per designer's contract round).
+            A list containing a single move sequence (one game result).
         """
-        records = []
-        matchup_moves = []
+        # Step 1: Collect votes from all players
+        def collect_vote_fn(player: Agent) -> tuple[Agent, str, dict[int, bool]]:
+            response, votes = self._collect_vote(player, players)
+            return player, response, votes
 
-        for designer in players:
-            record = {
-                "designer": designer.name,
-                "agreements": {},
+        vote_results = run_tasks(players, collect_vote_fn)
+
+        # Step 2: Process voting results
+        all_votes = {}  # {voter_uid: {contract_idx: approval}}
+        vote_records = []
+        for player, response, votes in vote_results:
+            all_votes[player.uid] = votes
+            vote_records.append({
+                "voter_uid": player.uid,
+                "voter_name": player.name,
+                "votes": votes,
+                "response": response,
+            })
+
+        # Step 3: Select winning contract
+        winning_idx, winning_agent = self._select_contract(players, all_votes)
+        winning_contract = self.contracts[winning_agent.uid]
+
+        # Step 4: Collect signatures for the winning contract
+        def sign_contract_fn(player: Agent) -> tuple[Agent, str, bool]:
+            response, agreement = self._agree_to_contract(
+                player=player, designer=winning_agent
+            )
+            return player, response, agreement
+
+        sign_results = run_tasks(players, sign_contract_fn)
+
+        # Step 5: Process signature results
+        all_agree = True
+        rejectors = []
+        signature_records = {}
+        for player, response, agree in sign_results:
+            signature_records[player.name] = {
+                "response": response,
+                "agree": agree,
             }
+            if not agree:
+                all_agree = False
+                rejectors.append(player.name)
 
-            agreement_results = run_tasks(
-                players,
-                lambda p, d=designer: self._agree_to_contract(
-                    player=p, designer=d
+        # Step 6: Play game once (with or without contract)
+        if all_agree:
+            contract_prompt = self.contract_mechanism_prompt.format(
+                contract_description=self._contract_description(winning_contract)
+            )
+            additional_info = [contract_prompt] * len(players)
+        else:
+            rejection_prompt = CONTRACT_REJECTION_PROMPT.format(
+                contract_description=self._contract_description(winning_contract),
+                num_rejectors=len(rejectors),
+            )
+            additional_info = [rejection_prompt] * len(players)
+
+        moves = self.base_game.play(
+            additional_info=additional_info,
+            players=players,
+        )
+
+        # Step 7: Serialize game results
+        serialized_moves = [
+            {
+                "uid": move.uid,
+                "player_name": move.player_name,
+                "action": (
+                    move.action.value
+                    if hasattr(move.action, "value")
+                    else str(move.action)
                 ),
-            )
+                "points": move.points,
+                "response": move.response,
+            }
+            for move in moves
+        ]
 
-            all_agree = True
-            rejectors = []
-            for player, (response, agree) in zip(players, agreement_results):
-                record["agreements"][player.name] = {
-                    "response": response,
-                    "agree": agree,
-                }
-                if not agree:
-                    all_agree = False
-                    rejectors.append(player.name)
-            record["all_agree"] = all_agree
+        # Step 8: Log voting, signatures, and game results
+        record = {
+            "votes": vote_records,
+            "selected_contract_index": winning_idx,
+            "selected_contract_designer_uid": winning_agent.uid,
+            "selected_contract_designer_name": winning_agent.name,
+            "signatures": signature_records,
+            "all_signed": all_agree,
+            "moves": serialized_moves,
+        }
+        LOGGER.log_record(record=[record], file_name=self.record_file)
 
-            if all_agree:
-                contract_prompt = self.contract_mechanism_prompt.format(
-                    contract_description=self._contract_description(
-                        self.contracts[designer.model_type]
-                    )
-                )
-                additional_info = [contract_prompt] * len(players)
-            else:
-                rejection_prompt = CONTRACT_REJECTION_PROMPT.format(
-                    contract_description=self._contract_description(
-                        self.contracts[designer.model_type]
-                    ),
-                    num_rejectors=len(rejectors),
-                )
-                additional_info = [rejection_prompt] * len(players)
-
-            moves = self.base_game.play(
-                additional_info=additional_info,
-                players=players,
-            )
-
-            # Record keeping for the JSON log
-            record["moves"] = [
-                {
-                    "uid": move.uid,
-                    "player_name": move.player_name,
-                    "action": (
-                        move.action.value
-                        if hasattr(move.action, "value")
-                        else str(move.action)
-                    ),
-                    "points": move.points,
-                    "response": move.response,
-                }
-                for move in moves
-            ]
-
-            matchup_moves.append(moves)
-            records.append(record)
-
-        LOGGER.log_record(record=records, file_name=self.record_file)
-
-        return matchup_moves
+        # Return list with single game result (base class will call payoffs.add_profile)
+        return [moves]
