@@ -26,25 +26,6 @@ CONTRACT_DESIGN_PROMPT = textwrap.dedent(
     """
 )
 
-CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
-    """
-    Here is the twist:
-    On top of the original game rules, you have the option to sign a payment contract. The contract specifies a number for each action that a player can play, indicating one of three cases:
-        * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other players.
-        * Negative number (-): the player pays an additional payment of X points in total, distributed equally among the other players.
-        * Zero (0): no additional payments in either direction.
-
-    Here is the contract:
-    {contract_description}
-
-    At this stage, you are asked to decide whether to sign the contract. The contract becomes active only if all players sign it.
-
-    Output Requirement:
-    - Respond with a valid JSON object.
-    - Format: {{"sign": <BOOL>}} where <BOOL> is true or false.
-    """
-)
-
 CONTRACT_APPROVAL_VOTE_PROMPT = textwrap.dedent(
     """
     Here is the twist:
@@ -65,6 +46,20 @@ CONTRACT_APPROVAL_VOTE_PROMPT = textwrap.dedent(
     """
 )
 
+CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
+    """
+    Here is the twist:
+    On top of the original game rules, you have the option to sign a payment contract. A contract specifies a payment value for each action that a player can play. Here is the contract:
+    {contract_description}
+
+    At this stage, you are asked to decide whether to sign the contract. The contract becomes active only if all players sign it.
+
+    Output Requirement:
+    - Respond with a valid JSON object.
+    - Format: {{"sign": <BOOL>}} where <BOOL> is true or false.
+    """
+)
+
 CONTRACT_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
@@ -78,10 +73,10 @@ CONTRACT_MECHANISM_PROMPT = textwrap.dedent(
 CONTRACT_REJECTION_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, a payment contract was proposed to the players. It is NOT activate though because some players rejected it. Here is the proposed contract:
+    On top of the original game rules, a payment contract was proposed to the players. It is NOT active though because some players rejected it. Here is the proposed contract:
     {contract_description}
 
-    The number of players who rejected it is {num_rejectors}.
+    Players who rejected it: {rejector_ids}
 
     You will now play the original game without any contract modifications.
     """

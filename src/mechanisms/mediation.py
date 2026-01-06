@@ -28,6 +28,7 @@ class Mediation(Mechanism):
         self.mediators: dict[int, dict[int, int]] = {}
         self.mediator_design_prompt = MEDIATOR_DESIGN_PROMPT
         self.mediation_mechanism_prompt = MEDIATION_MECHANISM_PROMPT
+        self._cached_agents: list[Agent] | None = None
 
     def _design_mediator(
         self,
@@ -198,10 +199,19 @@ class Mediation(Mechanism):
 
         return winning_idx, winning_agent
 
+    def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
+        """Return cached agents if available, otherwise create new ones."""
+        if self._cached_agents is not None:
+            return self._cached_agents
+        return super()._create_players_from_cfgs(agent_cfgs)
+
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
         # Create num_players agents per config using base class method
         # This ensures each agent gets unique UID and designs their own mediator
-        agents = self._create_players_from_cfgs(agent_cfgs)
+        agents = super()._create_players_from_cfgs(agent_cfgs)
+
+        # Cache agents so base class reuses them
+        self._cached_agents = agents
 
         def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, int]]:
             response, mediator = self._design_mediator(agent)
@@ -222,7 +232,14 @@ class Mediation(Mechanism):
         LOGGER.log_record(
             record=mediator_design, file_name="mediator_design.json"
         )
-        return super().run_tournament(agent_cfgs)
+
+        # Now call base class - it will use our cached agents
+        result = super().run_tournament(agent_cfgs)
+
+        # Clear cache for next run
+        self._cached_agents = None
+
+        return result
 
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """

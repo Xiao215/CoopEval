@@ -32,6 +32,7 @@ class Contracting(Mechanism):
         self.contracts_design_prompt = CONTRACT_DESIGN_PROMPT
         self.contract_confirmation_prompt = CONTRACT_CONFIRMATION_PROMPT
         self.contract_mechanism_prompt = CONTRACT_MECHANISM_PROMPT
+        self._cached_agents: list[Agent] | None = None
 
     def _design_contract(self, designer: Agent) -> tuple[str, list[int]]:
         """
@@ -141,15 +142,15 @@ class Contracting(Mechanism):
         for idx, payoff in enumerate(contract):
             if payoff > 0:
                 lines.append(
-                    f"- If you choose A{idx}, you receive an additional payment of {payoff} point(s), drawn equally from the other players."
+                    f"- If a player chooses A{idx}, they receive an additional payment of {payoff} point(s), drawn equally from the other players."
                 )
             elif payoff < 0:
                 lines.append(
-                    f"- If you choose A{idx}, you pay an additional payment of {-payoff} point(s), distributed equally among the other players."
+                    f"- If a player chooses A{idx}, they pay an additional payment of {-payoff} point(s), distributed equally among the other players."
                 )
             else:
                 lines.append(
-                    f"- If you choose A{idx}, there is no additional payments in either direction."
+                    f"- If a player chooses A{idx}, there is no additional payments in either direction."
                 )
         return "\n".join(lines)
 
@@ -249,10 +250,19 @@ class Contracting(Mechanism):
 
         return winning_idx, winning_agent
 
+    def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
+        """Return cached agents if available, otherwise create new ones."""
+        if self._cached_agents is not None:
+            return self._cached_agents
+        return super()._create_players_from_cfgs(agent_cfgs)
+
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
         # Create num_players agents per config using base class method
         # This ensures each agent gets unique UID and designs their own contract
-        agents = self._create_players_from_cfgs(agent_cfgs)
+        agents = super()._create_players_from_cfgs(agent_cfgs)
+
+        # Cache agents so base class reuses them
+        self._cached_agents = agents
 
         def design_fn(agent: Agent) -> tuple[Agent, str, list[int]]:
             response, contract = self._design_contract(agent)
@@ -273,7 +283,14 @@ class Contracting(Mechanism):
         LOGGER.log_record(
             record=contract_design, file_name="contract_design.json"
         )
-        return super().run_tournament(agent_cfgs)
+
+        # Now call base class - it will use our cached agents
+        result = super().run_tournament(agent_cfgs)
+
+        # Clear cache for next run
+        self._cached_agents = None
+
+        return result
 
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """
@@ -315,8 +332,11 @@ class Contracting(Mechanism):
         sign_results = run_tasks(players, sign_contract_fn)
 
         # Step 5: Process signature results
+        # Create player ID mapping (Player 1, Player 2, etc.)
+        player_ids = {player: f"Player {i}" for i, player in enumerate(players, start=1)}
+
         all_agree = True
-        rejectors = []
+        rejector_ids = []
         signature_records = {}
         for player, response, agree in sign_results:
             signature_records[player.name] = {
@@ -325,7 +345,7 @@ class Contracting(Mechanism):
             }
             if not agree:
                 all_agree = False
-                rejectors.append(player.name)
+                rejector_ids.append(player_ids[player])
 
         # Step 6: Play game once (with or without contract)
         if all_agree:
@@ -334,9 +354,10 @@ class Contracting(Mechanism):
             )
             additional_info = [contract_prompt] * len(players)
         else:
+            rejectors_str = ", ".join(rejector_ids)
             rejection_prompt = CONTRACT_REJECTION_PROMPT.format(
                 contract_description=self._contract_description(winning_contract),
-                num_rejectors=len(rejectors),
+                rejector_ids=rejectors_str,
             )
             additional_info = [rejection_prompt] * len(players)
 
