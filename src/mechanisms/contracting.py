@@ -16,7 +16,6 @@ from src.mechanisms.prompts import (
     CONTRACT_MECHANISM_PROMPT,
     CONTRACT_REJECTION_PROMPT,
 )
-from src.registry.agent_registry import create_agent
 from src.utils.concurrency import run_tasks
 
 # Adjust just like mediation
@@ -251,13 +250,9 @@ class Contracting(Mechanism):
         return winning_idx, winning_agent
 
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
-        # Create num_players agents per config (same as base mechanism)
-        # This ensures each agent designs their own unique contract
-        agents = [
-            create_agent(cfg)
-            for cfg in agent_cfgs
-            for _ in range(self.base_game.num_players)
-        ]
+        # Create num_players agents per config using base class method
+        # This ensures each agent gets unique UID and designs their own contract
+        agents = self._create_players_from_cfgs(agent_cfgs)
 
         def design_fn(agent: Agent) -> tuple[Agent, str, list[int]]:
             response, contract = self._design_contract(agent)

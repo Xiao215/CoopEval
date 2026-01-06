@@ -1,5 +1,6 @@
 """Common infrastructure for tournament mechanisms."""
 
+import copy
 from collections import Counter, defaultdict
 import itertools
 import random
@@ -29,7 +30,7 @@ class Mechanism(ABC):
     def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
         """Create players from the given agent configurations."""
         players = [
-            create_agent(cfg)
+            create_agent(copy.deepcopy(cfg))
             for cfg in agent_cfgs
             for _ in range(self.base_game.num_players)
         ]
