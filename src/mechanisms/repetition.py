@@ -175,10 +175,7 @@ class Repetition(RepetitiveMechanism):
             records: A list of lists, where each inner list contains the Moves
             for that specific round.
         """
-        # Clear history to ensure we start fresh for this specific matchup
-        # (Assuming self.history has a clear/reset method, or acts as a fresh buffer)
-        # If your History class persists, ensure it is reset here if needed.
-
+        self.history.clear()
         for round_idx in tqdm(
             range(1, self.num_rounds + 1),
             desc=f"Running {self.__class__.__name__} repetitive rounds",

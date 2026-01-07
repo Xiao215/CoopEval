@@ -8,7 +8,6 @@ from enum import Enum
 from typing import Any, Callable, Self, Sequence
 
 from src.agents.agent_manager import Agent
-from src.logger_manager import LOGGER
 from src.utils.concurrency import run_tasks
 
 
@@ -130,7 +129,6 @@ class Game(ABC):
             output_instruction = self.default_output_instruction
         prompt += "\n" + output_instruction
 
-        LOGGER.write_to_txt(prompt, "game_prompt.txt")
         resp, mix_probs = player.chat_with_retries(
             prompt, self._parse_mixed_probs
         )

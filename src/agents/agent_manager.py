@@ -1,6 +1,7 @@
 """Agent abstractions and shared LLM caching utilities."""
 
 import itertools
+from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import Any, Callable
 
@@ -8,6 +9,7 @@ from src.agents.base import LLM
 from src.agents.client_api_llm import ClientAPILLM
 from src.agents.hf_llm import HFInstance
 from src.agents.test_llm import TestInstance
+from src.logger_manager import LOGGER
 
 
 class LLMManager:
@@ -72,8 +74,24 @@ class Agent(ABC):
 
     def invoke(self, messages: str) -> str:
         """Invoke the agent using the provided messages. No prompting added."""
+        return self._invoke_with_logging(messages)
+
+    def _invoke_with_logging(self, messages: str) -> str:
         response = self.pipeline.invoke(messages, **self.kwargs)
+        self._log_inference(messages, response)
         return response
+
+    def _log_inference(self, prompt: str, response: str) -> None:
+        entry = (
+            "=== inference ===\n"
+            f"timestamp: {datetime.now().isoformat()}\n"
+            f"agent: {self.name}\n"
+            "prompt:\n"
+            f"{prompt}\n"
+            "response:\n"
+            f"{response}\n\n"
+        )
+        LOGGER.append_to_txt(entry, "game_log.txt")
 
     def chat_with_retries(
         self,
@@ -149,8 +167,7 @@ class IOAgent(Agent):
             "\nPlease ONLY provide the output to the above question."
             "DO NOT provide any additional text or explanation.\n"
         )
-        response = self.pipeline.invoke(messages, **self.kwargs)
-        return response
+        return self._invoke_with_logging(messages)
 
     @property
     def name(self) -> str:
@@ -172,8 +189,7 @@ class CoTAgent(Agent):
         messages += """
         Think about the question step by step, break it down into small steps, explain your reasoning, and then provide the final answer.
         """
-        response = self.pipeline.invoke(messages, **self.kwargs)
-        return response
+        return self._invoke_with_logging(messages)
 
     @property
     def name(self) -> str:

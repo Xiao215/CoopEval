@@ -57,6 +57,15 @@ class Logger:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(content)
 
+    def append_to_txt(self, content: str, filename: str) -> None:
+        """
+        Append a string into a .txt file inside log_dir.
+        """
+        path = self.log_dir / filename
+        with self._lock:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(content)
+
     def retag(self, suffix: str) -> None:
         """Rename the current log directory to include run-specific metadata."""
         slug = re.sub(r"[^A-Za-z0-9._-]+", "-", suffix).strip("-")
