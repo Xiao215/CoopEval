@@ -9,7 +9,7 @@ from src.mechanisms.base import RepetitiveMechanism
 from src.mechanisms.prompts import (
     REPETITION_MECHANISM_PROMPT,
     REPETITION_NO_HISTORY_DESCRIPTION,
-    REPETITION_OPPONENT_LABEL,
+    REPETITION_OTHERPLAYER_LABEL,
     REPETITION_RECENT_HISTORY_PROMPT,
     REPETITION_RECENT_ROUND_LINE,
     REPETITION_ROUND_LINE,
@@ -73,7 +73,7 @@ class Repetition(RepetitiveMechanism):
                 if other.uid == focus.uid:
                     continue
                 actions.append(
-                    REPETITION_OPPONENT_LABEL.format(
+                    REPETITION_OTHERPLAYER_LABEL.format(
                         other_player=global_names[other.uid],
                         action=move_map[other.uid],
                     )
@@ -113,7 +113,7 @@ class Repetition(RepetitiveMechanism):
                 if other.uid == focus.uid:
                     continue
                 actions.append(
-                    REPETITION_OPPONENT_LABEL.format(
+                    REPETITION_OTHERPLAYER_LABEL.format(
                         other_player=global_names[other.uid],
                         action=move_map[other.uid],
                     )

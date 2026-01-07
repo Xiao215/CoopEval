@@ -121,7 +121,7 @@ class Game(ABC):
 
         Returns the player's raw response.
         """
-        prompt = self.prompt
+        prompt = self.get_player_prompt(player.player_id)
 
         if extra_info:
             prompt += extra_info

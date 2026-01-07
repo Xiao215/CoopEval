@@ -66,7 +66,7 @@ class Reputation(RepetitiveMechanism, ABC):
                 f"{opp_label} played {opp_move.action} ({opp_move.points} pts)."
             )
 
-            # --- Level 2: Opponent's History (Relative to THAT moment) ---
+            # --- Level 2: Other Player's History (Relative to THAT moment) ---
             # We need to see what the other player looked like *before* this match occurred.
             # So lookback = rounds_ago.
             opp_history = self.history.get_prior_rounds(
@@ -95,7 +95,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
                     # --- Level 3: The Context (Action Distribution) ---
                     # We want the stats of the 3rd party *before* they met the 2nd party.
-                    # Total lookback = (Main Player offset) + (Opponent offset)
+                    # Total lookback = (Main Player offset) + (Other Player offset)
                     total_lookback = rounds_ago + sub_idx
 
                     stats = self.history.get_prior_action_distribution(

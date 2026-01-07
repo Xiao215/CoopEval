@@ -83,11 +83,6 @@ class TrustGame(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
 
-        for i, player in enumerate(players):
-            player_payoff = self.get_player_prompt(player.player_id)
-            player_payoff = player_payoff[len(self.prompt):]
-            additional_info[i] = player_payoff + additional_info[i]
-
         results = self._collect_actions(
             players,
             additional_info,
