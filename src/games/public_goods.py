@@ -40,7 +40,7 @@ class PublicGoods(Game):
         self.prompt_template = textwrap.dedent(
             """
         Setup:
-        You are playing a decision-making game against {num_players} other players.
+        You are playing a decision-making game with {num_other_players} other players.
         Your objective is to maximize your points received in the game described below.
 
         Actions available to each player:
@@ -48,9 +48,9 @@ class PublicGoods(Game):
         - {free_ride_tok}
 
         Basic game rules:
-        1. You and the opponents each choose a probability for each action, simultaneously.
+        1. You and the other players each choose a probability for each action, simultaneously.
         2. After all decisions are locked in, the final action will be drawn from the probability distributions.
-        3. Both players receive the points specified in the payoff description below.
+        3. All players receive the points specified in the payoff description below.
 
         Payoff description:
         Suppose k out of {num_players} players play {contribute_tok}.
@@ -64,6 +64,7 @@ class PublicGoods(Game):
                 endowment=self.endowment,
                 multiplier=self.multiplier,
                 num_players=num_players,
+                num_other_players=num_players - 1,
                 contribute_tok=PublicGoodsAction.CONTRIBUTE.to_token(),
                 free_ride_tok=PublicGoodsAction.FREE_RIDE.to_token(),
             ),

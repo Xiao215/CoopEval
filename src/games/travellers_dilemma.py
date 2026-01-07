@@ -55,24 +55,24 @@ class TravellersDilemma(Game):
 
         payoff_description = textwrap.dedent(
             f"""
-            Suppose you choose number X and opponent chooses number Y.
-                - If X = Y: you get X points, opponent gets Y (=X) points.
-                - If X < Y: you get X + {self.bonus}, opponent gets X - {self.bonus}.
-                - If X > Y: you get Y - {self.bonus}, opponent gets Y + {self.bonus}.
+            Suppose you choose number X and the other player chooses number Y.
+                - If X = Y: you get X points, the other player gets Y (=X) points.
+                - If X < Y: you get X + {self.bonus}, the other player gets X - {self.bonus}.
+                - If X > Y: you get Y - {self.bonus}, the other player gets Y + {self.bonus}.
         """
         ).strip()
 
         prompt_template = textwrap.dedent(
             """
         Setup:
-        You are playing a decision-making game against another player.
+        You are playing a decision-making game with another player.
         Your objective is to maximize your points received in the game described below.
 
         Actions available to each player:
         {actions_block}
 
         Basic game rules:
-        1. You and the opponent each choose a probability for each action, simultaneously.
+        1. You and the other player each choose a probability for each action, simultaneously.
         2. After both decisions are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff description below.
 

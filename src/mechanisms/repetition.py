@@ -74,7 +74,7 @@ class Repetition(RepetitiveMechanism):
                     continue
                 actions.append(
                     REPETITION_OPPONENT_LABEL.format(
-                        opponent=global_names[other.uid],
+                        other_player=global_names[other.uid],
                         action=move_map[other.uid],
                     )
                 )
@@ -91,7 +91,7 @@ class Repetition(RepetitiveMechanism):
         focus: Agent,
         lookup_depth: int = 5,
     ) -> str:
-        """Format prompt with a limited window of history and opponents' action distribution."""
+        """Format prompt with a limited window of history and other players' action distribution."""
         if lookup_depth <= 0:
             raise ValueError("lookup_depth must be positive")
         global_names = {
@@ -114,7 +114,7 @@ class Repetition(RepetitiveMechanism):
                     continue
                 actions.append(
                     REPETITION_OPPONENT_LABEL.format(
-                        opponent=global_names[other.uid],
+                        other_player=global_names[other.uid],
                         action=move_map[other.uid],
                     )
                 )

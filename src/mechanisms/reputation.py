@@ -47,7 +47,7 @@ class Reputation(RepetitiveMechanism, ABC):
             main_branch = "└─" if rounds_ago == len(recent_rounds) else "├─"
             child_indent = "   " if rounds_ago == len(recent_rounds) else "│  "
 
-            # Identify self and opponent in this specific round
+            # Identify self and other player in this specific round
             # Assuming round_moves is a list of 2 Moves
             my_move = next(
                 m for m in round_moves if m.player_name == players.name
@@ -67,7 +67,7 @@ class Reputation(RepetitiveMechanism, ABC):
             )
 
             # --- Level 2: Opponent's History (Relative to THAT moment) ---
-            # We need to see what the opponent looked like *before* this match occurred.
+            # We need to see what the other player looked like *before* this match occurred.
             # So lookback = rounds_ago.
             opp_history = self.history.get_prior_rounds(
                 opp_name,
@@ -80,7 +80,7 @@ class Reputation(RepetitiveMechanism, ABC):
                     f"{child_indent}  └─ History of {opp_label} before this match:"
                 )
 
-                # Iterate through the opponent's nested history
+                # Iterate through the other player's nested history
                 # detailed_rounds_ago tracks how far back from the MAIN match this was
                 for sub_idx, sub_round in enumerate(reversed(opp_history), 1):
                     sub_branch = "└─" if sub_idx == len(opp_history) else "├─"
