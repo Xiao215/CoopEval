@@ -49,7 +49,7 @@ CONTRACT_APPROVAL_VOTE_PROMPT = textwrap.dedent(
 CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, you have the option to sign a payment contract. A contract specifies a payment value for each action that a player can play. Here is the contract:
+    On top of the original game rules, you have the option to sign a payment contract. A contract specifies a payment value for each action that a player can play. Here is the contract that was selected via approval voting (proposed by Player {designer_player_id}):
     {contract_description}
 
     At this stage, you are asked to decide whether to sign the contract. The contract becomes active only if all players sign it.
@@ -63,7 +63,7 @@ CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
 CONTRACT_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, there is a payment contract in place because every player signed it in beforehand. Here is the contract:
+    On top of the original game rules, there is a payment contract in place because every player signed it in beforehand. Here is the contract that was selected via approval voting (proposed by Player {designer_player_id}):
     {contract_description}
 
     Since this contract directly affects your final payoff, consider the contract when making your strategy decisions!
@@ -73,7 +73,7 @@ CONTRACT_MECHANISM_PROMPT = textwrap.dedent(
 CONTRACT_REJECTION_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, a payment contract was proposed to the players. It is NOT active though because some players rejected it. Here is the proposed contract:
+    On top of the original game rules, a payment contract was proposed to the players. It is NOT active though because some players rejected it. Here is the proposed contract that was selected via approval voting (proposed by Player {designer_player_id}):
     {contract_description}
 
     Players who rejected it: {rejector_ids}
@@ -98,13 +98,28 @@ DISARM_PROMPT = textwrap.dedent(
     2) Each upper bound must be an integer in [0, 100].
     3) All upper bounds must be non-negative and the sum of your upper bounds must be greater than or equal to 100.
     4) All players are facing the question of disarming simultaneously, and players decisions to disarm are and will be reflected in the current upper bounds (described above).
-    5) If at any stage, any single player stops reducing any of their upper bounds, the disarmament phase stops there. Otherwise, there will be a {discount}% probability that an additional round of possible disarming will take place.
-    6) After the disarmament phase ends, you and the other players will play the original game subject to your committed probability upper bound constraints.
+    5) Each round, you must make one of three choices:
+       - "disarm": Actively reduce at least one upper bound (you must provide new bounds that differ from current).
+       - "pass": Skip this round but remain willing to wait for others to disarm.
+       - "end": Veto the disarmament phase and stop it for everyone.
+    6) Continuation rules:
+       - If ANY player chooses "end", the disarmament phase stops immediately and NO disarming from that round are applied.
+       - If NO player chooses "disarm" (for example, everyone chooses "pass"), the disarmament phase stops.
+       - If at least one player chooses "disarm" and no one chooses "end", there is a {discount}% chance probability that an additional round will take place.
+    7) After the disarmament phase ends, you and the other players will play the original game subject to your committed probability upper bound constraints.
 
 
     Format requirement:
-    Return your new upper bounds as a JSON object, for example:
-    {{"A0": <INT>, "A1": <INT>, ...}}
+    Return your choice and (if you choose to disarm) new probability upper bounds as a JSON object:
+    {{"choice": "disarm", "A0": <INT>, "A1": <INT>, ...}}
+    OR
+    {{"choice": "pass"}}
+    OR
+    {{"choice": "end"}}
+
+    - "choice" must be one of: "disarm", "pass", or "end"
+    - If you choose "disarm", you MUST include all action keys (A0, A1, ...) with integer values, and at least one cap must be lower than your current bounds
+    - If you choose "pass" or "end", do NOT include action keys
     """
 )
 
@@ -117,6 +132,8 @@ DISARMAMENT_MECHANISM_PROMPT = textwrap.dedent(
         {my_caps}
     Opponents' upper bounds:
         {opponents_caps}
+
+    The disarmament phase ended for the following reason: {termination_reason}
 
     In addition to the instructions below, you must now propose a probability distribution over actions subject to your committed probability upper bound constraints.
     """
@@ -172,7 +189,7 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
     If you choose to delegate, the mediator will play an action for you based on how many players have delegated to it.
     You can also choose to act independently.
 
-    Here is what the mediator would do for the players that delegate to it:
+    The available mediator was proposed by Player {designer_player_id} and selected via approval voting among the players. Here is what the mediator would do for the players that delegate to it:
     {mediator_description}
 
     Consider A{additional_action_id} as an additional action "Delegate to Mediator". Your final mixed strategy should include probability for all actions A0, A1, ..., A{additional_action_id}.
