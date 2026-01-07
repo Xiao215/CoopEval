@@ -83,32 +83,35 @@ CONTRACT_REJECTION_PROMPT = textwrap.dedent(
 )
 
 # Disarmament mechanism prompts
-DISARM_PROMPT = textwrap.dedent(
+DISARM_PROMPT_BASE = textwrap.dedent(
     """
     Here is the twist:
-    You and the other players are currently in a disarmament phase, where over multiple rounds, each of you have the option to _disarm_ actions in advance. You can do that for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may decide to take that action in the original game.
+    You and the other players are currently in a disarmament phase, where over multiple rounds, each of you have the option to "disarm" actions in advance. You can do that for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may decide to take that action in the original game.
 
     Your current upper bounds:
         {my_caps}
-    Opponents' current upper bounds:
-        {opponents_caps}
+    Other players' current upper bounds:
+        {other_players_caps}
 
     Rules:
     1) For each action, you may keep the upper bound the same or reduce it. Increases are forbidden.
     2) Each upper bound must be an integer in [0, 100].
     3) All upper bounds must be non-negative and the sum of your upper bounds must be greater than or equal to 100.
-    4) All players are facing the question of disarming simultaneously, and players decisions to disarm are and will be reflected in the current upper bounds (described above).
+    4) All players are facing the question of whether to disarm simultaneously, and players' decisions to disarm are and will be reflected in the current upper bounds (already reported above).
     5) Each round, you must make one of three choices:
-       - "disarm": Actively reduce at least one upper bound (you must provide new bounds that differ from current).
+       - "disarm": Strictly reduce at least one upper bound (you must then provide new bounds that differ from current for at least one action).
        - "pass": Skip this round but remain willing to wait for others to disarm.
-       - "end": Veto the disarmament phase and stop it for everyone.
+       - "end": Veto the remaining disarmament phase and stop it for everyone.
     6) Continuation rules:
-       - If ANY player chooses "end", the disarmament phase stops immediately and NO disarming from that round are applied.
+       - If ANY player chooses "end", the disarmament phase stops immediately and ANY disarming occurring in that round will not be applied.
        - If NO player chooses "disarm" (for example, everyone chooses "pass"), the disarmament phase stops.
        - If at least one player chooses "disarm" and no one chooses "end", there is a {discount}% chance probability that an additional round will take place.
     7) After the disarmament phase ends, you and the other players will play the original game subject to your committed probability upper bound constraints.
+    """
+)
 
-
+DISARM_FORMAT_CAN_DISARM = textwrap.dedent(
+    """
     Format requirement:
     Return your choice and (if you choose to disarm) new probability upper bounds as a JSON object:
     {{"choice": "disarm", "A0": <INT>, "A1": <INT>, ...}}
@@ -123,15 +126,29 @@ DISARM_PROMPT = textwrap.dedent(
     """
 )
 
+DISARM_FORMAT_CANNOT_DISARM = textwrap.dedent(
+    """
+    NOTE: Your upper bounds already sum to 100, so you have no further room to disarm.
+
+    Format requirement:
+    Return your choice as a JSON object:
+    {{"choice": "pass"}}
+    OR
+    {{"choice": "end"}}
+
+    - "choice" must be one of: "pass" or "end"
+    """
+)
+
 DISARMAMENT_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    There was a disarmament phase between you and the other players, in which each of you had the option to _disarm_ actions in advance. This was done for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may now decide to take that action in the game. The following upper bounds arose from that disarmament phase:
+    There was a disarmament phase between you and the other players, in which each of you had the option to "disarm" actions in advance. This was done for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may now decide to take that action in the game. The following upper bounds arose from that disarmament phase:
 
     Your upper bounds:
         {my_caps}
-    Opponents' upper bounds:
-        {opponents_caps}
+    Other players' upper bounds:
+        {other_players_caps}
 
     The disarmament phase ended for the following reason: {termination_reason}
 
@@ -208,12 +225,12 @@ REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     """
 )
 REPETITION_NO_HISTORY_DESCRIPTION = (
-    "You haven't played any rounds with these opponent(s) yet."
+    "You haven't played any rounds with these other player(s) yet."
 )
 REPETITION_ROUND_LINE = "[Round {round_idx}] \n{actions}"
 REPETITION_RECENT_ROUND_LINE = "[{relative_idx} round(s) ago] \n{actions}"
-REPETITION_RECENT_OPPONENT_DIST_HEADER = (
-    "Opponents' action counts over last {window} round(s):"
+REPETITION_RECENT_OTHERPLAYER_DIST_HEADER = (
+    "Other players' action counts over last {window} round(s):"
 )
 REPETITION_RECENT_HISTORY_PROMPT = textwrap.dedent(
     """
@@ -222,4 +239,4 @@ REPETITION_RECENT_HISTORY_PROMPT = textwrap.dedent(
     """
 )
 REPETITION_SELF_LABEL = "\tYou: {action}"
-REPETITION_OPPONENT_LABEL = "\t{opponent}: {action}"
+REPETITION_OTHERPLAYER_LABEL = "\t{other_player}: {action}"
