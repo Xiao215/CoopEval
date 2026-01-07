@@ -192,6 +192,12 @@ class RepetitiveMechanism(Mechanism):
                 return None
             return history[target_idx].copy()
 
+        def clear(self) -> None:
+            """Clear the history records."""
+            self.records.clear()
+            self.player_round_indices.clear()
+            self.player_cumulative_actions.clear()
+
     def __init__(
         self, base_game: Game, num_rounds: int, discount: float
     ) -> None:

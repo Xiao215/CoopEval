@@ -8,6 +8,7 @@ FIGURE_DIR = PROJECT_DIR / "figures"
 CONFIG_DIR = PROJECT_DIR / "configs"
 MODEL_WEIGHTS_DIR = Path("/model-weights")
 CACHE_DIR = PROJECT_DIR / "caches"
+DATA_DIR = PROJECT_DIR / "data"
 
 
 class Settings(BaseSettings):

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import yaml
 
-from config import CONFIG_DIR
+from config import CONFIG_DIR, DATA_DIR
 from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
 from src.registry.game_registry import GAME_REGISTRY
@@ -18,6 +18,7 @@ from src.utils.concurrency import set_default_max_workers
 
 
 def set_seed(seed=42):
+    """Set the random seed for reproducibility."""
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -52,7 +53,9 @@ def _prepare_population_payoffs(
     population_payoffs_path: str | None,
 ) -> PopulationPayoffs:
     if population_payoffs_path:
-        return _load_population_payoffs_from_file(Path(population_payoffs_path))
+        return _load_population_payoffs_from_file(
+            DATA_DIR / population_payoffs_path
+        )
 
     print("No precomputed population payoff provided; running tournament...")
     population_payoffs = mechanism.run_tournament(agent_cfgs=agent_cfgs)
