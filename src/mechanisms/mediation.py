@@ -25,7 +25,8 @@ class Mediation(Mechanism):
         base_game: Game,
     ) -> None:
         super().__init__(base_game)
-        self.mediators: dict[int, dict[int, int]] = {}
+        # keyed by (model_type, player_id)
+        self.mediators: dict[tuple[str, int], dict[int, int]] = {}
         self.mediator_design_prompt = MEDIATOR_DESIGN_PROMPT
         self.mediation_mechanism_prompt = MEDIATION_MECHANISM_PROMPT
         self._cached_agents: list[Agent] | None = None
@@ -41,8 +42,9 @@ class Mediation(Mechanism):
             response (str): The raw response from the designer.
             mediator (dict[int, int]): A dictionary mapping number of delegating players to recommended action.
         """
+        game_prompt = self.base_game.get_player_prompt(designer.player_id)
         base_prompt = (
-            self.base_game.prompt
+            game_prompt
             + "\n"
             + self.mediator_design_prompt.format(
                 num_players=self.base_game.num_players,
@@ -106,11 +108,12 @@ class Mediation(Mechanism):
     def _all_mediators_description(self, players: Sequence[Agent]) -> str:
         """Format all mediators for the voting prompt."""
         lines = []
-        for i, player in enumerate(players, start=1):
-            mediator = self.mediators[player.uid]
-            lines.append(f"Mediator proposed by PlayerID {i}::")
+        for player in players:
+            key = (player.model_type, player.player_id)
+            mediator = self.mediators[key]
+            lines.append(f"Mediator proposed by Player {player.player_id}:")
             lines.append(self._mediator_description(mediator))
-            lines.append("")  # Blank line between mediators
+            lines.append("")
         return "\n".join(lines)
 
     def _collect_vote(
@@ -125,9 +128,10 @@ class Mediation(Mechanism):
             response (str): The raw response from the voter
             votes (dict[int, bool]): Mapping from mediator index to approval (True/False)
         """
+        game_prompt = self.base_game.get_player_prompt(voter.player_id)
         all_mediators = self._all_mediators_description(players)
         vote_prompt = (
-            self.base_game.prompt
+            game_prompt
             + "\n"
             + MEDIATOR_APPROVAL_VOTE_PROMPT.format(
                 all_mediators_description=all_mediators
@@ -222,10 +226,9 @@ class Mediation(Mechanism):
         self.mediators.clear()
         mediator_design = {}
         for agent, response, mediator in results:
-            self.mediators[agent.uid] = mediator
-            mediator_design[agent.uid] = {
-                "agent_name": agent.name,
-                "model_type": agent.model_type,
+            key = (agent.model_type, agent.player_id)
+            self.mediators[key] = mediator
+            mediator_design[agent.name] = {
                 "response": response,
                 "mediator": mediator,
             }
@@ -269,7 +272,8 @@ class Mediation(Mechanism):
 
         # Step 3: Select winning mediator
         winning_idx, winning_agent = self._select_mediator(players, all_votes)
-        winning_mediator = self.mediators[winning_agent.uid]
+        key = (winning_agent.model_type, winning_agent.player_id)
+        winning_mediator = self.mediators[key]
 
         # Step 4: Play game once under selected mediator
         mediator_description = self._mediator_description(winning_mediator)

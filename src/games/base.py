@@ -95,6 +95,10 @@ class Game(ABC):
         """
         )
 
+    def get_player_prompt(self, player_id: int) -> str:
+        """Get game prompt from specific player's perspective."""
+        return self.prompt
+
     @abstractmethod
     def play(
         self,

@@ -64,6 +64,13 @@ class TrustGame(Game):
             )
         return "\n".join(p1_lines), "\n".join(p2_lines)
 
+    def get_player_prompt(self, player_id: int) -> str:
+        """Get prompt from specific player's perspective."""
+        p1_desc, p2_desc = self._payoff_description()
+        player_desc = p1_desc if player_id == 1 else p2_desc
+        payoff_section = "\nPayoff description:\n" + player_desc
+        return self.prompt + payoff_section
+
     def play(
         self,
         additional_info: list[str] | str,
@@ -76,14 +83,10 @@ class TrustGame(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
 
-        for i, player_payoff_description in enumerate(
-            self._payoff_description()
-        ):
-            additional_info[i] = (
-                "\nPayoff description:\n"
-                + player_payoff_description
-                + additional_info[i]
-            )
+        for i, player in enumerate(players):
+            player_payoff = self.get_player_prompt(player.player_id)
+            player_payoff = player_payoff[len(self.prompt):]
+            additional_info[i] = player_payoff + additional_info[i]
 
         results = self._collect_actions(
             players,
