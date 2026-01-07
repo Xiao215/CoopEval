@@ -32,7 +32,7 @@ class TrustGame(Game):
         You are playing a decision-making game against another player.
         Your objective is to maximize your points received in the game described below.
 
-        Actions:
+        Actions available to each player:
         {actions_block}
 
         Basic game rules:
@@ -69,7 +69,7 @@ class TrustGame(Game):
         p1_desc, p2_desc = self._payoff_description()
         player_desc = p1_desc if player_id == 1 else p2_desc
         payoff_section = "\nPayoff description:\n" + player_desc
-        return self.prompt + payoff_section
+        return self.prompt + payoff_section + f"\nIn case player identification becomes relevant, you are Player {player_id} in this game.\n"
 
     def play(
         self,
