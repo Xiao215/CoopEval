@@ -85,38 +85,40 @@ CONTRACT_REJECTION_PROMPT = textwrap.dedent(
 # Disarmament mechanism prompts
 DISARM_PROMPT = textwrap.dedent(
     """
-    Instruction:
-    You are negotiating a multi-action disarmament for this game.
+    Here is the twist:
+    You and the other players are currently in a disarmament phase, where over multiple rounds, each of you have the option to _disarm_ actions in advance. You can do that for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may decide to take that action in the original game.
 
-    A "cap" is the maximum probability (in %) with which you may choose an action in this game.
-    Your current caps:
+    Your current upper bounds:
         {my_caps}
-    Opponents' current caps:
+    Opponents' current upper bounds:
         {opponents_caps}
 
     Rules:
-    1) For each action, you may keep the cap the same or reduce it. Increases are forbidden.
-    2) Each cap must be an integer in [0, 100].
-    3) All caps must be non-negative and the sum of your caps must be greater than or equal to 100.
-    4) Moves are simultaneous; assume others facing the same negotiation.
-    5) If at least one party reduces any cap, negotiations continue to another round with probability {discount}% (otherwise they end).
-    6) If every party leaves all caps unchanged, negotiations end immediately.
+    1) For each action, you may keep the upper bound the same or reduce it. Increases are forbidden.
+    2) Each upper bound must be an integer in [0, 100].
+    3) All upper bounds must be non-negative and the sum of your upper bounds must be greater than or equal to 100.
+    4) All players are facing the question of disarming simultaneously, and players decisions to disarm are and will be reflected in the current upper bounds (described above).
+    5) If at any stage, any single player stops reducing any of their upper bounds, the disarmament phase stops there. Otherwise, there will be a {discount}% probability that an additional round of possible disarming will take place.
+    6) After the disarmament phase ends, you and the other players will play the original game subject to your committed probability upper bound constraints.
 
 
     Format requirement:
-    Return the new cap as a JSON object, for example:
+    Return your new upper bounds as a JSON object, for example:
     {{"A0": <INT>, "A1": <INT>, ...}}
     """
 )
 
 DISARMAMENT_MECHANISM_PROMPT = textwrap.dedent(
     """
-    Additional Information:
-    A "cap" is the maximum probability (in %) with which you may choose an action in the next round.
-    From previous round of negotiation, you agree to have a cap of:
-    {caps_str}
+    Here is the twist:
+    There was a disarmament phase between you and the other players, in which each of you had the option to _disarm_ actions in advance. This was done for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may now decide to take that action in the game. The following upper bounds arose from that disarmament phase:
 
-    Now you need to propose a new probability distribution over actions subjected to your current cap limits.
+    Your upper bounds:
+        {my_caps}
+    Opponents' upper bounds:
+        {opponents_caps}
+
+    In addition to the instructions below, you must now propose a probability distribution over actions subject to your committed probability upper bound constraints.
     """
 )
 
