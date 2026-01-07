@@ -28,7 +28,8 @@ class Contracting(Mechanism):
         base_game: Game,
     ) -> None:
         super().__init__(base_game)
-        self.contracts: dict[int, list[int]] = {}
+        # keyed by (model_type, player_id)
+        self.contracts: dict[tuple[str, int], list[int]] = {}
         self.contracts_design_prompt = CONTRACT_DESIGN_PROMPT
         self.contract_confirmation_prompt = CONTRACT_CONFIRMATION_PROMPT
         self.contract_mechanism_prompt = CONTRACT_MECHANISM_PROMPT
@@ -43,8 +44,9 @@ class Contracting(Mechanism):
             contract (dict[int]): The contract with index representing the action
                 and value representing the payoff adjustment.
         """
+        game_prompt = self.base_game.get_player_prompt(designer.player_id)
         base_prompt = (
-            self.base_game.prompt + "\n" + self.contracts_design_prompt.format()
+            game_prompt + "\n" + self.contracts_design_prompt.format()
         )
         response, contract = designer.chat_with_retries(
             base_prompt=base_prompt,
@@ -58,12 +60,14 @@ class Contracting(Mechanism):
         """
         Ask the LLM to confirm agreement to the contract with automatic retries.
         """
+        game_prompt = self.base_game.get_player_prompt(player.player_id)
+        key = (designer.model_type, designer.player_id)
         base_prompt = (
-            self.base_game.prompt
+            game_prompt
             + "\n"
             + self.contract_confirmation_prompt.format(
                 contract_description=self._contract_description(
-                    self.contracts[designer.uid]
+                    self.contracts[key]
                 )
             )
         )
@@ -157,11 +161,12 @@ class Contracting(Mechanism):
     def _all_contracts_description(self, players: Sequence[Agent]) -> str:
         """Format all contracts for the voting prompt."""
         lines = []
-        for i, player in enumerate(players, start=1):
-            contract = self.contracts[player.uid]
-            lines.append(f"Contract {i}:")
+        for player in players:
+            key = (player.model_type, player.player_id)
+            contract = self.contracts[key]
+            lines.append(f"Contract proposed by Player {player.player_id}:")
             lines.append(self._contract_description(contract))
-            lines.append("")  # Blank line between contracts
+            lines.append("")
         return "\n".join(lines)
 
     def _collect_vote(
@@ -176,9 +181,10 @@ class Contracting(Mechanism):
             response (str): The raw response from the voter
             votes (dict[int, bool]): Mapping from contract index to approval (True/False)
         """
+        game_prompt = self.base_game.get_player_prompt(voter.player_id)
         all_contracts = self._all_contracts_description(players)
         vote_prompt = (
-            self.base_game.prompt
+            game_prompt
             + "\n"
             + CONTRACT_APPROVAL_VOTE_PROMPT.format(
                 all_contracts_description=all_contracts
@@ -273,10 +279,9 @@ class Contracting(Mechanism):
         self.contracts.clear()
         contract_design = {}
         for agent, response, contract in design_results:
-            self.contracts[agent.uid] = contract
-            contract_design[agent.uid] = {
-                "agent_name": agent.name,
-                "model_type": agent.model_type,
+            key = (agent.model_type, agent.player_id)
+            self.contracts[key] = contract
+            contract_design[agent.name] = {
                 "response": response,
                 "contract": contract,
             }
@@ -320,7 +325,8 @@ class Contracting(Mechanism):
 
         # Step 3: Select winning contract
         winning_idx, winning_agent = self._select_contract(players, all_votes)
-        winning_contract = self.contracts[winning_agent.uid]
+        key = (winning_agent.model_type, winning_agent.player_id)
+        winning_contract = self.contracts[key]
 
         # Step 4: Collect signatures for the winning contract
         def sign_contract_fn(player: Agent) -> tuple[Agent, str, bool]:
@@ -332,8 +338,7 @@ class Contracting(Mechanism):
         sign_results = run_tasks(players, sign_contract_fn)
 
         # Step 5: Process signature results
-        # Create player ID mapping (Player 1, Player 2, etc.)
-        player_ids = {player: f"Player {i}" for i, player in enumerate(players, start=1)}
+        player_ids = {player: f"Player {player.player_id}" for player in players}
 
         all_agree = True
         rejector_ids = []
