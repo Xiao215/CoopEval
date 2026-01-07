@@ -57,21 +57,18 @@ class Disarmament(RepetitiveMechanism):
             self.current_disarm_caps[uid]
         )
 
-        # Hide players with generic names
-        opponent_names = {
-            opponent_uid: f"Player#{i}"
-            for i, opponent_uid in enumerate(
-                self.current_disarm_caps.keys(), start=1
-            )
+        opponent_labels = {
+            opponent_uid: f"Player {self.uid_to_player_id[opponent_uid]}"
+            for opponent_uid in self.current_disarm_caps.keys()
             if opponent_uid != uid
         }
 
         opp_lines = []
-        for opponent_uid, opponent_name in opponent_names.items():
+        for opponent_uid, opponent_label in opponent_labels.items():
             opponent_caps = self._caps_description(
                 self.current_disarm_caps[opponent_uid]
             )
-            opp_lines.append(f"\t{opponent_name}: {opponent_caps}")
+            opp_lines.append(f"\t{opponent_label}: {opponent_caps}")
         opponents_caps_block = "\n".join(opp_lines)
 
         return self.disarm_prompt.format(
@@ -192,6 +189,8 @@ class Disarmament(RepetitiveMechanism):
             player.uid: [100.0 for _ in range(self.base_game.num_actions)]
             for player in players
         }
+
+        self.uid_to_player_id = {player.uid: player.player_id for player in players}
 
         disarmament_records: list[list[dict[str, Any]]] = []
         matchup_moves = []

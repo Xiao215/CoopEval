@@ -37,8 +37,8 @@ class Reputation(RepetitiveMechanism, ABC):
         )
 
         if not recent_rounds:
-            return f"Reputation for {players.name}: No history available."
-        lines = [f"Reputation History for {players.name} (Most recent first):"]
+            return f"Reputation for Agent #{players.uid}: No history available."
+        lines = [f"Reputation History for Agent #{players.uid} (Most recent first):"]
 
         # 2. Iterate backwards (Most recent -> Oldest)
         reversed_history = list(enumerate(reversed(recent_rounds), 1))
@@ -57,12 +57,13 @@ class Reputation(RepetitiveMechanism, ABC):
             )
 
             opp_name = opp_move.player_name
+            opp_label = f"Agent #{opp_move.uid}"
 
             # --- Level 1: Main Player's History ---
             lines.append(
-                f"{main_branch} Past {rounds_ago} round(s): {players.name} vs {opp_name}. "
-                f"{players.name} played {my_move.action} ({my_move.points} pts), "
-                f"{opp_name} played {opp_move.action} ({opp_move.points} pts)."
+                f"{main_branch} Past {rounds_ago} round(s): Agent #{players.uid} vs {opp_label}. "
+                f"Agent #{players.uid} played {my_move.action} ({my_move.points} pts), "
+                f"{opp_label} played {opp_move.action} ({opp_move.points} pts)."
             )
 
             # --- Level 2: Opponent's History (Relative to THAT moment) ---
@@ -76,7 +77,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
             if opp_history:
                 lines.append(
-                    f"{child_indent}  └─ History of {opp_name} before this match:"
+                    f"{child_indent}  └─ History of {opp_label} before this match:"
                 )
 
                 # Iterate through the opponent's nested history
@@ -90,6 +91,7 @@ class Reputation(RepetitiveMechanism, ABC):
                         m for m in sub_round if m.player_name == opp_name
                     )
                     third_party_name = sub_opp_move.player_name
+                    third_party_label = f"Agent #{sub_opp_move.uid}"
 
                     # --- Level 3: The Context (Action Distribution) ---
                     # We want the stats of the 3rd party *before* they met the 2nd party.
@@ -106,13 +108,13 @@ class Reputation(RepetitiveMechanism, ABC):
                     )
 
                     lines.append(
-                        f"{child_indent}     {sub_branch} Past {sub_idx} round(s): {opp_name} vs {third_party_name}. "
-                        f"{opp_name}: {sub_target_move.action}, {third_party_name}: {sub_opp_move.action}. "
-                        f"[Context: {third_party_name} had distr {stats_str}]"
+                        f"{child_indent}     {sub_branch} Past {sub_idx} round(s): {opp_label} vs {third_party_label}. "
+                        f"{opp_label}: {sub_target_move.action}, {third_party_label}: {sub_opp_move.action}. "
+                        f"[Context: {third_party_label} had distr {stats_str}]"
                     )
             else:
                 lines.append(
-                    f"{child_indent}  └─ (No prior history for {opp_name} at this time)"
+                    f"{child_indent}  └─ (No prior history for {opp_label} at this time)"
                 )
 
         return "\n".join(lines)
