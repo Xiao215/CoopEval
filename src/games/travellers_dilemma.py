@@ -68,7 +68,7 @@ class TravellersDilemma(Game):
         You are playing a decision-making game against another player.
         Your objective is to maximize your points received in the game described below.
 
-        Actions:
+        Actions available to each player:
         {actions_block}
 
         Basic game rules:

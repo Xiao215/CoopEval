@@ -43,7 +43,7 @@ class PublicGoods(Game):
         You are playing a decision-making game against {num_players} other players.
         Your objective is to maximize your points received in the game described below.
 
-        Actions:
+        Actions available to each player:
         - {contribute_tok}
         - {free_ride_tok}
 

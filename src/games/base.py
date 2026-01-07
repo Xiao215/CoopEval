@@ -95,6 +95,10 @@ class Game(ABC):
         """
         )
 
+    def get_player_prompt(self, player_id: int) -> str:
+        """Get game prompt from specific player's perspective. Per default, this is the same for all players in symmetric games."""
+        return self.prompt + f"\nIn case player identification becomes relevant, you are Player {player_id} in this game.\n"
+
     @abstractmethod
     def play(
         self,

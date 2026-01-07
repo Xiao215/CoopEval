@@ -58,6 +58,8 @@ class Agent(ABC):
             next_uid = next(type(self)._instance_counter)
             while next_uid <= self.uid:
                 next_uid = next(type(self)._instance_counter)
+
+        self.player_id: int = agent_config["player_id"]
         self.agent_config = agent_config
 
     @abstractmethod
@@ -153,7 +155,7 @@ class IOAgent(Agent):
     @property
     def name(self) -> str:
         """Return the name of the agent."""
-        return f"{self.model_type}(IO)[#{self.uid}]"
+        return f"{self.model_type}(IO)[#{self.uid}]#P{self.player_id}"
 
 
 class CoTAgent(Agent):
@@ -176,4 +178,4 @@ class CoTAgent(Agent):
     @property
     def name(self) -> str:
         """Return the name of the agent."""
-        return f"{self.model_type}(CoT)[#{self.uid}]"
+        return f"{self.model_type}(CoT)[#{self.uid}]#P{self.player_id}"
