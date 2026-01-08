@@ -1,6 +1,7 @@
 """Agent abstractions and shared LLM caching utilities."""
 
 import itertools
+import textwrap
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import Any, Callable
@@ -83,8 +84,7 @@ class Agent(ABC):
 
     def _log_inference(self, prompt: str, response: str) -> None:
         entry = (
-            "=== inference ===\n"
-            f"timestamp: {datetime.now().isoformat()}\n"
+            "===== inference =====\n"
             f"agent: {self.name}\n"
             "prompt:\n"
             f"{prompt}\n"
@@ -170,9 +170,11 @@ class IOAgent(Agent):
         messages: str,
     ) -> str:
         """Chat with the agent using the provided messages."""
-        messages += (
-            "\nPlease ONLY provide the output to the above question."
-            "DO NOT provide any additional text or explanation.\n"
+        messages += textwrap.dedent(
+            """
+            Please ONLY provide the output to the above question.
+            DO NOT provide any additional text or explanation.
+            """
         )
         return self._invoke_with_logging(messages)
 
@@ -193,9 +195,13 @@ class CoTAgent(Agent):
         messages: str,
     ) -> str:
         """Chat with the agent using the provided messages."""
-        messages += """
-        Think about the question step by step, break it down into small steps, explain your reasoning, and then provide the final answer.
-        """
+        messages += textwrap.dedent(
+            """
+            Think about the question step by step.
+            Break it down into small steps.
+            Explain your reasoning, and then provide the final answer.
+            """
+        )
         return self._invoke_with_logging(messages)
 
     @property

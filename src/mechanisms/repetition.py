@@ -23,10 +23,11 @@ class Repetition(RepetitiveMechanism):
     def __init__(
         self,
         base_game,
+        *,
         num_rounds: int,
         discount: float,
-        lookup_depth: int,
-        include_prior_distributions: bool,
+        lookup_depth: int = 5,
+        include_prior_distributions: bool = True,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
         self.lookup_depth = lookup_depth
@@ -71,7 +72,7 @@ class Repetition(RepetitiveMechanism):
         global_names = {
             p.uid: f"PlayerID {p.player_id}" for p in players
         }
-        
+
         total_rounds = len(self.history.records)
         start_idx = max(0, total_rounds - lookup_depth)
         history_size = total_rounds - start_idx
@@ -106,23 +107,21 @@ class Repetition(RepetitiveMechanism):
                 prior_dist_exists = True
                 if lookup_depth == 0:
                     recent_history.append(
-                        f"The aggregate counts of how often each player has chosen each action in the past are:"
+                        "The aggregate counts of how often each player has chosen each action in the past are:"
                     )
                 else:
                     last_rounds_text = "last round" if history_size == 1 else f"{history_size} last rounds"
                     recent_history.append(
                         f"Before and up until the {last_rounds_text}, we had the following aggregate counts of how often each player has chosen each action."
                     )
-                recent_history.append(
-                    f"You:"
-                )
+                recent_history.append("You:")
                 for action, count in sorted(
                     prior_dist.items(), key=lambda kv: str(kv[0])
                 ):
                     recent_history.append(f"\t{action.to_token()}: played {count} time{'s' if count != 1 else ''}")
             else:
                 prior_dist_exists = False
-            
+
             for player in players:
                 if player.uid == focus.uid:
                     continue
@@ -201,15 +200,14 @@ class Repetition(RepetitiveMechanism):
 
         return records
 
-
-
-
-    def _LEGACY_format_history(
+    def _format_entire_history(
         self,
         players: Sequence[Agent],
         focus: Agent,
     ) -> str:
-        """Format prompt including every recorded round."""
+        """Format prompt including every recorded round.
+
+        Deprecated: Not used currently."""
         global_names = {
             p.uid: f"PlayerID {p.player_id}" for p in players
         }
