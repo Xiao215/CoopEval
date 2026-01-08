@@ -92,7 +92,8 @@ class RepetitiveMechanism(Mechanism):
 
     class History:
         """History of moves across multiple rounds."""
-        def __init__(self):
+        def __init__(self, action_cls: type[Action]):
+            self.action_cls = action_cls
             # List of all rounds information.
             # Note, the indices is arbitrary and only used for lookup.
             self.records: list[list[Move]] = []
@@ -187,7 +188,10 @@ class RepetitiveMechanism(Mechanism):
 
             if target_idx < 0:
                 return None
-            return history[target_idx].copy()
+            
+            result = {action: 0 for action in self.action_cls}
+            result.update(history[target_idx])
+            return result
 
         def clear(self) -> None:
             """Clear the history records."""
@@ -201,7 +205,7 @@ class RepetitiveMechanism(Mechanism):
         super().__init__(base_game)
         self.num_rounds = num_rounds
         self.discount = discount
-        self.history = self.History()
+        self.history = self.History(base_game.action_cls)
 
     def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players, discount=self.discount)
