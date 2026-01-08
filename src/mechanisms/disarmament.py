@@ -263,8 +263,6 @@ class Disarmament(RepetitiveMechanism):
         # or managed externally. For safety, we just track local moves for the return.
 
         for _ in range(self.num_rounds):
-            if _ == 1:
-                print("hi")
             
             # Prompt ALL players (including those with no room to disarm)
             negotiation_results = self._run_negotiations(players)
