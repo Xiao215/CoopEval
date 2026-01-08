@@ -153,7 +153,7 @@ class PopulationPayoffs:
         Aggregate all recorded match histories into a canonical payoff tensor.
 
         The resulting tensor represents the expected payoff for a 'focal' model
-        (index 0) when playing against a specific combination of opponents.
+        (index 0) when playing against a specific combination of other players.
         Symmetry is enforced by filling all permutations of observed profiles.
         """
         if not self._profiles:
@@ -264,7 +264,7 @@ class PopulationPayoffs:
 
         Uses einsum to compute: fitness[i] = Σ_{j,k,...} tensor[i,j,k,...] x pop[j] x pop[k] x ...
         This represents the expected payoff for a model i playing against
-        opponents randomly sampled from the population distribution.
+        other players randomly sampled from the population distribution.
 
         Args:
             population: dict mapping model type to its probability.

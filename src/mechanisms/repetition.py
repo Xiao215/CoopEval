@@ -9,9 +9,7 @@ from src.mechanisms.base import RepetitiveMechanism
 from src.mechanisms.prompts import (
     REPETITION_MECHANISM_PROMPT,
     REPETITION_NO_HISTORY_DESCRIPTION,
-    REPETITION_OPPONENT_LABEL,
-    REPETITION_RECENT_HISTORY_PROMPT,
-    REPETITION_RECENT_ROUND_LINE,
+    REPETITION_OTHERPLAYER_LABEL,
     REPETITION_ROUND_LINE,
     REPETITION_SELF_LABEL,
 )
@@ -27,9 +25,13 @@ class Repetition(RepetitiveMechanism):
         base_game,
         num_rounds: int,
         discount: float,
+        lookup_depth: int,
+        include_prior_distributions: bool,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
-        self.formatter = self._format_full_history
+        self.lookup_depth = lookup_depth
+        self.include_prior_distributions = include_prior_distributions
+        self.formatter = self._format_history
 
     def _build_history_prompts(
         self,
@@ -41,71 +43,44 @@ class Repetition(RepetitiveMechanism):
         if len(self.history) == 0:
             history_context = REPETITION_NO_HISTORY_DESCRIPTION
             base_prompt = REPETITION_MECHANISM_PROMPT.format(
-                round_idx=round_idx, history_context=history_context
-            ).strip()
+                round_idx=round_idx,
+                discount=int(self.discount * 100),
+                history_context=history_context
+            )
             return [base_prompt] * len(players)
 
-        base_prompt_template = REPETITION_MECHANISM_PROMPT.strip()
+        base_prompt_template = REPETITION_MECHANISM_PROMPT
         return [
             base_prompt_template.format(
                 round_idx=round_idx,
+                discount=int(self.discount * 100),
                 history_context=self.formatter(players, focus),
             )
             for focus in players
         ]
 
-    def _format_full_history(
+    def _format_history(
         self,
         players: Sequence[Agent],
         focus: Agent,
     ) -> str:
-        """Format prompt including every recorded round."""
-        global_names = {
-            p.uid: f"Player{i}" for i, p in enumerate(players, start=1)
-        }
-        lines: list[str] = []
-        for past_round_index, round_moves in enumerate(self.history, start=1):
-            move_map = {m.uid: str(m.action) for m in round_moves}
-            actions = [
-                REPETITION_SELF_LABEL.format(action=move_map[focus.uid]),
-            ]
-            for other in players:
-                if other.uid == focus.uid:
-                    continue
-                actions.append(
-                    REPETITION_OPPONENT_LABEL.format(
-                        opponent=global_names[other.uid],
-                        action=move_map[other.uid],
-                    )
-                )
-            lines.append(
-                REPETITION_ROUND_LINE.format(
-                    round_idx=past_round_index, actions="\n".join(actions)
-                )
-            )
-        return "\n".join(lines)
-
-    def _format_recent_history(
-        self,
-        players: Sequence[Agent],
-        focus: Agent,
-        lookup_depth: int = 5,
-    ) -> str:
-        """Format prompt with a limited window of history and opponents' action distribution."""
-        if lookup_depth <= 0:
-            raise ValueError("lookup_depth must be positive")
+        """Format prompt with a limited window of history and other players' action distribution."""
+        lookup_depth = self.lookup_depth
+        if lookup_depth < 0:
+            raise ValueError("lookup_depth must be non-negative")
         global_names = {
             p.uid: f"PlayerID {p.player_id}" for p in players
         }
-        player_name = focus.name
-        recent_rounds = self.history.get_prior_rounds(
-            player_name, lookback_rounds=0, lookup_depth=lookup_depth
-        )
-        history_size = len(recent_rounds)
+        
+        total_rounds = len(self.history.records)
+        start_idx = max(0, total_rounds - lookup_depth)
+        history_size = total_rounds - start_idx
 
         recent_history: list[str] = []
-        for relative_idx, round_moves in enumerate(recent_rounds, start=1):
-            move_map = {m.uid: str(m.action) for m in round_moves}
+        for idx in range(total_rounds - 1, start_idx - 1, -1):
+            round_moves = self.history.records[idx]
+            round_index = idx + 1
+            move_map = {m.uid: m.action.to_token() for m in round_moves}
             actions = [
                 REPETITION_SELF_LABEL.format(action=move_map[focus.uid]),
             ]
@@ -113,36 +88,63 @@ class Repetition(RepetitiveMechanism):
                 if other.uid == focus.uid:
                     continue
                 actions.append(
-                    REPETITION_OPPONENT_LABEL.format(
-                        opponent=global_names[other.uid],
+                    REPETITION_OTHERPLAYER_LABEL.format(
+                        other_player=global_names[other.uid],
                         action=move_map[other.uid],
                     )
                 )
-            round_summary = REPETITION_RECENT_ROUND_LINE.format(
-                relative_idx=relative_idx, actions="\n".join(actions)
+            round_summary = REPETITION_ROUND_LINE.format(
+                round_idx=round_index, actions="\n".join(actions)
             )
             recent_history.append(round_summary)
 
-        for other in players:
-            if other.uid == focus.uid:
-                continue
+        if self.include_prior_distributions:
             prior_dist = self.history.get_prior_action_distribution(
-                other.name, lookback_rounds=history_size
+                focus.name, lookback_rounds=history_size
             )
             if prior_dist:
-                # TODO: dont directly say their name
+                prior_dist_exists = True
+                if lookup_depth == 0:
+                    recent_history.append(
+                        f"The aggregate counts of how often each player has chosen each action in the past are:"
+                    )
+                else:
+                    last_rounds_text = "last round" if history_size == 1 else f"{history_size} last rounds"
+                    recent_history.append(
+                        f"Before and up until the {last_rounds_text}, we had the following aggregate counts of how often each player has chosen each action."
+                    )
                 recent_history.append(
-                    f"{global_names[other.uid]}'s action counts from before these {history_size} recent round(s):"
+                    f"You:"
                 )
                 for action, count in sorted(
                     prior_dist.items(), key=lambda kv: str(kv[0])
                 ):
-                    recent_history.append(f"\t{action}: {count}")
-
-        return REPETITION_RECENT_HISTORY_PROMPT.format(
-            window_count=history_size,
-            recent_history="\n".join(recent_history),
-        )
+                    recent_history.append(f"\t{action.to_token()}: played {count} time{'s' if count != 1 else ''}")
+            else:
+                prior_dist_exists = False
+            
+            for player in players:
+                if player.uid == focus.uid:
+                    continue
+                prior_dist = self.history.get_prior_action_distribution(
+                    player.name, lookback_rounds=history_size
+                )
+                if prior_dist:
+                    assert prior_dist_exists, (
+                        "If other player's prior distribution exists, then the focus player's prior distribution must also exist."
+                    )
+                    recent_history.append(
+                        f"{global_names[player.uid]}:"
+                    )
+                    for action, count in sorted(
+                        prior_dist.items(), key=lambda kv: str(kv[0])
+                    ):
+                        recent_history.append(f"\t{action.to_token()}: played {count} time{'s' if count != 1 else ''}")
+                else:
+                    assert not prior_dist_exists, (
+                        "If one player's prior distribution does not exist, then the focus player's prior distribution should not exist either."
+                    )
+        return "\n".join(recent_history)
 
     @staticmethod
     def _serialize_records(
@@ -198,3 +200,37 @@ class Repetition(RepetitiveMechanism):
         )
 
         return records
+
+
+
+
+    def _LEGACY_format_history(
+        self,
+        players: Sequence[Agent],
+        focus: Agent,
+    ) -> str:
+        """Format prompt including every recorded round."""
+        global_names = {
+            p.uid: f"PlayerID {p.player_id}" for p in players
+        }
+        lines: list[str] = []
+        for round_index, round_moves in enumerate(self.history, start=1):
+            move_map = {m.uid: m.action.to_token() for m in round_moves}
+            actions = [
+                REPETITION_SELF_LABEL.format(action=move_map[focus.uid]),
+            ]
+            for other in players:
+                if other.uid == focus.uid:
+                    continue
+                actions.append(
+                    REPETITION_OTHERPLAYER_LABEL.format(
+                        other_player=global_names[other.uid],
+                        action=move_map[other.uid],
+                    )
+                )
+            lines.append(
+                REPETITION_ROUND_LINE.format(
+                    round_idx=round_index, actions="\n".join(actions)
+                )
+            )
+        return "\n".join(lines)

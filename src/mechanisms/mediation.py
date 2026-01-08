@@ -280,6 +280,7 @@ class Mediation(Mechanism):
         mediator_mechanism = self.mediation_mechanism_prompt.format(
             mediator_description=mediator_description,
             additional_action_id=self.base_game.num_actions,
+            designer_player_id=winning_agent.player_id
         )
 
         moves = self.base_game.play(

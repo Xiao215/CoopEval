@@ -10,21 +10,23 @@ from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
 from src.mechanisms.prompts import (
     DISARMAMENT_MECHANISM_PROMPT,
-    DISARM_PROMPT,
+    DISARM_PROMPT_BASE,
+    DISARM_FORMAT_CAN_DISARM,
+    DISARM_FORMAT_CANNOT_DISARM,
 )
 from src.utils.concurrency import run_tasks
 
 Caps = list[float]
 CapsByPlayer = dict[int, Caps]
-NegotiationResult = tuple[str, Caps]
+NegotiationResult = tuple[str, str, Caps]  # (response, choice, caps)
 
 
 class Disarmament(RepetitiveMechanism):
     """
-    Disarmament mechanism that allows for multiple rounds of the same game.
+    Disarmament mechanism that allows for multiple rounds of disarming before playing the base game under disarmament restrictions.
     """
 
-    _NO_ROOM_MESSAGE = "No room for further disarmament, keep the same cap."
+    _NO_ROOM_MESSAGE = "No room for further disarmament, so the same upper bounds remain."
 
     def __init__(
         self,
@@ -34,7 +36,9 @@ class Disarmament(RepetitiveMechanism):
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
 
-        self.disarm_prompt = DISARM_PROMPT
+        self.disarm_prompt_base = DISARM_PROMPT_BASE
+        self.disarm_format_can_disarm = DISARM_FORMAT_CAN_DISARM
+        self.disarm_format_cannot_disarm = DISARM_FORMAT_CANNOT_DISARM
         self.current_disarm_caps: CapsByPlayer = {}
 
         self.disarmament_mechanism_prompt = DISARMAMENT_MECHANISM_PROMPT
@@ -51,35 +55,43 @@ class Disarmament(RepetitiveMechanism):
         """
 
         if uid not in self.current_disarm_caps:
-            raise KeyError(f"Caps have not been initialized for player {uid}")
+            raise KeyError(f"Upper bounds have not been initialized for player {uid}")
 
         self_caps_description = self._caps_description(
             self.current_disarm_caps[uid]
         )
 
-        opponent_labels = {
-            opponent_uid: f"Player {self.uid_to_player_id[opponent_uid]}"
-            for opponent_uid in self.current_disarm_caps.keys()
-            if opponent_uid != uid
+        other_player_labels = {
+            other_player_uid: f"Player {self.uid_to_player_id[other_player_uid]}"
+            for other_player_uid in self.current_disarm_caps.keys()
+            if other_player_uid != uid
         }
 
         opp_lines = []
-        for opponent_uid, opponent_label in opponent_labels.items():
-            opponent_caps = self._caps_description(
-                self.current_disarm_caps[opponent_uid]
+        for other_player_uid, other_player_label in other_player_labels.items():
+            other_player_caps = self._caps_description(
+                self.current_disarm_caps[other_player_uid]
             )
-            opp_lines.append(f"\t{opponent_label}: {opponent_caps}")
-        opponents_caps_block = "\n".join(opp_lines)
+            opp_lines.append(f"\t{other_player_label}: {other_player_caps}")
+        other_players_caps_block = "\n".join(opp_lines)
 
-        return self.disarm_prompt.format(
+        # Build base prompt with current state
+        base_prompt = self.disarm_prompt_base.format(
             my_caps=self_caps_description,
-            opponents_caps=opponents_caps_block,
+            other_players_caps=other_players_caps_block,
             discount=round(self.discount * 100),
         )
 
+        # Append appropriate format requirement based on whether player can disarm
+        can_disarm = sum(self.current_disarm_caps[uid]) > 100.0
+        if can_disarm:
+            return base_prompt + "\n" + self.disarm_format_can_disarm
+        else:
+            return base_prompt + "\n" + self.disarm_format_cannot_disarm
+
     @staticmethod
     def _caps_description(caps: Caps) -> str:
-        """Return '{"A0"=<cap0>, "A1"=<cap1>, ...}'."""
+        """Return '{"A0"=<upper_bounds0>, "A1"=<upper_bounds1>, ...}'."""
         return (
             "{"
             + ", ".join(f'"A{i}"={int(c)}' for i, c in enumerate(caps))
@@ -90,25 +102,33 @@ class Disarmament(RepetitiveMechanism):
         self,
         player: Agent,
     ) -> NegotiationResult:
-        """Request updated caps for ``player`` and return the parsed response."""
-        uid = player.uid
-        base_prompt = self.base_game.prompt + "\n" + self._format_prompt(uid)
+        """Request updated caps for player and return parsed response.
 
-        def parse_func(resp: str) -> list[float]:
+        Returns:
+            tuple[str, str, Caps]: (response, choice, new_caps)
+        """
+        uid = player.uid
+        base_prompt = self.base_game.get_player_prompt(player.player_id) + "\n" + self._format_prompt(uid)
+
+        def parse_func(resp: str) -> tuple[str, Caps]:
             return self._parse_disarm_caps(resp, uid)
 
-        response, new_caps = player.chat_with_retries(
+        response, (choice, new_caps) = player.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=parse_func,
         )
-        return response, new_caps
+        return response, choice, new_caps
 
     def _parse_disarm_caps(
         self,
         response: str,
         uid: int,
-    ) -> Caps:
-        """Parse the disarmament probabilities (new caps) from the agent's response."""
+    ) -> tuple[str, Caps]:
+        """Parse the choice and disarmament caps from the agent's response.
+
+        Returns:
+            tuple[str, Caps]: (choice, new_caps) where choice is "disarm", "pass", or "end"
+        """
         matches = re.findall(r"\{.*?\}", response, re.DOTALL)
         if not matches:
             raise ValueError(
@@ -123,11 +143,49 @@ class Disarmament(RepetitiveMechanism):
 
         if not isinstance(json_obj, dict):
             raise ValueError(
-                "Parsed JSON must be an object mapping actions to caps"
+                "Parsed JSON must be an object with a 'choice' field"
             )
 
+        # Validate choice field
+        if "choice" not in json_obj:
+            raise ValueError(
+                "Missing required 'choice' field. Must include one of: "
+                '{"choice": "disarm", ...}, {"choice": "pass"}, or {"choice": "end"}'
+            )
+
+        choice = json_obj["choice"]
+        if not isinstance(choice, str):
+            raise ValueError(
+                f"'choice' field must be a string, got {type(choice).__name__}"
+            )
+
+        choice_lower = choice.lower()
+        if choice_lower not in ("disarm", "pass", "end"):
+            raise ValueError(
+                f"'choice' field must be either 'disarm', 'pass', or 'end', got {choice!r}"
+            )
+
+        # For "pass" and "end", return current caps (no changes)
+        if choice_lower in ("pass", "end"):
+            # Validate no other keys present
+            extra_keys = set(json_obj.keys()) - {"choice"}
+            if extra_keys:
+                raise ValueError(
+                    f"When choice is '{choice_lower}', only the 'choice' field should be included. "
+                    f"Found extra keys: {sorted(extra_keys)}"
+                )
+            return choice_lower, self.current_disarm_caps[uid]
+
+        # For "disarm", check if player has room to disarm
+        if sum(self.current_disarm_caps[uid]) <= 100.0:
+            raise ValueError(
+                'You chose "disarm" but your upper bounds already sum to 100, so you have no room to disarm further. '
+                'You may only choose "pass" or "end".'
+            )
+
+        # Parse and validate the caps
         n = self.base_game.num_actions
-        got_keys = set(json_obj.keys())
+        got_keys = set(json_obj.keys()) - {"choice"}
         missing = set(f"A{i}" for i in range(n)) - got_keys
         extra = got_keys - set(f"A{i}" for i in range(n))
         if extra:
@@ -138,43 +196,49 @@ class Disarmament(RepetitiveMechanism):
         new_caps: Caps = [0.0] * n
         old_caps = self.current_disarm_caps[uid]
         for act_str, cap in json_obj.items():
+            if act_str == "choice":
+                continue
             idx = int(act_str[1:])  # strip the leading 'A'
             if not 0 <= idx < n:
                 raise ValueError(f"A{idx} does not exist as a valid action")
             if not isinstance(cap, (int, float)):
                 raise ValueError(
-                    f"Cap for {act_str} must be numeric, got {type(cap)!r}"
+                    f"Upper bound for {act_str} must be numeric, got {type(cap)!r}"
                 )
             cap_value = float(cap)
             if not 0 <= cap_value <= 100:
-                raise ValueError(f"Disarm cap {cap} out of range for A{idx}")
+                raise ValueError(f"Disarm upper bound {cap} out of range for A{idx}")
             if cap_value > old_caps[idx]:
                 raise ValueError(
-                    f"New cap {cap_value} of A{idx} greater than its old cap {old_caps[idx]}"
+                    f"New upper bound {cap_value} of A{idx} greater than its old upper bound {old_caps[idx]}"
                 )
             new_caps[idx] = cap_value
 
         # Rule: caps must sum to >= 100
         if sum(new_caps) < 100:
             raise ValueError(
-                f"Sum of your proposed caps is {sum(new_caps)}, but must be at least 100"
+                f"Sum of your proposed upper bounds is {sum(new_caps)}, but must be at least 100"
             )
 
-        return new_caps
+        # Validate: if choice is "disarm", caps must have changed
+        if sum(new_caps) >= sum(old_caps) - 0.1:
+            raise ValueError(
+                "You chose choice='disarm' but did not change any upper bounds. "
+                "Either change at least one cap, or use choice='pass' or choice='end'."
+            )
+
+        return choice_lower, new_caps
 
     def _run_negotiations(
         self,
-        negotiable_players: Sequence[Agent],
+        players: Sequence[Agent],
     ) -> dict[int, NegotiationResult]:
-        """Collect fresh caps for each negotiable player (if any)."""
+        """Prompt all players for their disarmament choices and return results."""
 
-        if not negotiable_players:
-            return {}
-
-        results = run_tasks(negotiable_players, self._negotiate_disarm_caps)
+        results = run_tasks(players, self._negotiate_disarm_caps)
         return {
             player.uid: result
-            for player, result in zip(negotiable_players, results, strict=True)
+            for player, result in zip(players, results, strict=True)
         }
 
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
@@ -185,7 +249,7 @@ class Disarmament(RepetitiveMechanism):
             A list of move sequences (one sequence per round played).
         """
         # Ensure we start with fresh caps for this specific match
-        disarmed_cap: CapsByPlayer = {
+        self.current_disarm_caps = {
             player.uid: [100.0 for _ in range(self.base_game.num_actions)]
             for player in players
         }
@@ -199,48 +263,116 @@ class Disarmament(RepetitiveMechanism):
         # or managed externally. For safety, we just track local moves for the return.
 
         for _ in range(self.num_rounds):
-            self.current_disarm_caps = disarmed_cap
+            
+            # Prompt ALL players (including those with no room to disarm)
+            negotiation_results = self._run_negotiations(players)
 
-            negotiable_players = [
-                player
-                for player in players
-                if sum(disarmed_cap[player.uid]) > 100.0
-            ]
-            negotiation_results = self._run_negotiations(negotiable_players)
-
-            new_disarmed_cap: CapsByPlayer = {}
-            negotiation_continue = False
-            disarmament_mechanisms: list[str] = []
+            proposed_caps: CapsByPlayer = {}
+            player_choices: dict[int, str] = {}
             round_records: list[dict[str, Any]] = []
 
+            # First pass: collect all choices and proposed caps
             for player in players:
-                pid = player.uid
-                if pid in negotiation_results:
-                    disarm_rsp, player_cap = negotiation_results[pid]
-                else:
-                    disarm_rsp = self._NO_ROOM_MESSAGE
-                    player_cap = disarmed_cap[pid]
+                puid = player.uid
+                disarm_rsp, choice, player_cap = negotiation_results[puid]
 
-                negotiation_continue |= player_cap != disarmed_cap[pid]
-                new_disarmed_cap[pid] = player_cap
+                player_choices[puid] = choice
+                proposed_caps[puid] = player_cap
 
                 round_records.append(
                     {
-                        "player": pid,
+                        "player": puid,
                         "response": disarm_rsp,
-                        "new_cap": player_cap,
+                        "choice": choice,
+                        "proposed_upper_bound": player_cap,
                     }
                 )
-                caps_str = self._caps_description(player_cap)
+
+            # Check for veto
+            veto = any(choice == "end" for choice in player_choices.values())
+
+            # Determine which caps to use (veto discards all proposed changes)
+            if veto:
+                caps_to_use = self.current_disarm_caps.copy()
+            else:
+                caps_to_use = proposed_caps
+
+            # Check if negotiation continues (no veto and at least one "disarm")
+            active_disarm = any(choice == "disarm" for choice in player_choices.values())
+            negotiation_continue = (not veto) and active_disarm
+
+            # Calculate termination reason for this round
+            # We play the game in every iteration, simulating what would happen if disarmament ended here
+            if not negotiation_continue:
+                # Explicit stop condition
+                if veto:
+                    # Find which players vetoed
+                    vetoers = [
+                        f"Player {self.uid_to_player_id[puid]}"
+                        for puid, choice in player_choices.items()
+                        if choice == "end"
+                    ]
+                    termination_reason = f"{', '.join(vetoers)} vetoed by choosing to end the disarmament phase."
+                else:
+                    # No veto, but negotiation stopped
+                    # Check if anyone has room to disarm
+                    any_room_to_disarm = any(
+                        sum(self.current_disarm_caps[player.uid]) > 100.0
+                        for player in players
+                    )
+                    if not any_room_to_disarm:
+                        # No one can disarm further (all at sum=100)
+                        termination_reason = "No players can disarm further (all at sum=100)."
+                    else:
+                        # No veto, people can disarm, but no one chose to
+                        # This means everyone must have chosen "pass"
+                        assert all(choice == "pass" for choice in player_choices.values()), \
+                            "Logic error: negotiation stopped without veto, but not everyone passed"
+                        termination_reason = "Everyone passed - no active disarmament occurred."
+            else:
+                # No explicit stop, but we're simulating what would happen if continuation probability ended it
+                termination_reason = "The disarmament phase came to an end by random chance."
+
+            # Build formatted cap lines for all players
+            player_cap_lines = {}
+            for player in players:
+                label = f"Player {player.player_id}"
+                caps_desc = self._caps_description(caps_to_use[player.uid])
+                player_cap_lines[player.uid] = f"\t{label}: {caps_desc}"
+
+            # Second pass: build mechanism prompts for each player
+            disarmament_mechanisms: list[str] = []
+            for player in players:
+                puid = player.uid
+                # Extract just the caps description for "my_caps" (without the label)
+                my_caps = self._caps_description(caps_to_use[puid])
+
+                # Other players' caps are all other players' formatted lines
+                other_players_lines = [
+                    player_cap_lines[other.uid]
+                    for other in players
+                    if other.uid != puid
+                ]
+                other_players_caps = "\n".join(other_players_lines)
+
                 disarmament_mechanisms.append(
-                    self.disarmament_mechanism_prompt.format(caps_str=caps_str)
+                    self.disarmament_mechanism_prompt.format(
+                        my_caps=my_caps,
+                        other_players_caps=other_players_caps,
+                        termination_reason=termination_reason,
+                    )
                 )
 
             moves = self.base_game.play(
                 players=players, additional_info=disarmament_mechanisms
             )
 
-            self.current_disarm_caps = new_disarmed_cap
+            self.current_disarm_caps = caps_to_use
+
+            # Update round_records with the actual caps used and termination reason
+            for record in round_records:
+                record["actual_upper_bound"] = caps_to_use[record["player"]]
+                record["termination_reason"] = termination_reason
 
             disarmament_records.append(
                 [
@@ -264,12 +396,15 @@ class Disarmament(RepetitiveMechanism):
             self.history.append(moves)
             matchup_moves.append(moves)
 
-            disarmed_cap = new_disarmed_cap
             if not negotiation_continue:
                 break
 
         LOGGER.log_record(
             record=disarmament_records, file_name=self.record_file
         )
+
+        # Clear matchup-specific state to catch any accidental reuse
+        self.current_disarm_caps = {}
+        self.uid_to_player_id = {}
 
         return matchup_moves

@@ -29,14 +29,14 @@ class TrustGame(Game):
         self.prompt_template = textwrap.dedent(
             """
         Setup:
-        You are playing a decision-making game against another player.
-        Your objective is to maximize your points received in the game described below.
+        You are playing a decision-making game with another player.
+        Your objective is to maximize your points received in the game described in length below.
 
         Actions available to each player:
         {actions_block}
 
         Basic game rules:
-        1. You and the opponent each choose a probability for each action, simultaneously.
+        1. You and the other player each choose a probability for each action, simultaneously.
         2. After both decisions are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff description below.
         """
@@ -47,7 +47,7 @@ class TrustGame(Game):
                 actions_block=actions_block,
             ),
             num_players=2,
-            num_actions=len(TrustGameAction),
+            action_cls=TrustGameAction,
         )
 
     def _payoff_description(self) -> tuple[str, str]:
@@ -55,12 +55,12 @@ class TrustGame(Game):
         p2_lines = []
         for (a, b), (pts_a, pts_b) in self.payoff_matrix.items():
             p1_lines.append(
-                f"\t- If you choose {a.to_token()} and opponent chooses {b.to_token()}: "
-                f"You get {pts_a} points, opponent gets {pts_b} points."
+                f"\t- If you choose {a.to_token()} and the other player chooses {b.to_token()}: "
+                f"You get {pts_a} points, the other player gets {pts_b} points."
             )
             p2_lines.append(
-                f"\t- If you choose {b.to_token()} and opponent chooses {a.to_token()}: "
-                f"You get {pts_b} points, opponent gets {pts_a} points."
+                f"\t- If you choose {b.to_token()} and the other player chooses {a.to_token()}: "
+                f"You get {pts_b} points, the other player gets {pts_a} points."
             )
         return "\n".join(p1_lines), "\n".join(p2_lines)
 
@@ -82,11 +82,6 @@ class TrustGame(Game):
 
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
-
-        for i, player in enumerate(players):
-            player_payoff = self.get_player_prompt(player.player_id)
-            player_payoff = player_payoff[len(self.prompt):]
-            additional_info[i] = player_payoff + additional_info[i]
 
         results = self._collect_actions(
             players,

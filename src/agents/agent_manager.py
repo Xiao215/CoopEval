@@ -120,12 +120,19 @@ class Agent(ABC):
                 error_reason = str(e)
                 print(
                     f"Attempt {attempt + 1} of {self.name} to parse response failed: "
-                    f"{error_reason} from response {response!r}"
+                    f"{self._truncate_string(error_reason)} from response {self._truncate_string(response)!r}"
                 )
         raise ValueError(
             f"Failed to parse response for {self.name} after {1 + max_retries} attempts. "
             f"Last error: {error_reason}. Last response: {response!r}"
         )
+
+    @staticmethod
+    def _truncate_string(s: str, max_chars: int = 300) -> str:
+        """Truncate string to show first and last max_chars characters."""
+        if len(s) <= 2 * max_chars:
+            return s
+        return f"{s[:max_chars]}...[truncated due to length]...{s[-max_chars:]}"
 
     @staticmethod
     def _build_retry_prompt(

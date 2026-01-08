@@ -49,7 +49,7 @@ CONTRACT_APPROVAL_VOTE_PROMPT = textwrap.dedent(
 CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, you have the option to sign a payment contract. A contract specifies a payment value for each action that a player can play. Here is the contract:
+    On top of the original game rules, you have the option to sign a payment contract. A contract specifies a payment value for each action that a player can play. Here is the contract that was selected via approval voting (proposed by Player {designer_player_id}):
     {contract_description}
 
     At this stage, you are asked to decide whether to sign the contract. The contract becomes active only if all players sign it.
@@ -63,7 +63,7 @@ CONTRACT_CONFIRMATION_PROMPT = textwrap.dedent(
 CONTRACT_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, there is a payment contract in place because every player signed it in beforehand. Here is the contract:
+    On top of the original game rules, there is a payment contract in place because every player signed it in beforehand. Here is the contract that was selected via approval voting (proposed by Player {designer_player_id}):
     {contract_description}
 
     Since this contract directly affects your final payoff, consider the contract when making your strategy decisions!
@@ -73,7 +73,7 @@ CONTRACT_MECHANISM_PROMPT = textwrap.dedent(
 CONTRACT_REJECTION_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, a payment contract was proposed to the players. It is NOT active though because some players rejected it. Here is the proposed contract:
+    On top of the original game rules, a payment contract was proposed to the players. It is NOT active though because some players rejected it. Here is the proposed contract that was selected via approval voting (proposed by Player {designer_player_id}):
     {contract_description}
 
     Players who rejected it: {rejector_ids}
@@ -83,40 +83,76 @@ CONTRACT_REJECTION_PROMPT = textwrap.dedent(
 )
 
 # Disarmament mechanism prompts
-DISARM_PROMPT = textwrap.dedent(
+DISARM_PROMPT_BASE = textwrap.dedent(
     """
-    Instruction:
-    You are negotiating a multi-action disarmament for this game.
+    Here is the twist:
+    You and the other players are currently in a disarmament phase, where over multiple rounds, each of you have the option to "disarm" actions in advance. You can do that for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may decide to take that action in the original game.
 
-    A "cap" is the maximum probability (in %) with which you may choose an action in this game.
-    Your current caps:
+    Your current upper bounds:
         {my_caps}
-    Opponents' current caps:
-        {opponents_caps}
+    Other players' current upper bounds:
+        {other_players_caps}
 
     Rules:
-    1) For each action, you may keep the cap the same or reduce it. Increases are forbidden.
-    2) Each cap must be an integer in [0, 100].
-    3) All caps must be non-negative and the sum of your caps must be greater than or equal to 100.
-    4) Moves are simultaneous; assume others facing the same negotiation.
-    5) If at least one party reduces any cap, negotiations continue to another round with probability {discount}% (otherwise they end).
-    6) If every party leaves all caps unchanged, negotiations end immediately.
+    1) For each action, you may keep the upper bound the same or reduce it. Increases are forbidden.
+    2) Each upper bound must be an integer in [0, 100].
+    3) All upper bounds must be non-negative and the sum of your upper bounds must be greater than or equal to 100.
+    4) All players are facing the question of whether to disarm simultaneously, and players' decisions to disarm are and will be reflected in the current upper bounds (already reported above).
+    5) Each round, you must make one of three choices:
+       - "disarm": Strictly reduce at least one upper bound (you must then provide new bounds that differ from current for at least one action).
+       - "pass": Skip this round but remain willing to wait for others to disarm.
+       - "end": Veto the remaining disarmament phase and stop it for everyone.
+    6) Continuation rules:
+       - If ANY player chooses "end", the disarmament phase stops immediately and ANY disarming occurring in that round will not be applied.
+       - If NO player chooses "disarm" (for example, everyone chooses "pass"), the disarmament phase stops.
+       - If at least one player chooses "disarm" and no one chooses "end", there is a {discount}% chance probability that an additional round will take place.
+    7) After the disarmament phase ends, you and the other players will play the original game subject to your committed probability upper bound constraints.
+    """
+)
 
+DISARM_FORMAT_CAN_DISARM = textwrap.dedent(
+    """
+    Format requirement:
+    Return your choice and (if you choose to disarm) new probability upper bounds as a JSON object:
+    {{"choice": "disarm", "A0": <INT>, "A1": <INT>, ...}}
+    OR
+    {{"choice": "pass"}}
+    OR
+    {{"choice": "end"}}
+
+    - "choice" must be one of: "disarm", "pass", or "end"
+    - If you choose "disarm", you MUST include all action keys (A0, A1, ...) with integer values, and at least one cap must be lower than your current bounds
+    - If you choose "pass" or "end", do NOT include action keys
+    """
+)
+
+DISARM_FORMAT_CANNOT_DISARM = textwrap.dedent(
+    """
+    NOTE: Your upper bounds already sum to 100, so you have no further room to disarm.
 
     Format requirement:
-    Return the new cap as a JSON object, for example:
-    {{"A0": <INT>, "A1": <INT>, ...}}
+    Return your choice as a JSON object:
+    {{"choice": "pass"}}
+    OR
+    {{"choice": "end"}}
+
+    - "choice" must be one of: "pass" or "end"
     """
 )
 
 DISARMAMENT_MECHANISM_PROMPT = textwrap.dedent(
     """
-    Additional Information:
-    A "cap" is the maximum probability (in %) with which you may choose an action in the next round.
-    From previous round of negotiation, you agree to have a cap of:
-    {caps_str}
+    Here is the twist:
+    There was a disarmament phase between you and the other players, in which each of you had the option to "disarm" actions in advance. This was done for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may now decide to take that action in the game. The following upper bounds arose from that disarmament phase:
 
-    Now you need to propose a new probability distribution over actions subjected to your current cap limits.
+    Your upper bounds:
+        {my_caps}
+    Other players' upper bounds:
+        {other_players_caps}
+
+    The disarmament phase ended for the following reason: {termination_reason}
+
+    In addition to the instructions below, you must now propose a probability distribution over actions subject to your committed probability upper bound constraints.
     """
 )
 
@@ -170,7 +206,7 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
     If you choose to delegate, the mediator will play an action for you based on how many players have delegated to it.
     You can also choose to act independently.
 
-    Here is what the mediator would do for the players that delegate to it:
+    The available mediator was proposed by Player {designer_player_id} and selected via approval voting among the players. Here is what the mediator would do for the players that delegate to it:
     {mediator_description}
 
     Consider A{additional_action_id} as an additional action "Delegate to Mediator". Your final mixed strategy should include probability for all actions A0, A1, ..., A{additional_action_id}.
@@ -182,25 +218,17 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
 REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    You are playing this game repeatedly with the same players. The action sampled from your action probability distribution will be visible to those players in future rounds and may influence their decisions.
+    You are playing this game *repeatedly* with the same player(s). The action sampled from your action probability distribution will be visible to those players in future rounds and may influence their decisions.
     You are currently playing round {round_idx} of the game.
-    History:
+    After each round, there is a {discount}% chance probability that an additional round will take place.
+
+    Next, you find the info available to you about the history of play so far.
     {history_context}
     """
 )
 REPETITION_NO_HISTORY_DESCRIPTION = (
-    "You haven't played any rounds with these opponent(s) yet."
+    "You haven't played any rounds with the other player(s) yet."
 )
 REPETITION_ROUND_LINE = "[Round {round_idx}] \n{actions}"
-REPETITION_RECENT_ROUND_LINE = "[{relative_idx} round(s) ago] \n{actions}"
-REPETITION_RECENT_OPPONENT_DIST_HEADER = (
-    "Opponents' action counts over last {window} round(s):"
-)
-REPETITION_RECENT_HISTORY_PROMPT = textwrap.dedent(
-    """
-    History over the last {window_count} round(s):
-    {recent_history}
-    """
-)
 REPETITION_SELF_LABEL = "\tYou: {action}"
-REPETITION_OPPONENT_LABEL = "\t{opponent}: {action}"
+REPETITION_OTHERPLAYER_LABEL = "\t{other_player}: {action}"

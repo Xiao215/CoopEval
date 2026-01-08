@@ -74,11 +74,12 @@ class Game(ABC):
         self,
         prompt: str,
         num_players: int,
-        num_actions: int,
+        action_cls: type[Action],
     ) -> None:
         self.prompt = prompt
         self.num_players = num_players
-        self.num_actions = num_actions
+        self.action_cls = action_cls
+        self.num_actions = len(action_cls)
         self.default_output_instruction = textwrap.dedent(
             """
         Instruction:
@@ -120,7 +121,7 @@ class Game(ABC):
 
         Returns the player's raw response.
         """
-        prompt = self.prompt
+        prompt = self.get_player_prompt(player.player_id)
 
         if extra_info:
             prompt += extra_info

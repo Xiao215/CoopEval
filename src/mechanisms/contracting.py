@@ -68,7 +68,8 @@ class Contracting(Mechanism):
             + self.contract_confirmation_prompt.format(
                 contract_description=self._contract_description(
                     self.contracts[key]
-                )
+                ),
+                designer_player_id=designer.player_id
             )
         )
         response, agreement = player.chat_with_retries(
@@ -355,7 +356,8 @@ class Contracting(Mechanism):
         # Step 6: Play game once (with or without contract)
         if all_agree:
             contract_prompt = self.contract_mechanism_prompt.format(
-                contract_description=self._contract_description(winning_contract)
+                contract_description=self._contract_description(winning_contract),
+                designer_player_id=winning_agent.player_id
             )
             additional_info = [contract_prompt] * len(players)
         else:
@@ -363,6 +365,7 @@ class Contracting(Mechanism):
             rejection_prompt = CONTRACT_REJECTION_PROMPT.format(
                 contract_description=self._contract_description(winning_contract),
                 rejector_ids=rejectors_str,
+                designer_player_id=winning_agent.player_id
             )
             additional_info = [rejection_prompt] * len(players)
 
