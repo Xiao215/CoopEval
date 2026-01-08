@@ -66,7 +66,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
         for direct_opponent in direct_opponents:
             direct_opponent_reputation_lines = []
-            # 1. Get Direct Opponent's recent history
+
             recent_rounds = self.history.get_prior_rounds(
                 direct_opponent.name,
                 lookback_rounds=0,
@@ -108,9 +108,9 @@ class Reputation(RepetitiveMechanism, ABC):
 
                 # --- Level 1: Direct Opponent vs First Order Opponent ---
                 direct_opponent_reputation_lines.append(
-                    f"{main_branch} Past {rounds_ago} round(s): PlayerID {direct_opponent.uid} vs {first_order_opp_label}. "
-                    f"PlayerID {direct_opponent.uid} played {direct_opp_move.action.to_token()} ({direct_opp_move.points} pts), "
-                    f"{first_order_opp_label} played {first_order_opp_move.action.to_token()} ({first_order_opp_move.points} pts)."
+                    f"{main_branch} [{rounds_ago} round(s) ago] "
+                    f"PlayerID {direct_opponent.uid} ({direct_opp_move.action.to_token()}, {direct_opp_move.points}pts) vs "
+                    f"{first_order_opp_label} ({first_order_opp_move.action.to_token()}, {first_order_opp_move.points}pts)"
                 )
 
                 # --- Level 2: First Order Opponent's History ---
@@ -136,7 +136,6 @@ class Reputation(RepetitiveMechanism, ABC):
                             else "├─"
                         )
 
-                        # In sub-round, First Order Opponent played against the Second Order Opponent
                         first_order_sub_move = next(
                             m
                             for m in sub_round
@@ -181,9 +180,10 @@ class Reputation(RepetitiveMechanism, ABC):
                             )
 
                         direct_opponent_reputation_lines.append(
-                            f"{child_indent}     {sub_branch} Past {sub_idx} round(s): {first_order_opp_label} vs {second_order_opp_label}. "
-                            f"{first_order_opp_label}: {first_order_sub_move.action.to_token()}, {second_order_opp_label}: {second_order_opp_move.action.to_token()}. "
-                            f"[Context: {stats_str}]"
+                            f"{child_indent}     {sub_branch} [{sub_idx} round(s) ago] "
+                            f"{first_order_opp_label} ({first_order_sub_move.action.to_token()}, {first_order_sub_move.points}pts) vs "
+                            f"{second_order_opp_label} ({second_order_opp_move.action.to_token()}, {second_order_opp_move.points}pts) "
+                            f"→ Context: {stats_str}"
                         )
                 else:
                     direct_opponent_reputation_lines.append(
@@ -191,7 +191,9 @@ class Reputation(RepetitiveMechanism, ABC):
                             opponent_name=first_order_opp_label)
                         }"
                     )
+
             lines.append("\n".join(direct_opponent_reputation_lines).strip())
+
         return "\n\n".join(lines).strip()
 
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
