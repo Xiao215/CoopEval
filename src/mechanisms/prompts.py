@@ -218,25 +218,17 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
 REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    You are playing this game repeatedly with the same players. The action sampled from your action probability distribution will be visible to those players in future rounds and may influence their decisions.
+    You are playing this game *repeatedly* with the same player(s). The action sampled from your action probability distribution will be visible to those players in future rounds and may influence their decisions.
     You are currently playing round {round_idx} of the game.
-    History:
+    After each round, there is a {discount}% chance probability that an additional round will take place.
+
+    Next, you find the info available to you about the history of play so far.
     {history_context}
     """
 )
 REPETITION_NO_HISTORY_DESCRIPTION = (
-    "You haven't played any rounds with these other player(s) yet."
+    "You haven't played any rounds with the other player(s) yet."
 )
 REPETITION_ROUND_LINE = "[Round {round_idx}] \n{actions}"
-REPETITION_RECENT_ROUND_LINE = "[{relative_idx} round(s) ago] \n{actions}"
-REPETITION_RECENT_OTHERPLAYER_DIST_HEADER = (
-    "Other players' action counts over last {window} round(s):"
-)
-REPETITION_RECENT_HISTORY_PROMPT = textwrap.dedent(
-    """
-    History over the last {window_count} round(s):
-    {recent_history}
-    """
-)
 REPETITION_SELF_LABEL = "\tYou: {action}"
 REPETITION_OTHERPLAYER_LABEL = "\t{other_player}: {action}"
