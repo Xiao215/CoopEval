@@ -188,10 +188,16 @@ class RepetitiveMechanism(Mechanism):
 
             if target_idx < 0:
                 return None
-            
+
             result = {action: 0 for action in self.action_cls}
             result.update(history[target_idx])
             return result
+
+        def get_rounds_played_count(self, player_name: str) -> int:
+            """
+            Return the total number of rounds a specific player has participated in.
+            """
+            return len(self.player_round_indices[player_name])
 
         def clear(self) -> None:
             """Clear the history records."""

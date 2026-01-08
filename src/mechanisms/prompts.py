@@ -11,7 +11,7 @@ CONTRACT_DESIGN_PROMPT = textwrap.dedent(
     - A contract is an additional payoff agreement on top of the original game payoffs. It specifies a number for each action that a player can play, indicating one of three cases:
         * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other players.
         * Negative number (-): the player pays an additional payment of X points in total, distributed equally among the other players.
-        * Zero (0): no additional payments in either direction.    
+        * Zero (0): no additional payments in either direction.
     - Each player may choose to accept the contract as a whole or not.
     - The contract becomes active only if all players accept.
 
@@ -185,7 +185,7 @@ MEDIATOR_APPROVAL_VOTE_PROMPT = textwrap.dedent(
     You can also choose to act independently.
 
     But first, you and the other player have to decide via an approval voting process which mediator will be present in the game. Your task now is to review each mediator and decide which ones you approve of. The winning mediator will be selected uniform at random from those with the maximum number of approvals.
-    
+
     Here are the mediator designs that have been proposed:
     {all_mediators_description}
 
@@ -222,7 +222,8 @@ REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     You are currently playing round {round_idx} of the game.
     After each round, there is a {discount}% chance probability that an additional round will take place.
 
-    Next, you find the info available to you about the history of play so far.
+    Next, you find the info available to you about past few rounds of interaction:
+
     {history_context}
     """
 )
@@ -232,3 +233,25 @@ REPETITION_NO_HISTORY_DESCRIPTION = (
 REPETITION_ROUND_LINE = "[Round {round_idx}] \n{actions}"
 REPETITION_SELF_LABEL = "\tYou: {action}"
 REPETITION_OTHERPLAYER_LABEL = "\t{other_player}: {action}"
+
+# Reputation mechanism prompts
+REPUTATION_MECHANISM_PROMPT = textwrap.dedent(
+    """
+    Here is the twist:
+    You are playing this game *multiple times* with many different players randomly.
+    The action sampled from your action probability distribution will be visible to everyone in future rounds and may influence their decisions.
+    You are currently playing round {round_idx} of the game.
+    After each round, there is a {discount}% chance probability that an additional round will take place.
+
+    Next, you find the info available to you about the reputation information regarding your current opponent(s)
+
+    {history_context}
+    """
+)
+
+REPUTATION_NO_HISTORY_DESCRIPTION = (
+    "{opponent_name} has no prior history of playing this game."
+)
+REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION = (
+    "{opponent_name} has no prior action distribution"
+)
