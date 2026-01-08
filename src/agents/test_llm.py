@@ -1,5 +1,8 @@
 """Test LLM instance for fast local testing without API calls."""
 
+import json
+import random
+import re
 from typing import Any
 
 from src.agents.base import LLM
@@ -9,37 +12,36 @@ class TestInstance(LLM):
     """A fake LLM that returns canned responses for testing mechanisms without API calls."""
 
     def invoke(self, prompt: str, **kwargs: Any) -> str:
-        """Return appropriate test responses based on the prompt content."""
+        if self._matches(prompt, self._action_template_patterns()):
+            other_players_match = re.search(r"(\d+)\s+other players", prompt)
+            num_actions = (
+                int(other_players_match.group(1)) if other_players_match else 2
+            )
+            if num_actions <= 0:
+                num_actions = 2
 
-        # Contract design (Contracting mechanism)
-        if "design and propose" in prompt.lower() and "contract" in prompt.lower():
-            return '{"A0": 5, "A1": -2}'  # Simple contract
+            weights = [random.random() for _ in range(num_actions)]
+            total = sum(weights) or 1.0
+            raw = [weight / total * 100 for weight in weights]
+            ints = [int(value) for value in raw]
+            remainder = 100 - sum(ints)
+            if remainder:
+                fractional = sorted(
+                    enumerate(raw),
+                    key=lambda item: item[1] - int(item[1]),
+                    reverse=True,
+                )
+                for i in range(remainder):
+                    ints[fractional[i % num_actions][0]] += 1
 
-        # Contract voting (Contracting mechanism)
-        if "approval voting" in prompt.lower() and "contract" in prompt.lower():
-            return '{"C1": true, "C2": false}'  # Approve first contract
+            distribution = {f"A{i}": value for i, value in enumerate(ints)}
+            return json.dumps(distribution)
+        return '{"A0": 100, "A1": 0}'  # always return action A0 with 100 points
 
-        # Contract signing (Contracting mechanism)
-        if "option to sign" in prompt.lower():
-            return '{"sign": true}'  # Always sign
+    def _action_template_patterns(self) -> tuple[str, ...]:
+        return (
+            r'\{\s*"A0"\s*:\s*(?:-?\d+|<[Ii][Nn][Tt]>)\s*,\s*"A1"\s*:\s*(?:-?\d+|<[Ii][Nn][Tt]>)(?:\s*,\s*(?:"A\d+"\s*:\s*(?:-?\d+|<[Ii][Nn][Tt]>)|\.\.\.))*\s*\}',
+        )
 
-        # Mediator design (Mediation mechanism)
-        if "design and propose" in prompt.lower() and "mediator" in prompt.lower():
-            return '{"1": "A0", "2": "A1"}'  # Simple mediator
-
-        # Mediator voting (Mediation mechanism)
-        if "approval voting" in prompt.lower() and "mediator" in prompt.lower():
-            return '{"M1": true, "M2": false}'  # Approve first mediator
-
-        # Disarmament negotiation
-        if "disarmament" in prompt.lower() or "upper bound" in prompt.lower():
-            # Check if this is first call (caps at 100) or subsequent
-            if '"A0"=100' in prompt or '"A1"=100' in prompt:
-                # First round: continue with reduced caps
-                return '{"choice": "disarm", "A0": 80, "A1": 20}'
-            else:
-                # Subsequent rounds: end negotiation
-                return '{"choice": "end"}'
-
-        # Default: Return action distribution (for base game)
-        return '{"A0": 60, "A1": 40}'  # 60% cooperate, 40% defect
+    def _matches(self, prompt: str, patterns: tuple[str, ...]) -> bool:
+        return any(re.search(pattern, prompt) for pattern in patterns)

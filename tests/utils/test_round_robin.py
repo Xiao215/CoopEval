@@ -12,8 +12,8 @@ class TestRoundRobin(unittest.TestCase):
 
     def setUp(self):
         """Setup common test data."""
-        self.even_players = [FakeAgent(i) for i in range(4)]  # 4 Players
-        self.odd_players = [FakeAgent(i) for i in range(5)]  # 5 Players
+        self.even_players = [FakeAgent() for _ in range(4)]  # 4 Players
+        self.odd_players = [FakeAgent() for _ in range(5)]  # 5 Players
 
     def _get_all_matches(self, schedule):
         """Helper to flatten the schedule into a list of sorted match tuples."""

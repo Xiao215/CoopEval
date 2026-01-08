@@ -10,6 +10,7 @@ import numpy as np
 
 from src.agents.agent_manager import Agent
 from src.games.base import Move
+from src.registry.agent_registry import create_agent
 
 ProfileKey: TypeAlias = tuple[int, ...]
 
@@ -50,6 +51,7 @@ class PopulationPayoffs:
         self._uid_to_model: dict[int, str] = {
             int(p.uid): str(p.model_type) for p in players
         }
+        self._player_configs = [p.get_agent_config() for p in players]
 
         # Storage: Map sorted UIDs to a list of match arrays.
         # Structure: { (1, 2): [ ndarray(Point1, Points2, ...), ... ] }
@@ -59,13 +61,11 @@ class PopulationPayoffs:
         self._payoff_tensor: np.ndarray | None = None
         self._tensor_model_types: list[str] | None = None
 
-        # Cached payoff tensor (populated by build_payoff_tensor)
-        self._payoff_tensor: np.ndarray | None = None
-        self._tensor_model_types: list[str] | None = None
-
     def reset(self) -> None:
         """Clear all recorded matchup outcomes."""
         self._profiles.clear()
+        self._payoff_tensor = None
+        self._tensor_model_types = None
 
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
         """
@@ -150,96 +150,63 @@ class PopulationPayoffs:
 
     def build_payoff_tensor(self) -> None:
         """
-        Build and cache a payoff tensor of tensor dimension equal to the number of players in the game, and indexed by model types.
+        Aggregate all recorded match histories into a canonical payoff tensor.
 
-        Stores the tensor in self._payoff_tensor and model types in self._tensor_model_types.
-        This should be called once after all matchups are recorded and before calling fitness().
+        The resulting tensor represents the expected payoff for a 'focal' model
+        (index 0) when playing against a specific combination of other players.
+        Symmetry is enforced by filling all permutations of observed profiles.
         """
+        if not self._profiles:
+            raise ValueError(
+                "No matches recorded. Cannot compute payoff tensor."
+            )
 
-        all_model_types = sorted(set(self._uid_to_model.values()))
-        model_to_idx = {m: i for i, m in enumerate(all_model_types)}
-        k = len(all_model_types)
+        model_types = sorted(set(self._uid_to_model.values()))
+        model_to_idx = {m: i for i, m in enumerate(model_types)}
 
-        # Get number of players from any matchup
+        k = len(model_types)
+        # Determine N-players from the first available key
         n_players = len(next(iter(self._profiles.keys())))
 
-        # Initialize tensor and counts
-        tensor = np.zeros([k] * n_players)
-        counts = np.zeros([k] * n_players)
+        # Initialize Accumulators
+        # tensor[i, j, ...] stores sum of payoffs for Model_i vs Model_j ...
+        payoff_sums = np.zeros([k] * n_players, dtype=float)
+        counts = np.zeros([k] * n_players, dtype=int)
 
-        for uid_set, payoffs_array in self._profiles.items():
-            uids = list(uid_set)
+        # Process Each Unique Profile (Specific Set of UIDs)
+        for profile_key, match_list in self._profiles.items():
+            uids = list(profile_key)
 
-            # Get model types for each UID
-            models = [self._uid_to_model[uid] for uid in uids]
-            # Average payoffs per model type
-            avg_per_uid = np.mean([self._compute_discounted_average(arr) for arr in payoffs_array], axis=0)
-            model_payoffs = defaultdict(list)
-            for uid, payoff in zip(uids, avg_per_uid):
-                model_payoffs[self._uid_to_model[uid]].append(payoff)
-            avg_by_model = {m: np.mean(p) for m, p in model_payoffs.items()}
+            # Calculate Average Payoff per Seat for this Profile
+            match_scores = []
+            for match_arr in match_list:
+                s = self._compute_discounted_average(match_arr)
+                match_scores.append(s)
 
-            # Fill all symmetric positions
-            for perm in set(permutations(models)):
-                focal_model = perm[0]
+            profile_avg_scores = np.mean(match_scores, axis=0)
+            current_models = [self._uid_to_model[uid] for uid in uids]
+
+            model_payoff_map = defaultdict(list)
+            for score, model in zip(profile_avg_scores, current_models):
+                model_payoff_map[model].append(score)
+
+            avg_by_model = {
+                m: np.mean(vals) for m, vals in model_payoff_map.items()
+            }
+
+            # Fill all permutations to ensure the tensor is seat-agnostic
+            for perm in set(permutations(current_models)):
                 indices = tuple(model_to_idx[m] for m in perm)
-                tensor[indices] += avg_by_model[focal_model]
+                focal_model = perm[0]
+
+                payoff_sums[indices] += avg_by_model[focal_model]
                 counts[indices] += 1
 
-        # Average if filled multiple times
-        mask = counts > 0
-        tensor[mask] /= counts[mask]
+        with np.errstate(invalid="ignore"):
+            tensor = np.divide(payoff_sums, counts, where=counts > 0)
 
-        # Cache the results
         self._payoff_tensor = tensor
-        self._tensor_model_types = all_model_types
-
-    def build_payoff_tensor(self) -> None:
-        """
-        Build and cache a payoff tensor of tensor dimension equal to the number of players in the game, and indexed by model types.
-
-        Stores the tensor in self._payoff_tensor and model types in self._tensor_model_types.
-        This should be called once after all matchups are recorded and before calling fitness().
-        """
-
-        all_model_types = sorted(set(self.uids_to_model_types.values()))
-        model_to_idx = {m: i for i, m in enumerate(all_model_types)}
-        k = len(all_model_types)
-
-        # Get number of players from any matchup
-        n_players = len(next(iter(self._table.keys())))
-
-        # Initialize tensor and counts
-        tensor = np.zeros([k] * n_players)
-        counts = np.zeros([k] * n_players)
-
-        for uid_set, payoffs_array in self._table.items():
-            uids = list(uid_set)
-
-            # Get model types for each UID
-            models = [self.uids_to_model_types[uid] for uid in uids]
-
-            # Average payoffs per model type
-            avg_per_uid = self._average_payoff(payoffs_array)
-            model_payoffs = defaultdict(list)
-            for uid, payoff in zip(uids, avg_per_uid):
-                model_payoffs[self.uids_to_model_types[uid]].append(payoff)
-            avg_by_model = {m: np.mean(p) for m, p in model_payoffs.items()}
-
-            # Fill all symmetric positions
-            for perm in set(permutations(models)):
-                focal_model = perm[0]
-                indices = tuple(model_to_idx[m] for m in perm)
-                tensor[indices] += avg_by_model[focal_model]
-                counts[indices] += 1
-
-        # Average if filled multiple times
-        mask = counts > 0
-        tensor[mask] /= counts[mask]
-
-        # Cache the results
-        self._payoff_tensor = tensor
-        self._tensor_model_types = all_model_types
+        self._tensor_model_types = model_types
 
     def build_full_payoff_tensor(self) -> np.ndarray:
         """
@@ -255,6 +222,7 @@ class PopulationPayoffs:
         """
         if self._payoff_tensor is None:
             self.build_payoff_tensor()
+        assert self._payoff_tensor is not None
 
         tensor = self._payoff_tensor
         n_players = tensor.ndim
@@ -280,7 +248,10 @@ class PopulationPayoffs:
                 permuted_strat = js.copy()
                 if player_idx != 0:
                     # Swap: position 0 gets player_idx's strategy, position player_idx gets position 0's strategy
-                    permuted_strat[0], permuted_strat[player_idx] = permuted_strat[player_idx], permuted_strat[0]
+                    permuted_strat[0], permuted_strat[player_idx] = (
+                        permuted_strat[player_idx],
+                        permuted_strat[0],
+                    )
 
                 # Look up payoff from Player 1's tensor using permuted indices
                 G[player_idx, joint_strat_idx] = tensor[tuple(permuted_strat)]
@@ -291,9 +262,9 @@ class PopulationPayoffs:
         """
         Compute expected payoff for each model type against the current population.
 
-        Uses einsum to compute: fitness[i] = Σ_{j,k,...} tensor[i,j,k,...] × pop[j] × pop[k] × ...
+        Uses einsum to compute: fitness[i] = Σ_{j,k,...} tensor[i,j,k,...] x pop[j] x pop[k] x ...
         This represents the expected payoff for a model i playing against
-        opponents randomly sampled from the population distribution.
+        other players randomly sampled from the population distribution.
 
         Args:
             population: dict mapping model type to its probability.
@@ -328,8 +299,8 @@ class PopulationPayoffs:
     def to_json(self) -> dict[str, Any]:
         """Serialize payoff records.
 
-        Note: We store the current uid_to_model mapping in the JSON
-        purely for debugging/inspection purposes. It is ignored by from_json.
+        Note: We store the current uid_to_model mapping and player configs
+        in the JSON so from_json can reconstruct when players are not provided.
         """
         serialized_matches = []
 
@@ -341,6 +312,7 @@ class PopulationPayoffs:
 
         return {
             "discount": self.discount,
+            "player_configs": self._player_configs,
             "debug_uids_map": {
                 str(k): v for k, v in self._uid_to_model.items()
             },  # for debugging only
@@ -350,23 +322,16 @@ class PopulationPayoffs:
     @classmethod
     def from_json(
         cls,
-        payload: dict[str, Any],
-        players: Sequence[Agent],
+        json_data: dict[str, Any],
     ) -> "PopulationPayoffs":
-        """Reconstruct instance from JSON.
-
-        Args:
-            payload: The JSON data.
-            players: The list of agents. This is REQUIRED to reconstruct
-                     the uid-to-model mapping.
-        """
-        # We ignore 'debug_uids_map' from JSON and strictly use 'players'
+        """Reconstruct instance from JSON."""
+        players = [create_agent(cfg) for cfg in json_data["player_configs"]]
         instance = cls(
             players=players,
-            discount=payload.get("discount"),
+            discount=json_data["discount"],
         )
 
-        for entry in payload.get("matchups", []):
+        for entry in json_data.get("matchups", []):
             uids = tuple(sorted(entry["uids"]))
             raw_payoffs = entry["payoffs"]
             restored_arrays = [np.array(p, dtype=float) for p in raw_payoffs]

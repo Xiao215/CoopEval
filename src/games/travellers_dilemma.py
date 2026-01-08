@@ -55,24 +55,24 @@ class TravellersDilemma(Game):
 
         payoff_description = textwrap.dedent(
             f"""
-            Suppose you choose number X and opponent chooses number Y.
-                - If X = Y: you get X points, opponent gets Y (=X) points.
-                - If X < Y: you get X + {self.bonus}, opponent gets X - {self.bonus}.
-                - If X > Y: you get Y - {self.bonus}, opponent gets Y + {self.bonus}.
+            Suppose you choose number X and the other player chooses number Y.
+                - If X = Y: you get X points, the other player gets Y (=X) points.
+                - If X < Y: you get X + {self.bonus}, the other player gets X - {self.bonus}.
+                - If X > Y: you get Y - {self.bonus}, the other player gets Y + {self.bonus}.
         """
         ).strip()
 
         prompt_template = textwrap.dedent(
             """
         Setup:
-        You are playing a decision-making game against another player.
-        Your objective is to maximize your points received in the game described below.
+        You are playing a decision-making game with another player.
+        Your objective is to maximize your points received in the game described in length below.
 
-        Actions:
+        Actions available to each player:
         {actions_block}
 
         Basic game rules:
-        1. You and the opponent each choose a probability for each action, simultaneously.
+        1. You and the other player each choose a probability for each action, simultaneously.
         2. After both decisions are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff description below.
 
@@ -87,7 +87,7 @@ class TravellersDilemma(Game):
                 payoff_description=payoff_description,
             ),
             num_players=2,
-            num_actions=len(self.claims),
+            action_cls=self.action_cls,
         )
 
         # Override mixed-strategy instruction to reflect multi-action correctly
@@ -104,7 +104,7 @@ class TravellersDilemma(Game):
         Return exactly one JSON object, for example:
         {"A0": <INT>, "A1": <INT>, ...}
         """
-        ).strip()
+        )
 
     def play(
         self,

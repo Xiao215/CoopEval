@@ -8,7 +8,6 @@ from enum import Enum
 from typing import Any, Callable, Self, Sequence
 
 from src.agents.agent_manager import Agent
-from src.logger_manager import LOGGER
 from src.utils.concurrency import run_tasks
 
 
@@ -75,11 +74,12 @@ class Game(ABC):
         self,
         prompt: str,
         num_players: int,
-        num_actions: int,
+        action_cls: type[Action],
     ) -> None:
         self.prompt = prompt
         self.num_players = num_players
-        self.num_actions = num_actions
+        self.action_cls = action_cls
+        self.num_actions = len(action_cls)
         self.default_output_instruction = textwrap.dedent(
             """
         Instruction:
@@ -94,6 +94,10 @@ class Game(ABC):
         {"A0": <INT>, "A1": <INT>, ...}
         """
         )
+
+    def get_player_prompt(self, player_id: int) -> str:
+        """Get game prompt from specific player's perspective. Per default, this is the same for all players in symmetric games."""
+        return self.prompt + f"\nIn case player identification becomes relevant, you are Player {player_id} in this game.\n"
 
     @abstractmethod
     def play(
@@ -117,7 +121,7 @@ class Game(ABC):
 
         Returns the player's raw response.
         """
-        prompt = self.prompt
+        prompt = self.get_player_prompt(player.player_id)
 
         if extra_info:
             prompt += extra_info
@@ -126,7 +130,6 @@ class Game(ABC):
             output_instruction = self.default_output_instruction
         prompt += "\n" + output_instruction
 
-        LOGGER.write_to_txt(prompt, "game_prompt.txt")
         resp, mix_probs = player.chat_with_retries(
             prompt, self._parse_mixed_probs
         )
@@ -180,18 +183,9 @@ class Game(ABC):
 
     @staticmethod
     def _choose_from_mix_strategy(probs: dict[int, float]) -> int:
-        r = random.random() * sum(probs.values())
-        acc = 0.0
-        last_key = None
-        for k, w in probs.items():
-            last_key = k
-            acc += w
-            if r <= acc:
-                return k
-        # Floating-point edge case fallback: return last key considered
-        # This ensures we return a valid action even if floating-point errors
-        # prevent exact matching (e.g., r=99.9999... but acc=100.0)
-        return last_key
+        keys = list(probs.keys())
+        weights = list(probs.values())
+        return random.choices(keys, weights=weights, k=1)[0]
 
     def _collect_actions(
         self,

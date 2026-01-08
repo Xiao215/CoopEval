@@ -15,18 +15,22 @@ class FakeAction(Action):
 class FakeAgent(Agent):
     """Minimal stand-in for ``Agent`` with attributes needed for payoff tracking."""
 
-    def __init__(self, uid: int, model_type: str = "Unset") -> None:
-        # We don't call super().__init__ to avoid needing real dependencies
-        self.uid = uid
-        self.model_type = model_type
-        self._name = f"FakeAgent-{uid}"
+    def __init__(self, llm_config: dict | None = None) -> None:
+        if llm_config is None:
+            llm_config = {}
+        if "model" not in llm_config:
+            llm_config["model"] = "fake-agent"
+        if "provider" not in llm_config:
+            llm_config["provider"] = "TestInstance"
+        agent_config = {"llm": llm_config, "type": "IOAgent"}
 
+        super().__init__(agent_config)
     def chat(self, messages: Any) -> str:
         return f"fake response to {messages}"
 
     @property
     def name(self) -> str:
-        return self._name
+        return f"fake-agent-{self.uid}"
 
     def __lt__(self, other: "FakeAgent") -> bool:
         return self.uid < other.uid

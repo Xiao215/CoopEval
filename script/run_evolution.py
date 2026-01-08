@@ -1,22 +1,23 @@
 import argparse
+import json
 import random
-import re
 from pathlib import Path
 
 import numpy as np
 import torch
 import yaml
 
-from config import CONFIG_DIR
+from config import CONFIG_DIR, DATA_DIR
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
-from src.plot import plot_probability_evolution
 from src.registry.game_registry import GAME_REGISTRY
 from src.registry.mechanism_registry import MECHANISM_REGISTRY
-from src.logger_manager import WandBLogger, LOGGER
+from src.logger_manager import LOGGER
 from src.utils.concurrency import set_default_max_workers
 
 
 def set_seed(seed=42):
+    """Set the random seed for reproducibility."""
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -34,13 +35,34 @@ def load_config(filename: str) -> dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
+def _load_population_payoffs_from_file(path: Path) -> PopulationPayoffs:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Population payoff file {path} was not found."
+        )
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    print(f"Loaded precomputed population payoffs from {path}.")
+    return PopulationPayoffs.from_json(payload)
 
-def _slugify(text: str, *, max_len: int = 40) -> str:
-    slug = re.sub(r"[^A-Za-z0-9]+", "-", text.strip())
-    slug = slug.strip("-")
-    if max_len and len(slug) > max_len:
-        slug = slug[:max_len].rstrip("-")
-    return slug.lower() or "item"
+
+def _prepare_population_payoffs(
+    mechanism,
+    agent_cfgs: list[dict],
+    population_payoffs_path: str | None,
+) -> PopulationPayoffs:
+    if population_payoffs_path:
+        return _load_population_payoffs_from_file(
+            DATA_DIR / population_payoffs_path
+        )
+
+    print("No precomputed population payoff provided; running tournament...")
+    population_payoffs = mechanism.run_tournament(agent_cfgs=agent_cfgs)
+    LOGGER.log_record(
+        record=population_payoffs.to_json(),
+        file_name="population_payoffs.json",
+    )
+    return population_payoffs
 
 
 def main():
@@ -52,6 +74,12 @@ def main():
     # parser.add_argument('--log', action='store_true', help='Enable logging')
     parser.add_argument(
         "--wandb", action="store_true", help="Enable Weights & Biases figure saving"
+    )
+    parser.add_argument(
+        "--population-payoffs",
+        type=str,
+        default=None,
+        help="Path to a JSON file containing precomputed population payoffs.",
     )
 
     args = parser.parse_args()
@@ -74,9 +102,15 @@ def main():
         f"Running {config['game']['type']} with mechanism {config['mechanism']['type']}.\n"
     )
 
+    population_payoffs = _prepare_population_payoffs(
+        mechanism=mechanism,
+        agent_cfgs=config["agents"],
+        population_payoffs_path=args.population_payoffs,
+    )
+
     replicator_dynamics = DiscreteReplicatorDynamics(
         agent_cfgs=config["agents"],
-        mechanism=mechanism,
+        population_payoffs=population_payoffs,
     )
 
     # TODO: currently initial_population can only be a string, rather than a dynamic population

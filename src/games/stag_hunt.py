@@ -33,14 +33,14 @@ class StagHunt(Game):
         self.prompt_template = textwrap.dedent(
             """
         Setup:
-        You are playing a decision-making game against another player.
-        Your objective is to maximize your points received in the game described below.
+        You are playing a decision-making game with another player.
+        Your objective is to maximize your points received in the game described in length below.
 
-        Actions:
+        Actions available to each player:
         {actions_block}
 
         Basic game rules:
-        1. You and the opponent each choose a probability for each action, simultaneously.
+        1. You and the other player each choose a probability for each action, simultaneously.
         2. After both decisions are locked in, the final action will be drawn from the probability distributions.
         3. Both players receive the points specified in the payoff description below.
 
@@ -55,15 +55,15 @@ class StagHunt(Game):
                 payoff_description=self._payoff_description(),
             ),
             num_players=2,
-            num_actions=len(StagHuntAction),
+            action_cls=StagHuntAction,
         )
 
     def _payoff_description(self) -> str:
         lines = []
         for (a, b), (pts_a, pts_b) in self.payoff_matrix.items():
             lines.append(
-                f"\t- If you choose {a.to_token()} and opponent chooses {b.to_token()}: "
-                f"you get {pts_a} points, opponent gets {pts_b} points."
+                f"\t- If you choose {a.to_token()} and the other player chooses {b.to_token()}: "
+                f"you get {pts_a} points, the other player gets {pts_b} points."
             )
         return "\n".join(lines)
 

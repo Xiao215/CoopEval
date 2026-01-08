@@ -1,11 +1,11 @@
 """Common infrastructure for tournament mechanisms."""
 
+import copy
 from collections import Counter, defaultdict
 import itertools
-import random
 import time
 from abc import ABC, abstractmethod
-from typing import Sequence, Iterator
+from typing import Iterator, Sequence
 
 from tqdm import tqdm
 
@@ -23,30 +23,31 @@ class Mechanism(ABC):
 
         self.record_file = f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
 
-    def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
+    def _build_payoffs(self, players: list[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players)
 
-    def _create_players_from_cfgs(
-        self, agent_cfgs: Sequence[dict]
-    ) -> list[Agent]:
-        """Create players from the given agent configurations."""
-        players = [
-            create_agent(cfg)
-            for cfg in agent_cfgs
-            for _ in range(self.base_game.num_players)
-        ]
+    def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
+        """Create players with fixed player IDs from agent configurations."""
+        players = []
+        for cfg in agent_cfgs:
+            for player_id in range(1, self.base_game.num_players + 1):
+                agent = create_agent(copy.deepcopy(cfg), player_id=player_id)
+                players.append(agent)
         return players
 
-    def run_tournament(self, agent_cfgs: Sequence[dict]) -> PopulationPayoffs:
+    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
         """Run the mechanism over the base game across all players."""
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
 
         k = self.base_game.num_players
-        combo_iter = list(itertools.combinations(players, k))
-        random.shuffle(
-            combo_iter
-        )  # The order does not matter, kept just in case
+
+        players_by_id = [
+            [p for p in players if p.player_id == player_id]
+            for player_id in range(1, k + 1)
+        ]
+
+        combo_iter = list(itertools.product(*players_by_id))
 
         matchup_labels = [
             " vs ".join(player.name for player in matchup)
@@ -69,15 +70,9 @@ class Mechanism(ABC):
                 match_moves = self._play_matchup(seat_players)
                 payoffs.add_profile(match_moves)
 
-                if self.base_game.__class__.__name__ == "TrustGame":
-                    # Play the reverse and record those moves separately
-                    reverse_moves = self._play_matchup(seat_players[::-1])
-                    payoffs.add_profile(reverse_moves)
-
                 dt = time.perf_counter() - t0
                 if first_duration is None:
                     first_duration = dt
-                    # Rough ETA: match-count * per-match duration
                     est_total = dt * len(combo_iter)
                     print(
                         f"[ETA] ~{est_total/60:.1f} min for "
@@ -97,7 +92,8 @@ class RepetitiveMechanism(Mechanism):
 
     class History:
         """History of moves across multiple rounds."""
-        def __init__(self):
+        def __init__(self, action_cls: type[Action]):
+            self.action_cls = action_cls
             # List of all rounds information.
             # Note, the indices is arbitrary and only used for lookup.
             self.records: list[list[Move]] = []
@@ -192,7 +188,22 @@ class RepetitiveMechanism(Mechanism):
 
             if target_idx < 0:
                 return None
-            return history[target_idx].copy()
+
+            result = {action: 0 for action in self.action_cls}
+            result.update(history[target_idx])
+            return result
+
+        def get_rounds_played_count(self, player_name: str) -> int:
+            """
+            Return the total number of rounds a specific player has participated in.
+            """
+            return len(self.player_round_indices[player_name])
+
+        def clear(self) -> None:
+            """Clear the history records."""
+            self.records.clear()
+            self.player_round_indices.clear()
+            self.player_cumulative_actions.clear()
 
     def __init__(
         self, base_game: Game, num_rounds: int, discount: float
@@ -200,7 +211,7 @@ class RepetitiveMechanism(Mechanism):
         super().__init__(base_game)
         self.num_rounds = num_rounds
         self.discount = discount
-        self.history = self.History()
+        self.history = self.History(base_game.action_cls)
 
     def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
         return PopulationPayoffs(players=players, discount=self.discount)
