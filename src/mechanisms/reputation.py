@@ -118,7 +118,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
                 first_order_opp_history = self.history.get_prior_rounds(
                     first_order_opp_name,
-                    lookback_rounds=rounds_ago,
+                    lookback_rounds=rounds_ago,  # TODO: this could be buggy if two player have different number of rounds. Need to fix!!!
                     lookup_depth=self.reputation_depth,
                 )
 
