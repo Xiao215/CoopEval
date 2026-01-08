@@ -34,7 +34,7 @@ class StagHunt(Game):
             """
         Setup:
         You are playing a decision-making game with another player.
-        Your objective is to maximize your points received in the game described below.
+        Your objective is to maximize your points received in the game described in length below.
 
         Actions available to each player:
         {actions_block}
@@ -55,7 +55,7 @@ class StagHunt(Game):
                 payoff_description=self._payoff_description(),
             ),
             num_players=2,
-            num_actions=len(StagHuntAction),
+            action_cls=StagHuntAction,
         )
 
     def _payoff_description(self) -> str:

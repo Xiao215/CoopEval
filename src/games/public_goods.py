@@ -41,7 +41,7 @@ class PublicGoods(Game):
             """
         Setup:
         You are playing a decision-making game with {num_other_players} other players.
-        Your objective is to maximize your points received in the game described below.
+        Your objective is to maximize your points received in the game described in length below.
 
         Actions available to each player:
         - {contribute_tok}
@@ -69,7 +69,7 @@ class PublicGoods(Game):
                 free_ride_tok=PublicGoodsAction.FREE_RIDE.to_token(),
             ),
             num_players=num_players,
-            num_actions=len(PublicGoodsAction),
+            action_cls=PublicGoodsAction,
         )
 
     def play(

@@ -66,7 +66,7 @@ class TravellersDilemma(Game):
             """
         Setup:
         You are playing a decision-making game with another player.
-        Your objective is to maximize your points received in the game described below.
+        Your objective is to maximize your points received in the game described in length below.
 
         Actions available to each player:
         {actions_block}
@@ -87,7 +87,7 @@ class TravellersDilemma(Game):
                 payoff_description=payoff_description,
             ),
             num_players=2,
-            num_actions=len(self.claims),
+            action_cls=self.action_cls,
         )
 
         # Override mixed-strategy instruction to reflect multi-action correctly
@@ -104,7 +104,7 @@ class TravellersDilemma(Game):
         Return exactly one JSON object, for example:
         {"A0": <INT>, "A1": <INT>, ...}
         """
-        ).strip()
+        )
 
     def play(
         self,

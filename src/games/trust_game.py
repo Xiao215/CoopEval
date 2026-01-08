@@ -30,7 +30,7 @@ class TrustGame(Game):
             """
         Setup:
         You are playing a decision-making game with another player.
-        Your objective is to maximize your points received in the game described below.
+        Your objective is to maximize your points received in the game described in length below.
 
         Actions available to each player:
         {actions_block}
@@ -47,7 +47,7 @@ class TrustGame(Game):
                 actions_block=actions_block,
             ),
             num_players=2,
-            num_actions=len(TrustGameAction),
+            action_cls=TrustGameAction,
         )
 
     def _payoff_description(self) -> tuple[str, str]:
