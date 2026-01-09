@@ -13,12 +13,8 @@ class TestInstance(LLM):
 
     def invoke(self, prompt: str, **kwargs: Any) -> str:
         if self._matches(prompt, self._action_template_patterns()):
-            other_players_match = re.search(r"(\d+)\s+other players", prompt)
-            num_actions = (
-                int(other_players_match.group(1)) if other_players_match else 2
-            )
-            if num_actions <= 0:
-                num_actions = 2
+            # Parse the action template to determine number of actions
+            num_actions = self._count_actions_in_template(prompt)
 
             weights = [random.random() for _ in range(num_actions)]
             total = sum(weights) or 1.0
@@ -37,6 +33,16 @@ class TestInstance(LLM):
             distribution = {f"A{i}": value for i, value in enumerate(ints)}
             return json.dumps(distribution)
         return '{"A0": 100, "A1": 0}'  # always return action A0 with 100 points
+
+    def _count_actions_in_template(self, prompt: str) -> int:
+        """Count the number of action keys in the template by finding all A0, A1, A2, etc."""
+        # Find all action keys like "A0", "A1", "A2", etc. in the prompt
+        action_keys = re.findall(r'"A(\d+)"', prompt)
+        if action_keys:
+            # Return the maximum action index + 1 (since A0 is the first action)
+            return max(int(key) for key in action_keys) + 1
+        # Default to 2 actions if we can't find any
+        return 2
 
     def _action_template_patterns(self) -> tuple[str, ...]:
         return (

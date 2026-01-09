@@ -1,15 +1,18 @@
 """Mechanisms that expose behavioural reputation across repeated rounds."""
 
+import itertools
 import random
 
 from abc import ABC
 from typing import Sequence
 
+from tqdm import tqdm
+
 from src.agents.agent_manager import Agent
 from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import RepetitiveMechanism
 from src.games.base import Game, Move
-from src.utils.round_robin import RoundRobin
+from utils.match_scheduler_reputation import RandomMatcher, RoundRobin
 from src.mechanisms.prompts import (
     REPUTATION_MECHANISM_PROMPT,
     REPUTATION_NO_HISTORY_DESCRIPTION,
@@ -26,11 +29,17 @@ class Reputation(RepetitiveMechanism, ABC):
     """
 
     def __init__(
-        self, base_game: Game, *, num_rounds: int, discount: float
+        self,
+        base_game: Game,
+        *,
+        num_rounds: int,
+        discount: float,
+        num_repeat_experiment: int | None = None,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
         self.matchup_workers = 1
         self.reputation_depth = 3
+        self.num_repeat_experiment = num_repeat_experiment
 
     def _build_history_prompts(self, players: Sequence[Agent]) -> list[str]:
         """
@@ -59,9 +68,9 @@ class Reputation(RepetitiveMechanism, ABC):
         """
         Format the n-order reputation of the *direct_opponents* into a tree structure.
         """
-        opponent_ids = [f"PlayerID {opp.uid}" for opp in direct_opponents]
+        opponent_ids = [f"Player #{opp.uid}" for opp in direct_opponents]
         lines = [
-            f"You have {len(direct_opponents)} total opponents: {opponent_ids}.",
+            f"You are playing with {len(direct_opponents)} other players: {opponent_ids}.",
         ]
 
         for direct_opponent in direct_opponents:
@@ -75,13 +84,13 @@ class Reputation(RepetitiveMechanism, ABC):
 
             if not recent_rounds:
                 lines.append(
-                    f"Reputation for PlayerID {direct_opponent.uid}: {REPUTATION_NO_HISTORY_DESCRIPTION.format(
-                        opponent_name=f'PlayerID {direct_opponent.uid}')}"
+                    f"Player #{direct_opponent.uid}'s history of play: {REPUTATION_NO_HISTORY_DESCRIPTION.format(
+                        opponent_name=f'Player #{direct_opponent.uid}')}"
                 )
                 continue
 
             direct_opponent_reputation_lines.append(
-                f"Reputation History for PlayerID {direct_opponent.uid} (Most recent first):"
+                f"Player #{direct_opponent.uid}'s history of play:"
             )
 
             reversed_history = list(enumerate(reversed(recent_rounds), 1))
@@ -104,12 +113,12 @@ class Reputation(RepetitiveMechanism, ABC):
                     if m.player_name != direct_opponent.name
                 )
 
-                first_order_opp_label = f"PlayerID {first_order_opp_move.uid}"
+                first_order_opp_label = f"Player #{first_order_opp_move.uid}"
 
                 # --- Level 1: Direct Opponent vs First Order Opponent ---
                 direct_opponent_reputation_lines.append(
                     f"{main_branch} [{rounds_ago} round(s) ago] "
-                    f"PlayerID {direct_opponent.uid} ({direct_opp_move.action.to_token()}, {direct_opp_move.points}pts) vs "
+                    f"Player #{direct_opponent.uid} ({direct_opp_move.action.to_token()}, {direct_opp_move.points}pts) vs "
                     f"{first_order_opp_label} ({first_order_opp_move.action.to_token()}, {first_order_opp_move.points}pts)"
                 )
 
@@ -151,7 +160,7 @@ class Reputation(RepetitiveMechanism, ABC):
                             second_order_opp_move.player_name
                         )
                         second_order_opp_label = (
-                            f"PlayerID {second_order_opp_move.uid}"
+                            f"Player #{second_order_opp_move.uid}"
                         )
 
                         # --- Level 3: Context (Second Order Opponent's Stats) ---
@@ -179,11 +188,16 @@ class Reputation(RepetitiveMechanism, ABC):
                                 opponent_name=second_order_opp_label
                             )
 
+                        # Determine continuation indent for context line
+                        continuation_char = "│ " if sub_branch == "├─" else "  "
+
                         direct_opponent_reputation_lines.append(
                             f"{child_indent}     {sub_branch} [{sub_idx} round(s) ago] "
                             f"{first_order_opp_label} ({first_order_sub_move.action.to_token()}, {first_order_sub_move.points}pts) vs "
-                            f"{second_order_opp_label} ({second_order_opp_move.action.to_token()}, {second_order_opp_move.points}pts) "
-                            f"→ Context: {stats_str}"
+                            f"{second_order_opp_label} ({second_order_opp_move.action.to_token()}, {second_order_opp_move.points}pts)"
+                        )
+                        direct_opponent_reputation_lines.append(
+                            f"{child_indent}     {continuation_char} → Context: {stats_str}"
                         )
                 else:
                     direct_opponent_reputation_lines.append(
@@ -197,36 +211,75 @@ class Reputation(RepetitiveMechanism, ABC):
         return "\n\n".join(lines).strip()
 
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
+        """Run reputation tournament with proper player ID seating."""
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
 
-        # TODO: for trust game, split into two groups, investor and founder
+        # Group players by their player_id to ensure proper seating in matchups
+        k = self.base_game.num_players
+        players_by_id = [
+            [p for p in players if p.player_id == player_id]
+            for player_id in range(1, k + 1)
+        ]
+
+        K = 2
         all_tournament_moves = []
-        for _ in range(self.num_rounds):
-            round_moves = self._play_matchup(players)
+        for _ in tqdm(
+            range(K),
+            desc=f"Running {K} reputation iterations",
+            leave=True,
+        ):
+            # Clear history at the start of each iteration
+            self.history.clear()
+            round_moves = self._play_matchup(players_by_id)
             all_tournament_moves.extend(round_moves)
+
         payoffs.add_profile(all_tournament_moves)
 
         return payoffs
 
-    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
+    def _play_matchup(self, players_by_id: list[list[Agent]]) -> list[list[Move]]:
         """
-        Play one set of matchups according to the scheduler.
-        Returns the list of moves generated in this step.
+        Play num_rounds rounds of matchups using RandomMatcher iterator.
+
+        Args:
+            players_by_id: List of player groups, where players_by_id[i] contains
+                          all agents that should play in seat i+1 (player_id=i+1)
+
+        Returns:
+            List of moves from num_rounds rounds of play.
         """
         batch_moves = []
-        round_robin_scheduler = RoundRobin(players, group_size=2)
+        matcher = RandomMatcher(players_by_id)
 
-        for matches_groups in round_robin_scheduler.generate_schedule():
-            for match_up in matches_groups:
-                reputation_information = self._build_history_prompts(match_up)
+        # Iterate through num_rounds rounds with random matchings
+        with tqdm(
+            total=self.num_rounds,
+            desc="Random matchups",
+            leave=False,
+            dynamic_ncols=True,
+        ) as pbar:
+            for round_idx, matches_group in enumerate(matcher, 1):
+                if round_idx > self.num_rounds:
+                    break
 
-                # Play the game
-                moves = self.base_game.play(
-                    additional_info=reputation_information,
-                    players=match_up,
-                )
-                self.history.append(moves)
-                batch_moves.append(moves)
+                for match_up in matches_group:
+                    matchup_label = " vs ".join(p.name for p in match_up)
+                    pbar.set_postfix_str(
+                        f"[Round {round_idx}/{self.num_rounds}] {matchup_label}",
+                        refresh=False,
+                    )
+
+                    reputation_information = self._build_history_prompts(match_up)
+
+                    # Play the game
+                    moves = self.base_game.play(
+                        additional_info=reputation_information,
+                        players=match_up,
+                    )
+                    self.history.append(moves)
+                    batch_moves.append(moves)
+
+                pbar.update(1)
 
         return batch_moves

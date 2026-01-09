@@ -219,10 +219,9 @@ REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
     You are playing this game *repeatedly* with the same player(s). The action sampled from your action probability distribution will be visible to those players in future rounds and may influence their decisions.
-    You are currently playing round {round_idx} of the game.
-    After each round, there is a {discount}% chance probability that an additional round will take place.
+    After each round, there is a {discount}% chance probability that an additional round will take place. You have already played this game for {round_idx} round(s) in the past.
 
-    Next, you find the info available to you about past few rounds of interaction:
+    Next, you find the info available to you about the history of play that is related to you and the other players you are playing with in this upcoming round.
 
     {history_context}
     """
@@ -238,12 +237,11 @@ REPETITION_OTHERPLAYER_LABEL = "\t{other_player}: {action}"
 REPUTATION_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    You are playing this game *multiple times* with many different players randomly.
-    The action sampled from your action probability distribution will be visible to everyone in future rounds and may influence their decisions.
-    You are currently playing round {round_idx} of the game.
-    After each round, there is a {discount}% chance probability that an additional round will take place.
+    You are playing this game *repeatedly* but with varying players who you encounter at random.
+    The action sampled from your action probability distribution in the current round will be visible to the players you encounter in future rounds and may influence their decisions.
+    After each round, there is a {discount}% chance probability that an additional round will take place. You have already played this game for {round_idx} round(s) in the past.
 
-    Next, you find the info available to you about the reputation information regarding your current opponent(s)
+    Next, you find the info available to you about the history of play that is related to you and the other players you are playing with in this upcoming round.
 
     {history_context}
     """
@@ -253,5 +251,5 @@ REPUTATION_NO_HISTORY_DESCRIPTION = (
     "{opponent_name} has no prior history of playing this game."
 )
 REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION = (
-    "{opponent_name} has no prior action distribution"
+    "{opponent_name} has no historical action distribution."
 )
