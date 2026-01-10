@@ -98,6 +98,9 @@ class RepetitiveMechanism(Mechanism):
             # Note, the indices is arbitrary and only used for lookup.
             self.records: list[list[Move]] = []
 
+            # Maps each record index to its tournament round number
+            self.round_numbers: list[int] = []
+
             # Maps player_name -> List of global round indices they participated in
             self.player_round_indices: dict[str, list[int]] = defaultdict(list)
 
@@ -113,18 +116,28 @@ class RepetitiveMechanism(Mechanism):
         def __iter__(self) -> Iterator[list[Move]]:
             return iter(self.records)
 
-        def append(self, moves: list[Move]) -> None:
-            """Append a new round of moves to the history."""
+        def append(self, moves: list[Move], round_number: int | None = None) -> None:
+            """Append a new round of moves to the history.
+
+            Args:
+                moves: List of moves from this match
+                round_number: Tournament round number (if None, uses sequential numbering)
+            """
             if not moves:
                 raise ValueError("Each round must have at least one move")
 
-            round_idx = len(self.records)
+            record_idx = len(self.records)
             self.records.append(moves)
+
+            # Track tournament round number
+            if round_number is None:
+                round_number = record_idx + 1  # Default: 1-indexed sequential
+            self.round_numbers.append(round_number)
 
             for m in moves:
                 p = m.player_name
                 a = m.action
-                self.player_round_indices[p].append(round_idx)
+                self.player_round_indices[p].append(record_idx)
 
                 player_history = self.player_cumulative_actions[p]
                 if player_history:
@@ -139,11 +152,14 @@ class RepetitiveMechanism(Mechanism):
             player_name: str,
             lookback_rounds: int,
             lookup_depth: int,
-        ) -> list[list[Move]]:
+        ) -> list[tuple[int, list[Move]]]:
             """
             Return the last `lookup_depth` rounds from the player's
-            history EXCLUDING the most recent `lookback_rounds` rounds,
-            in reverse order.
+            history EXCLUDING the most recent `lookback_rounds` rounds.
+
+            Returns:
+                List of tuples (round_index, moves) where round_index is the
+                global round number (1-indexed).
             """
 
             if lookback_rounds < 0 or lookup_depth <= 0:
@@ -164,7 +180,8 @@ class RepetitiveMechanism(Mechanism):
 
             selected_indices = indices[start_index:end_index]
 
-            return [self.records[i] for i in selected_indices]
+            # Return tuples of (tournament_round_number, moves)
+            return [(self.round_numbers[idx], self.records[idx]) for idx in selected_indices]
 
         def get_prior_action_distribution(
             self,
@@ -202,6 +219,7 @@ class RepetitiveMechanism(Mechanism):
         def clear(self) -> None:
             """Clear the history records."""
             self.records.clear()
+            self.round_numbers.clear()
             self.player_round_indices.clear()
             self.player_cumulative_actions.clear()
 

@@ -56,6 +56,7 @@ class StagHunt(Game):
             ),
             num_players=2,
             action_cls=StagHuntAction,
+            is_symmetric=True,
         )
 
     def _payoff_description(self) -> str:

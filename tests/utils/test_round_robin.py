@@ -1,7 +1,7 @@
 import unittest
 from itertools import combinations
 
-from src.utils.round_robin import RoundRobin
+from utils.match_scheduler_reputation import RoundRobin
 from tests.fakes.general_fakes import FakeAgent
 
 # Assuming your class is in a file named tournament.py
