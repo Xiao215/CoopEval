@@ -55,6 +55,7 @@ class PrisonersDilemma(Game):
             ),
             num_players=2,
             action_cls=PrisonersDilemmaAction,
+            is_symmetric=True,
         )
 
     def _payoff_description(self) -> str:

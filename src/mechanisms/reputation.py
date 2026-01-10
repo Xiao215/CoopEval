@@ -124,7 +124,7 @@ class Reputation(RepetitiveMechanism, ABC):
                 continue
 
             # Header for this player
-            history_header = f"Your history of play:" if player_label == "You" else f"History of play of {player_label}:"
+            history_header = f"History of play of {player_label}:" if player_label != "You" else f"Your history of play:" 
             lines.append(history_header)
 
             # Recursively format player's history (includes action distribution)
@@ -173,7 +173,9 @@ class Reputation(RepetitiveMechanism, ABC):
                 lookback_rounds=lookback_for_distribution
             )
 
-            player_name_plus_have = f"{player_label} has" if player_label != "You" else f"{player_label} have"
+            potential_player_id = "" if self.base_game.is_symmetric else f" (as Player {player.player_id})"
+            player_name_plus_have = f"{player_label}{potential_player_id} has" if player_label != "You" else f"{player_label}{potential_player_id} have"
+            
             if stats:
                 stats_str = ", ".join(f"{count} time{'s' if count != 1 else ''} {action.to_token()}" for action, count in sorted(
                         stats.items(), key=lambda kv: str(kv[0]))) + "."
@@ -249,9 +251,11 @@ class Reputation(RepetitiveMechanism, ABC):
             child_indent = indent + ("   " if is_last else "│  ")
 
             # Format match description
-            match_desc = f"{player_label} (played {player_move.action.to_token()}, received {player_move.points}pts)"
+            potential_player_id = "" if self.base_game.is_symmetric else f" as Player {player.player_id}"
+            match_desc = f"{player_label} (played {player_move.action.to_token()}{potential_player_id}, received {player_move.points}pts)"
             for other_move in other_moves:
-                match_desc += f" vs {self.player_names[other_move.uid]} (played {other_move.action.to_token()}, received {other_move.points}pts)"
+                other_player = self.players_by_uid[other_move.uid]
+                match_desc += f" vs {self.player_names[other_move.uid]} (played {other_move.action.to_token()} as Player {other_player.player_id}, received {other_move.points}pts)"
 
             lines.append(f"{indent}{branch} [Round {round_idx}] {match_desc}")
 
@@ -320,7 +324,7 @@ class Reputation(RepetitiveMechanism, ABC):
         payoffs = self._build_payoffs(players)
 
         # Build global player name mapping
-        self.player_names = {p.uid: f"Player #{p.uid}" for p in players}
+        self.player_names = {p.uid: f"Agent #{p.uid}" for p in players}
 
         # Build global player lookup by UID (for recursive history expansion)
         self.players_by_uid = {p.uid: p for p in players}

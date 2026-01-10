@@ -75,10 +75,12 @@ class Game(ABC):
         prompt: str,
         num_players: int,
         action_cls: type[Action],
+        is_symmetric: bool = True,
     ) -> None:
         self.prompt = prompt
         self.num_players = num_players
         self.number_to_position = {1: "first", 2: "second", 3: "third", 4: "fourth"}
+        self.is_symmetric = is_symmetric
         self.action_cls = action_cls
         self.num_actions = len(action_cls)
         self.default_output_instruction = textwrap.dedent(
@@ -98,7 +100,7 @@ class Game(ABC):
 
     def get_player_prompt(self, player_id: int) -> str:
         """Get game prompt from specific player's perspective. Per default, this is the same for all players in symmetric games."""
-        return self.prompt + f"\nIn case player identification becomes relevant, you are playing in the position of the {self.number_to_position[player_id]} player in this game.\n"
+        return self.prompt + f"\nIn case player identification becomes relevant, you are playing in the position of Player {player_id} in this game.\n"
 
     @abstractmethod
     def play(
