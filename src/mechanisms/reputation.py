@@ -17,10 +17,9 @@ from src.mechanisms.prompts import (
     REPUTATION_MECHANISM_PROMPT,
     REPUTATION_NO_HISTORY_DESCRIPTION,
     REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION,
+    REPUTATION_PLAYERS_HEADER,
+    REPUTATION_ACTION_DISTRIBUTION,
 )
-
-
-random.seed(42)
 
 
 class Reputation(RepetitiveMechanism, ABC):
@@ -35,11 +34,18 @@ class Reputation(RepetitiveMechanism, ABC):
         num_rounds: int,
         discount: float,
         lookup_depth: int = 5,
+        max_recursion_depth: int | None = None,
         num_repeat_experiment: int | None = None,
+        include_prior_distributions: bool = True,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
         self.reputation_depth = lookup_depth
         self.num_repeat_experiment = num_repeat_experiment
+        self.include_prior_distributions = include_prior_distributions
+        if not max_recursion_depth:
+            self.max_recursion_depth = lookup_depth + 1
+        else:
+            self.max_recursion_depth = max_recursion_depth
 
     def _build_history_prompts(self, players: Sequence[Agent]) -> list[str]:
         """
@@ -90,7 +96,10 @@ class Reputation(RepetitiveMechanism, ABC):
         # Header
         opponent_ids = [f"Player #{opp.uid}" for opp in direct_opponents]
         lines = [
-            f"You are playing with {len(direct_opponents)} other players: " + ", ".join(opponent_ids) + ".",
+            REPUTATION_PLAYERS_HEADER.format(
+                num_opponents=len(direct_opponents),
+                opponent_ids=", ".join(opponent_ids)
+            ),
             ""
         ]
 
@@ -123,7 +132,8 @@ class Reputation(RepetitiveMechanism, ABC):
                 player=player,
                 encounter_round=current_round,
                 indent="",
-                current_round=current_round
+                current_round=current_round,
+                recursion_depth=0
             )
             lines.extend(player_lines)
 
@@ -131,12 +141,66 @@ class Reputation(RepetitiveMechanism, ABC):
 
         return "\n".join(lines).strip()
 
+    def _format_action_distribution(
+        self,
+        player: Agent,
+        player_label: str,
+        current_round: int,
+        indent: str = "",
+    ) -> list[str]:
+        """
+        Format action distribution for a player for rounds 1 to window_start-1.
+
+        Args:
+            player: The player whose distribution to format
+            player_label: Display label for the player (e.g., "You", "Player #5")
+            current_round: The upcoming round number
+            indent: Indentation prefix for the output line
+
+        Returns:
+            List of formatted lines (typically one line or empty if disabled)
+        """
+        if not self.include_prior_distributions:
+            return []
+
+        lines = []
+        window_start = max(1, current_round - self.reputation_depth)
+
+        if window_start > 1:
+            lookback_for_distribution = current_round - window_start
+            stats = self.history.get_prior_action_distribution(
+                player.name,
+                lookback_rounds=lookback_for_distribution
+            )
+
+            player_name_plus_have = f"{player_label} has" if player_label != "You" else f"{player_label} have"
+            if stats:
+                stats_str = ", ".join(f"{count} time{'s' if count != 1 else ''} {action.to_token()}" for action, count in sorted(
+                        stats.items(), key=lambda kv: str(kv[0]))) + "."
+                lines.append(
+                    REPUTATION_ACTION_DISTRIBUTION.format(
+                        indent=indent,
+                        name_plus_have=player_name_plus_have,
+                        window_start_minus_one=window_start - 1,
+                        stats_str=stats_str
+                    )
+                )
+            else:
+                lines.append(
+                    REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION.format(
+                        indent=indent,
+                        window_start_minus_one=window_start - 1,name_plus_have=player_name_plus_have)
+                )
+
+        return lines
+
     def _format_player_history_recursive(
         self,
         player: Agent,
         encounter_round: int,
         indent: str,
         current_round: int,
+        recursion_depth: int,
     ) -> list[str]:
         """
         Recursively format a player's match history within the global time window.
@@ -146,6 +210,7 @@ class Reputation(RepetitiveMechanism, ABC):
             encounter_round: The round when this player was encountered (exclusive upper bound)
             indent: Current indentation string for tree formatting
             current_round: The upcoming round number (for time window calculation)
+            recursion_depth: Current depth of recursion (0 for top-level players)
 
         Returns:
             List of formatted lines showing the player's history
@@ -170,11 +235,9 @@ class Reputation(RepetitiveMechanism, ABC):
             return lines
 
         player_label = self.player_names[player.uid]
+        should_expand_opponents = (recursion_depth < self.max_recursion_depth)
 
-        # Collect opponents to expand (we'll process them after showing all matches)
-        opponents_to_expand = []
-
-        # Format each match
+        # Format each match and expand opponents immediately after
         for i, (round_idx, round_moves) in enumerate(reversed(filtered_rounds)):
             # Get this player's move and all other moves
             player_move = next(m for m in round_moves if m.player_name == player.name)
@@ -186,71 +249,68 @@ class Reputation(RepetitiveMechanism, ABC):
             child_indent = indent + ("   " if is_last else "│  ")
 
             # Format match description
-            match_desc = f"{player_label} ({player_move.action.to_token()}, {player_move.points}pts)"
+            match_desc = f"{player_label} (played {player_move.action.to_token()}, received {player_move.points}pts)"
             for other_move in other_moves:
-                match_desc += f" vs {self.player_names[other_move.uid]} ({other_move.action.to_token()}, {other_move.points}pts)"
+                match_desc += f" vs {self.player_names[other_move.uid]} (played {other_move.action.to_token()}, received {other_move.points}pts)"
 
             lines.append(f"{indent}{branch} [Round {round_idx}] {match_desc}")
 
-            # Collect opponents for recursive expansion
-            for other_move in other_moves:
-                # Find the Agent object for this opponent using global lookup
-                opponent = self.players_by_name.get(other_move.player_name)
-                if opponent:
-                    opponents_to_expand.append((opponent, round_idx, child_indent))
+            # Recursively expand opponents immediately after this match (only if not at max depth)
+            if should_expand_opponents:
+                num_opponents = len(other_moves)
+                for opp_idx, other_move in enumerate(other_moves):
+                    # Find the Agent object for this opponent using global lookup by UID
+                    opponent = self.players_by_uid[other_move.uid]
+                    opponent_label = self.player_names[opponent.uid]
+                    
+                    # Determine if this is the last opponent (for proper tree formatting)
+                    is_last_opponent = (opp_idx == num_opponents - 1)
+                    opponent_indent = child_indent + ("   " if is_last_opponent else "│  ")
+                    
+                    # Check if we'll actually expand (not at the last recursion level)
+                    will_expand = (recursion_depth + 1 < self.max_recursion_depth)
+                    
+                    if will_expand:
+                        # Get opponent lines first to check if there's anything to show
+                        opponent_lines = self._format_player_history_recursive(
+                            player=opponent,
+                            encounter_round=round_idx,
+                            indent=opponent_indent,
+                            current_round=current_round,
+                            recursion_depth=recursion_depth + 1
+                        )
+                        # Only show header if there's actual content to display
+                        if opponent_lines:
+                            lines.append(f"{child_indent}└─ History of {opponent_label} before this match:")
+                            lines.extend(opponent_lines)
+                        else:
+                            # No history to show, but still show action distribution if available
+                            opponent_dist_lines = self._format_action_distribution(
+                                player=opponent,
+                                player_label=opponent_label,
+                                current_round=current_round,
+                                indent=child_indent
+                            )
+                            lines.extend(opponent_dist_lines)
+                    else:
+                        # At max depth: just show action distribution context without header
+                        opponent_dist_lines = self._format_action_distribution(
+                            player=opponent,
+                            player_label=opponent_label,
+                            current_round=current_round,
+                            indent=child_indent
+                        )
+                        lines.extend(opponent_dist_lines)
 
-        # Recursively expand opponents
-        for opponent, encounter_rd, child_ind in opponents_to_expand:
-            opponent_label = self.player_names[opponent.uid]
-            lines.append(f"{child_ind}└─ History of {opponent_label} before this match:")
-
-            opponent_lines = self._format_player_history_recursive(
-                player=opponent,
-                encounter_round=encounter_rd,
-                indent=child_ind + "   ",
-                current_round=current_round
-            )
-            lines.extend(opponent_lines)
-
-        # Show action distribution for THIS player (for rounds before encounter)
-        if encounter_round > window_start:
-            # We want distribution for rounds before the time window we just showed
-            # If indent is empty, this is a top-level player: show distribution for rounds [1, window_start-1]
-            # If indent is not empty, this is a nested player: show distribution for rounds before encounter_round
-
-            if indent == "":
-                # Top-level player: distribution for rounds before the window
-                lookback_for_distribution = current_round - window_start
-            else:
-                # Nested player: distribution for rounds before encounter
-                lookback_for_distribution = current_round - encounter_round
-
-            stats = self.history.get_prior_action_distribution(
-                player.name,
-                lookback_rounds=lookback_for_distribution
-            )
-
-            if stats:
-                stats_parts = [f"{k.to_token()}: {v}" for k, v in stats.items()]
-
-                if indent == "":
-                    # Top-level: no prefix indentation
-                    stats_str = f"{player_label}'s action distribution for rounds before window: " + ", ".join(stats_parts)
-                    lines.append(stats_str)
-                else:
-                    # Nested: with "→ Context:" prefix
-                    stats_str = f"{player_label}'s action distribution: " + ", ".join(stats_parts)
-                    lines.append(f"{indent}→ Context: {stats_str}")
-            else:
-                player_name_plus_have = f"{player_label} has" if player_label != "You" else f"{player_label} have"
-                distribution_msg = REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION.format(name_plus_have=player_name_plus_have)
-
-                if indent == "":
-                    # Top-level: no prefix indentation
-                    lines.append(distribution_msg)
-                else:
-                    # Nested: with "→ Context:" prefix
-                    lines.append(f"{indent}→ Context: {distribution_msg}")
+        # Show action distribution for THIS player, if self.include_prior_distributions == True
+        # Always show distribution for rounds 1 to window_start-1 (before the visible window)
+        player_dist_lines = self._format_action_distribution(
+            player=player,
+            player_label=player_label,
+            current_round=current_round,
+            indent=indent
+        )
+        lines.extend(player_dist_lines)
 
         return lines
 
@@ -262,8 +322,8 @@ class Reputation(RepetitiveMechanism, ABC):
         # Build global player name mapping
         self.player_names = {p.uid: f"Player #{p.uid}" for p in players}
 
-        # Build global player lookup by name (for recursive history expansion)
-        self.players_by_name = {p.name: p for p in players}
+        # Build global player lookup by UID (for recursive history expansion)
+        self.players_by_uid = {p.uid: p for p in players}
 
         # Group players by their player_id to ensure proper seating in matchups
         k = self.base_game.num_players

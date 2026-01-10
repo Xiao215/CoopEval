@@ -9,13 +9,13 @@ CONTRACT_DESIGN_PROMPT = textwrap.dedent(
     There will be the option for a payment contract in this game, and your task now is to design and propose one.
 
     - A contract is an additional payoff agreement on top of the original game payoffs. It specifies a number for each action that a player can play, indicating one of three cases:
-        * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other players.
-        * Negative number (-): the player pays an additional payment of X points in total, distributed equally among the other players.
+        * Positive number (+): the player receives an additional payment of X points in total, drawn equally from the other player(s).
+        * Negative number (-): the player pays an additional payment of X points in total, distributed equally among the other player(s).
         * Zero (0): no additional payments in either direction.
     - Each player may choose to accept the contract as a whole or not.
     - The contract becomes active only if all players accept.
 
-    The other players will also design and propose a contract. Only one will be present in the game though. Which one will be decided in a separate step later via an approval voting process by you and the other players. The winning contract will be selected uniform at random from those with the maximum number of approvals.
+    The other player(s) will also design and propose a contract. Only one will be present in the game though. Which one will be decided in a separate step later via an approval voting process by you and the other player(s). The winning contract will be selected uniform at random from those with the maximum number of approvals.
 
     Output Format:
     Return a valid JSON object in a single line:
@@ -29,7 +29,7 @@ CONTRACT_DESIGN_PROMPT = textwrap.dedent(
 CONTRACT_APPROVAL_VOTE_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    On top of the original game rules, a payment contract can be put in place if players agree to it via an approval voting process. A contract specifies a payment value for each action that a player can play.
+    On top of the original game rules, a payment contract can be put in place if the players agree to it via an approval voting process. A contract specifies a payment value for each action that a player can play.
 
     Your task now is to review each proposed contract and decide which ones you approve of. The winning contract will be selected uniform at random from those with the maximum number of approvals.
 
@@ -76,7 +76,7 @@ CONTRACT_REJECTION_PROMPT = textwrap.dedent(
     On top of the original game rules, a payment contract was proposed to the players. It is NOT active though because some players rejected it. Here is the proposed contract that was selected via approval voting (proposed by Player {designer_player_id}):
     {contract_description}
 
-    Players who rejected it: {rejector_ids}
+    Player(s) who rejected it: {rejector_ids}
 
     You will now play the original game without any contract modifications.
     """
@@ -86,11 +86,11 @@ CONTRACT_REJECTION_PROMPT = textwrap.dedent(
 DISARM_PROMPT_BASE = textwrap.dedent(
     """
     Here is the twist:
-    You and the other players are currently in a disarmament phase, where over multiple rounds, each of you have the option to "disarm" actions in advance. You can do that for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may decide to take that action in the original game.
+    You and the other player(s) are currently in a disarmament phase, where over multiple rounds, each of you have the option to "disarm" actions in advance. You can do that for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may decide to take that action in the original game.
 
     Your current upper bounds:
         {my_caps}
-    Other players' current upper bounds:
+    Current upper bounds of the other player(s):
         {other_players_caps}
 
     Rules:
@@ -106,7 +106,7 @@ DISARM_PROMPT_BASE = textwrap.dedent(
        - If ANY player chooses "end", the disarmament phase stops immediately and ANY disarming occurring in that round will not be applied.
        - If NO player chooses "disarm" (for example, everyone chooses "pass"), the disarmament phase stops.
        - If at least one player chooses "disarm" and no one chooses "end", there is a {discount}% chance probability that an additional round will take place.
-    7) After the disarmament phase ends, you and the other players will play the original game subject to your committed probability upper bound constraints.
+    7) After the disarmament phase ends, you and the other player(s) will play the original game subject to your committed probability upper bound constraints.
     """
 )
 
@@ -143,11 +143,11 @@ DISARM_FORMAT_CANNOT_DISARM = textwrap.dedent(
 DISARMAMENT_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    There was a disarmament phase between you and the other players, in which each of you had the option to "disarm" actions in advance. This was done for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may now decide to take that action in the game. The following upper bounds arose from that disarmament phase:
+    There was a disarmament phase between you and the other player(s), in which each of you had the option to "disarm" actions in advance. This was done for a particular action by setting an "upper bound" commitment (in %) to the maximum probability with which you may now decide to take that action in the game. The following upper bounds arose from that disarmament phase:
 
     Your upper bounds:
         {my_caps}
-    Other players' upper bounds:
+    Upper bounds of the other player(s):
         {other_players_caps}
 
     The disarmament phase ended for the following reason: {termination_reason}
@@ -166,7 +166,7 @@ MEDIATOR_DESIGN_PROMPT = textwrap.dedent(
     - Each player may choose to delegate their move to the mediator or act independently.
     - The mediator observes the number of players delegating to the mediator and then plays the same action for all delegating players.
 
-    The other players will also design and propose a mediator. Only one will be present in the game though. Which one will be decided in a separate step later via an approval voting process by you and the other players. The winning mediator will be selected uniform at random from those with the maximum number of approvals.
+    The other player(s) will also design and propose a mediator. Only one will be present in the game though. Which one will be decided in a separate step later via an approval voting process by you and the other player(s). The winning mediator will be selected uniform at random from those with the maximum number of approvals.
 
     Output Format:
     Return a valid JSON object in a single line:
@@ -218,10 +218,10 @@ MEDIATION_MECHANISM_PROMPT = textwrap.dedent(
 REPETITION_MECHANISM_PROMPT = textwrap.dedent(
     """
     Here is the twist:
-    You are playing this game *repeatedly* with the same player(s). The action sampled from your action probability distribution will be visible to those players in future rounds and may influence their decisions.
+    You are playing this game *repeatedly* with the same player(s). The action sampled from your action probability distribution will be visible to those player(s) in future rounds and may influence their decisions.
     After each round, there is a {discount}% chance probability that an additional round will take place. You have already played this game for {round_idx} round(s) in the past.
 
-    Next, you find the info available to you about the history of play that is related to you and the other players you are playing with in this upcoming round.
+    Next, you find the info available to you about the history of play that is related to you and the other player(s) you are playing with in this upcoming round.
 
     {history_context}
     """
@@ -241,7 +241,7 @@ REPUTATION_MECHANISM_PROMPT = textwrap.dedent(
     The action sampled from your action probability distribution in the current round will be visible to the players you encounter in future rounds and may influence their decisions.
     After each round, there is a {discount}% chance probability that an additional round will take place. You have already played this game for {round_idx} round(s) in the past.
 
-    Next, you find the info available to you about the history of play that is related to you and the other players you are playing with in this upcoming round.
+    Next, you find the info available to you about the history of play that is related to you and the other player(s) you are playing with in this upcoming round.
 
     {history_context}
     """
@@ -251,5 +251,11 @@ REPUTATION_NO_HISTORY_DESCRIPTION = (
     "{name_plus_have} no prior history of playing this game."
 )
 REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION = (
-    "{name_plus_have} no historical action distribution."
+    "{indent} → For context, up until round {window_start_minus_one}, {name_plus_have} not played any actions yet."
+)
+REPUTATION_PLAYERS_HEADER = (
+    "You are playing with {num_opponents} other player(s): {opponent_ids}."
+)
+REPUTATION_ACTION_DISTRIBUTION = (
+    "{indent} → For context, up until round {window_start_minus_one}, {name_plus_have} played actions as often as follows: {stats_str}"
 )
