@@ -12,7 +12,7 @@ from src.agents.agent_manager import Agent
 from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.mechanisms.base import RepetitiveMechanism
 from src.games.base import Game, Move
-from utils.match_scheduler_reputation import RandomMatcher, RoundRobin
+from src.utils.match_scheduler_reputation import RandomMatcher, RoundRobin
 from src.mechanisms.prompts import (
     REPUTATION_MECHANISM_PROMPT,
     REPUTATION_NO_HISTORY_DESCRIPTION,
@@ -266,14 +266,14 @@ class Reputation(RepetitiveMechanism, ABC):
                     # Find the Agent object for this opponent using global lookup by UID
                     opponent = self.players_by_uid[other_move.uid]
                     opponent_label = self.player_names[opponent.uid]
-                    
+
                     # Determine if this is the last opponent (for proper tree formatting)
                     is_last_opponent = (opp_idx == num_opponents - 1)
                     opponent_indent = child_indent + ("   " if is_last_opponent else "│  ")
-                    
+
                     # Check if we'll actually expand (not at the last recursion level)
                     will_expand = (recursion_depth + 1 < self.max_recursion_depth)
-                    
+
                     if will_expand:
                         # Get opponent lines first to check if there's anything to show
                         opponent_lines = self._format_player_history_recursive(
