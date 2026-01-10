@@ -36,13 +36,12 @@ class TestInstance(LLM):
 
     def _count_actions_in_template(self, prompt: str) -> int:
         """Count the number of action keys in the template by finding all A0, A1, A2, etc."""
-        # Find all action keys like "A0", "A1", "A2", etc. in the prompt
-        action_keys = re.findall(r'"A(\d+)"', prompt)
-        if action_keys:
-            # Return the maximum action index + 1 (since A0 is the first action)
-            return max(int(key) for key in action_keys) + 1
-        # Default to 2 actions if we can't find any
-        return 2
+        # First, try to find action definitions in the "Actions available" section
+        # This works for all games that list actions like "- A0:", "- A1:", etc.
+        action_keys = re.findall(r'^\s*-\s*A(\d+)', prompt, re.MULTILINE)
+        assert action_keys, "No action keys found in the prompt."
+        # Return the maximum action index + 1 (since A0 is the first action)
+        return max(int(key) for key in action_keys) + 1
 
     def _action_template_patterns(self) -> tuple[str, ...]:
         return (

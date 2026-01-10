@@ -34,11 +34,11 @@ class Reputation(RepetitiveMechanism, ABC):
         *,
         num_rounds: int,
         discount: float,
+        lookup_depth: int = 5,
         num_repeat_experiment: int | None = None,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
-        self.matchup_workers = 1
-        self.reputation_depth = 3
+        self.reputation_depth = lookup_depth
         self.num_repeat_experiment = num_repeat_experiment
 
     def _build_history_prompts(self, players: Sequence[Agent]) -> list[str]:
@@ -54,7 +54,19 @@ class Reputation(RepetitiveMechanism, ABC):
             )
             direct_opponents = [p for p in players if p != focus_player]
 
-            reputation_text = self._format_reputation(direct_opponents)
+            # Temporarily update player_names to mark focus player as "You"
+            original_name = self.player_names[focus_player.uid]
+            self.player_names[focus_player.uid] = "You"
+
+            reputation_text = self._format_reputation(
+                focus_player=focus_player,
+                direct_opponents=direct_opponents,
+                current_round=round_idx
+            )
+
+            # Restore original name
+            self.player_names[focus_player.uid] = original_name
+
             base_prompt = REPUTATION_MECHANISM_PROMPT.format(
                 round_idx=round_idx,
                 discount=int(self.discount * 100),
@@ -64,156 +76,133 @@ class Reputation(RepetitiveMechanism, ABC):
 
         return prompts
 
-    def _format_reputation(self, direct_opponents: Sequence[Agent]) -> str:
-        """
-        Format the n-order reputation of the *direct_opponents* into a tree structure.
-        """
+    def _format_reputation(
+        self,
+        focus_player: Agent,
+        direct_opponents: Sequence[Agent],
+        current_round: int
+    ) -> str:
+        """Format the n-order reputation of opponents and self into a tree structure."""
+
+        # Use class-level player_names mapping (already has "You" for focus player)
         opponent_ids = [f"Player #{opp.uid}" for opp in direct_opponents]
         lines = [
-            f"You are playing with {len(direct_opponents)} other players: {opponent_ids}.",
+            f"You are playing with {len(direct_opponents)} other players: " + ", ".join(opponent_ids) + ".",
+            ""  # Blank line
         ]
 
-        for direct_opponent in direct_opponents:
-            direct_opponent_reputation_lines = []
+        # We'll format focus player's history using the same loop as opponents
+        all_players_to_show = [focus_player] + list(direct_opponents)
+
+        # Build each player's history (including focus player)
+        for player in all_players_to_show:
+            player_label = self.player_names[player.uid]
 
             recent_rounds = self.history.get_prior_rounds(
-                direct_opponent.name,
+                player.name,
                 lookback_rounds=0,
                 lookup_depth=self.reputation_depth,
             )
 
             if not recent_rounds:
-                lines.append(
-                    f"Player #{direct_opponent.uid}'s history of play: {REPUTATION_NO_HISTORY_DESCRIPTION.format(
-                        opponent_name=f'Player #{direct_opponent.uid}')}"
-                )
+                player_name_plus_have = f"{player_label} has" if player_label != "You" else f"{player_label} have"
+                lines.append(REPUTATION_NO_HISTORY_DESCRIPTION.format(name_plus_have=player_name_plus_have))
                 continue
 
-            direct_opponent_reputation_lines.append(
-                f"Player #{direct_opponent.uid}'s history of play:"
-            )
+            history_header = f"Your history of play:" if player_label == "You" else f"History of play of {player_label}:"
+            lines.append(history_header)
 
-            reversed_history = list(enumerate(reversed(recent_rounds), 1))
+            # === Level 1 history of each current co-player from before the upcoming match ===
+            for round_idx, round_moves in reversed(recent_rounds):
+                # Get player's move and all others in that match
+                player_move = next(m for m in round_moves if m.player_name == player.name)
+                other_moves = [m for m in round_moves if m.player_name != player.name]
 
-            for rounds_ago, round_moves in reversed_history:
-                main_branch = "└─" if rounds_ago == len(recent_rounds) else "├─"
-                child_indent = (
-                    "   " if rounds_ago == len(recent_rounds) else "│  "
-                )
+                # Determine tree branch
+                is_last = (round_idx == recent_rounds[0][0])
+                main_branch = "└─" if is_last else "├─"
+                child_indent = "   " if is_last else "│  "
 
-                # Identify moves in the Direct Opponent's match
-                direct_opp_move = next(
-                    m
-                    for m in round_moves
-                    if m.player_name == direct_opponent.name
-                )
-                first_order_opp_move = next(
-                    m
-                    for m in round_moves
-                    if m.player_name != direct_opponent.name
-                )
+                match_desc = f"{player_label} ({player_move.action.to_token()}, {player_move.points}pts)"
+                for other_move in other_moves:
+                    match_desc += f" vs {self.player_names[other_move.uid]} ({other_move.action.to_token()}, {other_move.points}pts)"
 
-                first_order_opp_label = f"Player #{first_order_opp_move.uid}"
+                lines.append(f"{main_branch} [Round {round_idx}] {match_desc}")
 
-                # --- Level 1: Direct Opponent vs First Order Opponent ---
-                direct_opponent_reputation_lines.append(
-                    f"{main_branch} [{rounds_ago} round(s) ago] "
-                    f"Player #{direct_opponent.uid} ({direct_opp_move.action.to_token()}, {direct_opp_move.points}pts) vs "
-                    f"{first_order_opp_label} ({first_order_opp_move.action.to_token()}, {first_order_opp_move.points}pts)"
-                )
+                # === Level 2 history: history of the past co-players of current co-player ===
+                for other_move in other_moves:
+                    other_player_name = other_move.player_name
+                    other_label = self.player_names[other_move.uid]
 
-                # --- Level 2: First Order Opponent's History ---
-                first_order_opp_name = first_order_opp_move.player_name
+                    # Calculate lookback: exclude rounds >= round_idx
+                    # Since every player plays every round: lookback = current_round - round_idx
+                    lookback = current_round - round_idx
 
-                first_order_opp_history = self.history.get_prior_rounds(
-                    first_order_opp_name,
-                    lookback_rounds=rounds_ago,  # TODO: this could be buggy if two player have different number of rounds. Need to fix!!!
-                    lookup_depth=self.reputation_depth,
-                )
-
-                if first_order_opp_history:
-                    direct_opponent_reputation_lines.append(
-                        f"{child_indent}  └─ History of {first_order_opp_label} before this match:"
+                    # Get other player's history before this round
+                    other_history = self.history.get_prior_rounds(
+                        other_player_name,
+                        lookback_rounds=lookback,
+                        lookup_depth=self.reputation_depth,
                     )
 
-                    for sub_idx, sub_round in enumerate(
-                        reversed(first_order_opp_history), 1
-                    ):
-                        sub_branch = (
-                            "└─"
-                            if sub_idx == len(first_order_opp_history)
-                            else "├─"
-                        )
+                    if other_history:
+                        lines.append(f"{child_indent}  └─ History of {other_label} before this match:")
 
-                        first_order_sub_move = next(
-                            m
-                            for m in sub_round
-                            if m.player_name == first_order_opp_name
-                        )
-                        second_order_opp_move = next(
-                            m
-                            for m in sub_round
-                            if m.player_name != first_order_opp_name
-                        )
+                        for sub_round_idx, sub_round_moves in reversed(other_history):
+                            # Get other player's move and all their opponents
+                            other_sub_move = next(m for m in sub_round_moves if m.player_name == other_player_name)
+                            other_opponents = [m for m in sub_round_moves if m.player_name != other_player_name]
 
-                        second_order_opp_name = (
-                            second_order_opp_move.player_name
-                        )
-                        second_order_opp_label = (
-                            f"Player #{second_order_opp_move.uid}"
-                        )
+                            # Determine branch
+                            is_last_sub = (sub_round_idx == other_history[0][0])
+                            sub_branch = "└─" if is_last_sub else "├─"
+                            continuation_char = "  " if is_last_sub else "│ "
 
-                        # --- Level 3: Context (Second Order Opponent's Stats) ---
-                        total_lookback = rounds_ago + sub_idx
-                        stats = self.history.get_prior_action_distribution(
-                            second_order_opp_name,
-                            lookback_rounds=total_lookback,
-                        )
+                            # Format match
+                            sub_match_desc = f"{other_label} ({other_sub_move.action.to_token()}, {other_sub_move.points}pts)"
+                            for opp_move in other_opponents:
+                                sub_match_desc += f" vs {self.player_names[opp_move.uid]} ({opp_move.action.to_token()}, {opp_move.points}pts)"
 
-                        if stats:
-                            stats_parts = []
-                            for k, v in stats.items():
-                                key_str = (
-                                    k.to_token()
-                                    if hasattr(k, "to_token")
-                                    else str(k)
+                            lines.append(f"{child_indent}     {sub_branch} [Round {sub_round_idx}] {sub_match_desc}")
+
+                            # === Level 2.5 history: Action distributions of past co-player to past co-players to upcoming co-player ===
+                            # Show action distribution for all opponents
+                            for context_opp in other_opponents:
+                                context_label = self.player_names[context_opp.uid]
+
+                                # Calculate lookback: exclude rounds >= sub_round_idx
+                                # Since every player plays every round: lookback = current_round - sub_round_idx
+                                context_lookback = current_round - sub_round_idx
+
+                                # Get action distribution before this sub-round
+                                stats = self.history.get_prior_action_distribution(
+                                    context_opp.player_name,
+                                    lookback_rounds=context_lookback,
                                 )
-                                stats_parts.append(f"{key_str}: {v}")
-                            stats_str = (
-                                f"{second_order_opp_label}'s action distribution: "
-                                + ", ".join(stats_parts)
-                            )
-                        else:
-                            stats_str = REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION.format(
-                                opponent_name=second_order_opp_label
-                            )
 
-                        # Determine continuation indent for context line
-                        continuation_char = "│ " if sub_branch == "├─" else "  "
+                                if stats:
+                                    stats_parts = [f"{k.to_token()}: {v}" for k, v in stats.items()]
+                                    stats_str = f"{context_label}'s action distribution: " + ", ".join(stats_parts)
+                                else:
+                                    context_name_plus_have = f"{context_label} has" if context_label != "You" else f"{context_label} have"
+                                    stats_str = REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION.format(name_plus_have=context_name_plus_have)
 
-                        direct_opponent_reputation_lines.append(
-                            f"{child_indent}     {sub_branch} [{sub_idx} round(s) ago] "
-                            f"{first_order_opp_label} ({first_order_sub_move.action.to_token()}, {first_order_sub_move.points}pts) vs "
-                            f"{second_order_opp_label} ({second_order_opp_move.action.to_token()}, {second_order_opp_move.points}pts)"
-                        )
-                        direct_opponent_reputation_lines.append(
-                            f"{child_indent}     {continuation_char} → Context: {stats_str}"
-                        )
-                else:
-                    direct_opponent_reputation_lines.append(
-                        f"{child_indent}  └─ {REPUTATION_NO_HISTORY_DESCRIPTION.format(
-                            opponent_name=first_order_opp_label)
-                        }"
-                    )
+                                lines.append(f"{child_indent}     {continuation_char}  → Context: {stats_str}")
+                    else:
+                        other_name_plus_have = f"{other_label} has" if other_label != "You" else f"{other_label} have"
+                        lines.append(f"{child_indent}  └─ " + REPUTATION_NO_HISTORY_DESCRIPTION.format(name_plus_have=other_name_plus_have))
 
-            lines.append("\n".join(direct_opponent_reputation_lines).strip())
+            lines.append("")  # Blank line between players
 
-        return "\n\n".join(lines).strip()
+        return "\n".join(lines).strip()
 
     def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
         """Run reputation tournament with proper player ID seating."""
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
+
+        # Build global player name mapping
+        self.player_names = {p.uid: f"Player #{p.uid}" for p in players}
 
         # Group players by their player_id to ensure proper seating in matchups
         k = self.base_game.num_players
@@ -222,11 +211,18 @@ class Reputation(RepetitiveMechanism, ABC):
             for player_id in range(1, k + 1)
         ]
 
-        K = 2
+        # Compute num_repeat_experiment if not provided
+        # Default: (#LLM models)^(num_players - 1)
+        if self.num_repeat_experiment is None:
+            num_llm_models = len(agent_cfgs)
+            num_repeat_experiment = num_llm_models ** (k - 1)
+        else:
+            num_repeat_experiment = self.num_repeat_experiment
+
         all_tournament_moves = []
         for _ in tqdm(
-            range(K),
-            desc=f"Running {K} reputation iterations",
+            range(num_repeat_experiment),
+            desc=f"Running {num_repeat_experiment} reputation iterations",
             leave=True,
         ):
             # Clear history at the start of each iteration
@@ -262,7 +258,14 @@ class Reputation(RepetitiveMechanism, ABC):
             for round_idx, matches_group in enumerate(matcher, 1):
                 if round_idx > self.num_rounds:
                     break
-
+                print("Match Group round", round_idx)
+                print(
+                    "Match Group:",
+                    " | ".join(
+                        ", ".join(p.name for p in match_up)
+                        for match_up in matches_group
+                    ),
+                )
                 for match_up in matches_group:
                     matchup_label = " vs ".join(p.name for p in match_up)
                     pbar.set_postfix_str(
@@ -277,7 +280,7 @@ class Reputation(RepetitiveMechanism, ABC):
                         additional_info=reputation_information,
                         players=match_up,
                     )
-                    self.history.append(moves)
+                    self.history.append(moves, round_number=round_idx)
                     batch_moves.append(moves)
 
                 pbar.update(1)

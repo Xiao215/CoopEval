@@ -248,8 +248,8 @@ REPUTATION_MECHANISM_PROMPT = textwrap.dedent(
 )
 
 REPUTATION_NO_HISTORY_DESCRIPTION = (
-    "{opponent_name} has no prior history of playing this game."
+    "{name_plus_have} no prior history of playing this game."
 )
 REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION = (
-    "{opponent_name} has no historical action distribution."
+    "{name_plus_have} no historical action distribution."
 )
