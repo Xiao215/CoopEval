@@ -124,7 +124,11 @@ class Reputation(RepetitiveMechanism, ABC):
                 continue
 
             # Header for this player
-            history_header = f"History of play of {player_label}:" if player_label != "You" else f"Your history of play:" 
+            history_header = (
+                f"History of play of {player_label}:"
+                if player_label != "You"
+                else f"Your history of play:"
+            )
             lines.append(history_header)
 
             # Recursively format player's history (includes action distribution)
@@ -175,7 +179,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
             potential_player_id = "" if self.base_game.is_symmetric else f" (as Player {player.player_id})"
             player_name_plus_have = f"{player_label}{potential_player_id} has" if player_label != "You" else f"{player_label}{potential_player_id} have"
-            
+
             if stats:
                 stats_str = ", ".join(f"{count} time{'s' if count != 1 else ''} {action.to_token()}" for action, count in sorted(
                         stats.items(), key=lambda kv: str(kv[0]))) + "."

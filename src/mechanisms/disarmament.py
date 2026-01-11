@@ -4,6 +4,8 @@ import json
 import re
 from typing import Any, Sequence
 
+from tqdm import tqdm
+
 from src.agents.agent_manager import Agent
 from src.games.base import Game, Move
 from src.logger_manager import LOGGER
@@ -31,14 +33,11 @@ class Disarmament(RepetitiveMechanism):
     def __init__(
         self,
         base_game: Game,
+        *,
         num_rounds: int,
         discount: float,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
-
-        self.disarm_prompt_base = DISARM_PROMPT_BASE
-        self.disarm_format_can_disarm = DISARM_FORMAT_CAN_DISARM
-        self.disarm_format_cannot_disarm = DISARM_FORMAT_CANNOT_DISARM
         self.current_disarm_caps: CapsByPlayer = {}
 
         self.disarmament_mechanism_prompt = DISARMAMENT_MECHANISM_PROMPT
@@ -72,11 +71,11 @@ class Disarmament(RepetitiveMechanism):
             other_player_caps = self._caps_description(
                 self.current_disarm_caps[other_player_uid]
             )
-            opp_lines.append(f"\t{other_player_label}: {other_player_caps}")
+            opp_lines.append(f"{other_player_label}: {other_player_caps}")
         other_players_caps_block = "\n".join(opp_lines)
 
         # Build base prompt with current state
-        base_prompt = self.disarm_prompt_base.format(
+        base_prompt = DISARM_PROMPT_BASE.format(
             my_caps=self_caps_description,
             other_players_caps=other_players_caps_block,
             discount=round(self.discount * 100),
@@ -85,9 +84,9 @@ class Disarmament(RepetitiveMechanism):
         # Append appropriate format requirement based on whether player can disarm
         can_disarm = sum(self.current_disarm_caps[uid]) > 100.0
         if can_disarm:
-            return base_prompt + "\n" + self.disarm_format_can_disarm
+            return base_prompt + DISARM_FORMAT_CAN_DISARM
         else:
-            return base_prompt + "\n" + self.disarm_format_cannot_disarm
+            return base_prompt + DISARM_FORMAT_CANNOT_DISARM
 
     @staticmethod
     def _caps_description(caps: Caps) -> str:
@@ -262,8 +261,11 @@ class Disarmament(RepetitiveMechanism):
         # Note: If self.history persists across matches, ensure it is cleared here
         # or managed externally. For safety, we just track local moves for the return.
 
-        for _ in range(self.num_rounds):
-            
+        for _ in tqdm(
+            range(1, self.num_rounds + 1),
+            desc=f"Running {self.__class__.__name__} disarmament rounds",
+        ):
+
             # Prompt ALL players (including those with no room to disarm)
             negotiation_results = self._run_negotiations(players)
 
@@ -338,7 +340,7 @@ class Disarmament(RepetitiveMechanism):
             for player in players:
                 label = f"Player {player.player_id}"
                 caps_desc = self._caps_description(caps_to_use[player.uid])
-                player_cap_lines[player.uid] = f"\t{label}: {caps_desc}"
+                player_cap_lines[player.uid] = f"{label}: {caps_desc}"
 
             # Second pass: build mechanism prompts for each player
             disarmament_mechanisms: list[str] = []
