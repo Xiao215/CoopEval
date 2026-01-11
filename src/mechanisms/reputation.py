@@ -35,12 +35,10 @@ class Reputation(RepetitiveMechanism, ABC):
         discount: float,
         lookup_depth: int = 5,
         max_recursion_depth: int | None = None,
-        num_repeat_experiment: int | None = None,
         include_prior_distributions: bool = True,
     ) -> None:
         super().__init__(base_game, num_rounds, discount)
         self.reputation_depth = lookup_depth
-        self.num_repeat_experiment = num_repeat_experiment
         self.include_prior_distributions = include_prior_distributions
         if not max_recursion_depth:
             self.max_recursion_depth = lookup_depth + 1
@@ -336,78 +334,66 @@ class Reputation(RepetitiveMechanism, ABC):
             for player_id in range(1, k + 1)
         ]
 
-        # Compute num_repeat_experiment if not provided
-        # Default: (#LLM models)^(num_players - 1)
-        if self.num_repeat_experiment is None:
-            num_llm_models = len(agent_cfgs)
-            num_repeat_experiment = num_llm_models ** (k - 1)
-        else:
-            num_repeat_experiment = self.num_repeat_experiment
-
-        all_tournament_moves = []
-        for _ in tqdm(
-            range(num_repeat_experiment),
-            desc=f"Running {num_repeat_experiment} reputation iterations",
-            leave=True,
-        ):
-            # Clear history at the start of each iteration
-            self.history.clear()
-            round_moves = self._play_matchup(players_by_id)
-            all_tournament_moves.extend(round_moves)
-
-        payoffs.add_profile(all_tournament_moves)
-
-        return payoffs
-
-    def _play_matchup(self, players_by_id: list[list[Agent]]) -> list[list[Move]]:
-        """
-        Play num_rounds rounds of matchups using RandomMatcher iterator.
-
-        Args:
-            players_by_id: List of player groups, where players_by_id[i] contains
-                          all agents that should play in seat i+1 (player_id=i+1)
-
-        Returns:
-            List of moves from num_rounds rounds of play.
-        """
-        batch_moves = []
+        # Initialize matcher
         matcher = RandomMatcher(players_by_id)
 
-        # Iterate through num_rounds rounds with random matchings
+        # Clear history at the start of tournament
+        self.history.clear()
+
+        all_tournament_moves = []
+
+        # Loop through num_rounds
         with tqdm(
             total=self.num_rounds,
-            desc="Random matchups",
-            leave=False,
+            desc="Reputation rounds",
+            leave=True,
             dynamic_ncols=True,
         ) as pbar:
             for round_idx, matches_group in enumerate(matcher, 1):
                 if round_idx > self.num_rounds:
                     break
-                print("Match Group round", round_idx)
-                print(
-                    "Match Group:",
-                    " | ".join(
-                        ", ".join(p.name for p in match_up)
-                        for match_up in matches_group
-                    ),
-                )
-                for match_up in matches_group:
-                    matchup_label = " vs ".join(p.name for p in match_up)
-                    pbar.set_postfix_str(
-                        f"[Round {round_idx}/{self.num_rounds}] {matchup_label}",
-                        refresh=False,
-                    )
 
-                    reputation_information = self._build_history_prompts(match_up)
-
-                    # Play the game
-                    moves = self.base_game.play(
-                        additional_info=reputation_information,
-                        players=match_up,
-                    )
-                    self.history.append(moves, round_number=round_idx)
-                    batch_moves.append(moves)
+                # Play this round's matches
+                round_moves = self._play_matchup(matches_group, round_idx)
+                all_tournament_moves.extend(round_moves)
 
                 pbar.update(1)
+
+        payoffs.add_profile(all_tournament_moves)
+
+        return payoffs
+
+    def _play_matchup(self, matches_group: list[list[Agent]], round_idx: int) -> list[list[Move]]:
+        """
+        Play a single round of matches for all matchups in matches_group.
+
+        Args:
+            matches_group: List of matchups, where each matchup is a list of agents
+            round_idx: The current round number
+
+        Returns:
+            List of moves from this round's matches.
+        """
+        batch_moves = []
+
+        print("Match Group round", round_idx)
+        print(
+            "Match Group:",
+            " | ".join(
+                ", ".join(p.name for p in match_up)
+                for match_up in matches_group
+            ),
+        )
+
+        for match_up in matches_group:
+            reputation_information = self._build_history_prompts(match_up)
+
+            # Play the game
+            moves = self.base_game.play(
+                additional_info=reputation_information,
+                players=match_up,
+            )
+            self.history.append(moves, round_number=round_idx)
+            batch_moves.append(moves)
 
         return batch_moves
