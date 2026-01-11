@@ -1,0 +1,4 @@
+type: Disarmament
+kwargs:
+  num_rounds: 10
+  discount: 0.95
