@@ -46,8 +46,6 @@ class TravellersDilemma(Game):
         )
         self.bonus = float(bonus)
 
-        self.action_cls = build_travellers_action(self.claims)
-
         actions_block = "\n".join(
             f"- {act.to_token()}: correspond to the number {act.value}"
             for act in self.action_cls
@@ -87,7 +85,6 @@ class TravellersDilemma(Game):
                 payoff_description=payoff_description,
             ),
             num_players=2,
-            action_cls=self.action_cls,
             is_symmetric=True,
         )
 
@@ -107,6 +104,10 @@ class TravellersDilemma(Game):
         """
         )
 
+    @property
+    def action_cls(self) -> type[Action]:
+        return build_travellers_action(self.claims)
+
     def play(
         self,
         additional_info: list[str] | str,
@@ -119,47 +120,42 @@ class TravellersDilemma(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * 2
 
-        results = self._collect_actions(
+        players_decision = self._collect_actions(
             players,
             additional_info,
+            action_map,
         )
-        action_indices = {uid: action_idx for uid, action_idx, _ in results}
-        responses = {uid: resp for uid, _, resp in results}
 
-        mapped_indices = action_map(action_indices)
-        final_actions: dict[int, Action] = {
-            uid: self.action_cls.from_index(idx)
-            for uid, idx in mapped_indices.items()
-        }
-
-        # Compute payoffs from claims
         uid1 = player1.uid
         uid2 = player2.uid
-        c1 = final_actions[uid1].value
-        c2 = final_actions[uid2].value
-        pts1, pts2 = self._calculate_payoffs(c1, c2)
+        pts1, pts2 = self._calculate_payoffs(
+            players_decision[uid1][0], players_decision[uid2][0]
+        )
 
         return [
             Move(
                 player_name=player1.name,
                 uid=uid1,
-                action=final_actions[uid1],
+                action=players_decision[uid1][0],
                 points=pts1,
-                response=responses[uid1],
+                response=players_decision[uid1][1],
+                trace_id=players_decision[uid1][2],
             ),
             Move(
                 player_name=player2.name,
                 uid=uid2,
-                action=final_actions[uid2],
+                action=players_decision[uid2][0],
                 points=pts2,
-                response=responses[uid2],
+                response=players_decision[uid2][1],
+                trace_id=players_decision[uid2][2],
             ),
         ]
 
     def _calculate_payoffs(
-        self, claim_a: int | float, claim_b: int | float
+        self, action_a: Action, action_b: Action
     ) -> tuple[float, float]:
         """Return payoffs for a pair of claims given the Traveller's Dilemma rules."""
+        claim_a, claim_b = action_a.value, action_b.value
         if claim_a == claim_b:
             value = float(claim_a)
             return value, value

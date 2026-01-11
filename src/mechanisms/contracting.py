@@ -5,7 +5,6 @@ import re
 from typing import Sequence
 
 from src.agents.agent_manager import Agent
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
@@ -16,9 +15,9 @@ from src.mechanisms.prompts import (
     CONTRACT_MECHANISM_PROMPT,
     CONTRACT_REJECTION_PROMPT,
 )
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.utils.concurrency import run_tasks
 
-# Adjust just like mediation
 
 class Contracting(Mechanism):
     """Mechanism where players negotiate and optionally sign payoff contracts."""
@@ -35,7 +34,7 @@ class Contracting(Mechanism):
         self.contract_mechanism_prompt = CONTRACT_MECHANISM_PROMPT
         self._cached_agents: list[Agent] | None = None
 
-    def _design_contract(self, designer: Agent) -> tuple[str, list[int]]:
+    def _design_contract(self, designer: Agent) -> tuple[str, str, list[int]]:
         """
         Design a contract from the given LLM agent.
 
@@ -48,15 +47,15 @@ class Contracting(Mechanism):
         base_prompt = (
             game_prompt + "\n" + self.contracts_design_prompt.format()
         )
-        response, contract = designer.chat_with_retries(
+        response, trace_id, contract = designer.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=self._parse_contract,
         )
-        return response, contract
+        return response, trace_id, contract
 
     def _agree_to_contract(
         self, *, player: Agent, designer: Agent
-    ) -> tuple[str, bool]:
+    ) -> tuple[str, str, bool]:
         """
         Ask the LLM to confirm agreement to the contract with automatic retries.
         """
@@ -72,11 +71,11 @@ class Contracting(Mechanism):
                 designer_player_id=designer.player_id
             )
         )
-        response, agreement = player.chat_with_retries(
+        response, trace_id, agreement = player.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=self._parse_agreement,
         )
-        return response, agreement
+        return response, trace_id, agreement
 
     def _parse_contract(self, response: str) -> list[int]:
         """
@@ -171,9 +170,7 @@ class Contracting(Mechanism):
         return "\n".join(lines)
 
     def _collect_vote(
-        self,
-        voter: Agent,
-        players: Sequence[Agent]
+        self, voter: Agent, players: Sequence[Agent]
     ) -> tuple[str, dict[int, bool]]:
         """
         Ask an agent to vote on which contracts they approve.
@@ -215,11 +212,11 @@ class Contracting(Mechanism):
 
             return votes
 
-        response, votes = voter.chat_with_retries(
+        _, trace_id, votes = voter.chat_with_retries(
             base_prompt=vote_prompt,
             parse_func=parse_votes,
         )
-        return response, votes
+        return trace_id, votes
 
     def _select_contract(
         self,
@@ -271,20 +268,21 @@ class Contracting(Mechanism):
         # Cache agents so base class reuses them
         self._cached_agents = agents
 
-        def design_fn(agent: Agent) -> tuple[Agent, str, list[int]]:
-            response, contract = self._design_contract(agent)
-            return agent, response, contract
+        def design_fn(agent: Agent) -> tuple[Agent, str, str, list[int]]:
+            response, trace_id, contract = self._design_contract(agent)
+            return agent, response, trace_id, contract
 
         design_results = run_tasks(agents, design_fn)
 
         self.contracts.clear()
         contract_design = {}
-        for agent, response, contract in design_results:
+        for agent, response, trace_id, contract in design_results:
             key = (agent.model_type, agent.player_id)
             self.contracts[key] = contract
             contract_design[agent.name] = {
                 "response": response,
                 "contract": contract,
+                "trace_id": trace_id,
             }
         LOGGER.log_record(
             record=contract_design, file_name="contract_design.json"
@@ -306,23 +304,27 @@ class Contracting(Mechanism):
             A list containing a single move sequence (one game result).
         """
         # Step 1: Collect votes from all players
-        def collect_vote_fn(player: Agent) -> tuple[Agent, str, dict[int, bool]]:
-            response, votes = self._collect_vote(player, players)
-            return player, response, votes
+        def collect_vote_fn(
+            player: Agent,
+        ) -> tuple[Agent, str, dict[int, bool]]:
+            trace_id, votes = self._collect_vote(player, players)
+            return player, trace_id, votes
 
         vote_results = run_tasks(players, collect_vote_fn)
 
         # Step 2: Process voting results
         all_votes = {}  # {voter_uid: {contract_idx: approval}}
         vote_records = []
-        for player, response, votes in vote_results:
+        for player, trace_id, votes in vote_results:
             all_votes[player.uid] = votes
-            vote_records.append({
-                "voter_uid": player.uid,
-                "voter_name": player.name,
-                "votes": votes,
-                "response": response,
-            })
+            vote_records.append(
+                {
+                    "voter_uid": player.uid,
+                    "voter_name": player.name,
+                    "votes": votes,
+                    "trace_id": trace_id,
+                }
+            )
 
         # Step 3: Select winning contract
         winning_idx, winning_agent = self._select_contract(players, all_votes)
@@ -331,10 +333,10 @@ class Contracting(Mechanism):
 
         # Step 4: Collect signatures for the winning contract
         def sign_contract_fn(player: Agent) -> tuple[Agent, str, bool]:
-            response, agreement = self._agree_to_contract(
+            _, trace_id, agreement = self._agree_to_contract(
                 player=player, designer=winning_agent
             )
-            return player, response, agreement
+            return player, trace_id, agreement
 
         sign_results = run_tasks(players, sign_contract_fn)
 
@@ -344,9 +346,9 @@ class Contracting(Mechanism):
         all_agree = True
         rejector_ids = []
         signature_records = {}
-        for player, response, agree in sign_results:
+        for player, trace_id, agree in sign_results:
             signature_records[player.name] = {
-                "response": response,
+                "trace_id": trace_id,
                 "agree": agree,
             }
             if not agree:
@@ -385,7 +387,7 @@ class Contracting(Mechanism):
                     else str(move.action)
                 ),
                 "points": move.points,
-                "response": move.response,
+                "trace_id": move.trace_id,
             }
             for move in moves
         ]

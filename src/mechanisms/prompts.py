@@ -94,19 +94,19 @@ DISARM_PROMPT_BASE = textwrap.dedent(
         {other_players_caps}
 
     Rules:
-    1) For each action, you may keep the upper bound the same or reduce it. Increases are forbidden.
-    2) Each upper bound must be an integer in [0, 100].
-    3) All upper bounds must be non-negative and the sum of your upper bounds must be greater than or equal to 100.
-    4) All players are facing the question of whether to disarm simultaneously, and players' decisions to disarm are and will be reflected in the current upper bounds (already reported above).
-    5) Each round, you must make one of three choices:
+    1. For each action, you may keep the upper bound the same or reduce it. Increases are forbidden.
+    2. Each upper bound must be an integer in [0, 100].
+    3. All upper bounds must be non-negative and the sum of your upper bounds must be greater than or equal to 100.
+    4. All players are facing the question of whether to disarm simultaneously, and players' decisions to disarm are and will be reflected in the current upper bounds (already reported above).
+    5. Each round, you must make one of three choices:
        - "disarm": Strictly reduce at least one upper bound (you must then provide new bounds that differ from current for at least one action).
        - "pass": Skip this round but remain willing to wait for others to disarm.
        - "end": Veto the remaining disarmament phase and stop it for everyone.
-    6) Continuation rules:
+    6. Continuation rules:
        - If ANY player chooses "end", the disarmament phase stops immediately and ANY disarming occurring in that round will not be applied.
        - If NO player chooses "disarm" (for example, everyone chooses "pass"), the disarmament phase stops.
        - If at least one player chooses "disarm" and no one chooses "end", there is a {discount}% chance probability that an additional round will take place.
-    7) After the disarmament phase ends, you and the other player(s) will play the original game subject to your committed probability upper bound constraints.
+    7. After the disarmament phase ends, you and the other player(s) will play the original game subject to your committed probability upper bound constraints.
     """
 )
 

@@ -2,9 +2,9 @@
 
 import itertools
 import textwrap
-from datetime import datetime
+import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Callable, Any
 
 from src.agents.base import LLM
 from src.agents.client_api_llm import ClientAPILLM
@@ -69,22 +69,23 @@ class Agent(ABC):
     def chat(
         self,
         messages: str,
-    ) -> str:
+    ) -> tuple[str, str]:
         """Chat with the agent using the provided messages."""
         raise NotImplementedError
 
-    def invoke(self, messages: str) -> str:
-        """Invoke the agent using the provided messages. No prompting added."""
-        return self._invoke_with_logging(messages)
+    def invoke(self, messages: str) -> tuple[str, str]:
+        """Invoke the agent's LLM pipeline with logging. Returns response and trace_id."""
+        trace_id = str(uuid.uuid4())[:8]
 
-    def _invoke_with_logging(self, messages: str) -> str:
         response = self.pipeline.invoke(messages, **self.kwargs)
-        self._log_inference(messages, response)
-        return response
 
-    def _log_inference(self, prompt: str, response: str) -> None:
+        self._log_inference(messages, response, trace_id)
+        return response, trace_id
+
+    def _log_inference(self, prompt: str, response: str, trace_id: str) -> None:
+        """Log the inference to the game log."""
         entry = (
-            "===== inference =====\n"
+            f"===== Inference [ID: {trace_id}] =====\n"
             f"agent: {self.name}\n"
             "prompt:\n"
             f"{prompt}\n"
@@ -99,7 +100,7 @@ class Agent(ABC):
         parse_func: Callable[[str], Any],
         *,
         max_retries: int = 5,
-    ) -> tuple[str, Any]:
+    ) -> tuple[str, str, Any]:
         """Chat with the agent, retrying if unique parsing fails."""
         response = ""
         error_reason = ""
@@ -111,11 +112,9 @@ class Agent(ABC):
                 prompt = self._build_retry_prompt(
                     base_prompt, response, error_reason
                 )
-
-            response = self.chat(prompt)
-
+            response, trace_id = self.chat(prompt)
             try:
-                return response, parse_func(response)
+                return response, trace_id, parse_func(response)
             except ValueError as e:
                 error_reason = str(e)
                 print(
@@ -168,7 +167,7 @@ class IOAgent(Agent):
     def chat(
         self,
         messages: str,
-    ) -> str:
+    ) -> tuple[str, str]:
         """Chat with the agent using the provided messages."""
         messages += textwrap.dedent(
             """
@@ -176,7 +175,7 @@ class IOAgent(Agent):
             DO NOT provide any additional text or explanation.
             """
         )
-        return self._invoke_with_logging(messages)
+        return self.invoke(messages)
 
     @property
     def name(self) -> str:
@@ -193,7 +192,7 @@ class CoTAgent(Agent):
     def chat(
         self,
         messages: str,
-    ) -> str:
+    ) -> tuple[str, str]:
         """Chat with the agent using the provided messages."""
         messages += textwrap.dedent(
             """
@@ -202,7 +201,7 @@ class CoTAgent(Agent):
             Explain your reasoning, and then provide the final answer.
             """
         )
-        return self._invoke_with_logging(messages)
+        return self.invoke(messages)
 
     @property
     def name(self) -> str:
