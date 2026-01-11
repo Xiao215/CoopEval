@@ -169,9 +169,9 @@ def run_evolutionary_dynamics(
 
     population_history = replicator_dynamics.run_dynamics(
         initial_population=eval_kwargs.get("initial_population", DEFAULT_EVOL_INITIAL_POPULATION),
-        steps=eval_kwargs.get("steps", DEFAULT_EVOL_STEPS),
+        steps=int(eval_kwargs.get("steps", DEFAULT_EVOL_STEPS)),
         lr_method=eval_kwargs.get("lr_method", DEFAULT_EVOL_LR_METHOD),
-        lr_nu=eval_kwargs.get("lr_nu", DEFAULT_EVOL_LR_NU),
+        lr_nu=float(eval_kwargs.get("lr_nu", DEFAULT_EVOL_LR_NU)),
     )
 
     # Log the population history
@@ -198,7 +198,7 @@ def run_deviation_rating(payoffs: PopulationPayoffs, eval_kwargs: dict) -> None:
 
     deviation_rating = DeviationRating(
         population_payoffs=payoffs,
-        tolerance=eval_kwargs.get("tolerance", DEFAULT_DEVIATION_TOLERANCE)
+        tolerance=float(eval_kwargs.get("tolerance", DEFAULT_DEVIATION_TOLERANCE))
     )
 
     ratings = deviation_rating.compute_ratings()

@@ -149,7 +149,7 @@ class DeviationRating:
 
             # Create Gurobi model
             model = gp.Model("deviation_rating")
-            # model.setParam("OutputFlag", 0)  # Suppress output
+            model.setParam("OutputFlag", 0)  # Suppress output
             model.setParam("Method", 2)  # Dual simplex
 
             # Variables
