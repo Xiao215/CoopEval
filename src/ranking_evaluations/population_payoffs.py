@@ -115,9 +115,10 @@ class PopulationPayoffs:
         # Vectorized weight calculation
         rounds_idx = np.arange(num_rounds)
         weights = (1 - d) * (d**rounds_idx)
-        # Fix the tail probability to ensure sum is exactly 1.0
+        # Update the tail probability. This is the same as weights[-1] += d ** num_rounds. It assumes that whatever the last round's payoff is that the players achieved, will be the estimate of the payoffs they can expect for the rest of the iterations.
         weights[-1] = d ** (num_rounds - 1)
 
+        # In particular, the sum to 1.0
         if not math.isclose(np.sum(weights), 1.0):
             raise ValueError(
                 f"Discount weights sum to {np.sum(weights)}, expected 1.0"
@@ -183,13 +184,14 @@ class PopulationPayoffs:
                 s = self._compute_discounted_average(match_arr)
                 match_scores.append(s)
 
+            #Average over all matches for this profile (say, you rerun a mechanism a few times)
             profile_avg_scores = np.mean(match_scores, axis=0)
             current_models = [self._uid_to_model[uid] for uid in uids]
 
+            #transition to models. if multiple uids have the same model, average their scores
             model_payoff_map = defaultdict(list)
             for score, model in zip(profile_avg_scores, current_models):
                 model_payoff_map[model].append(score)
-
             avg_by_model = {
                 m: np.mean(vals) for m, vals in model_payoff_map.items()
             }
