@@ -10,9 +10,10 @@ game:
       DD: [1, 1]
     parallel_players: true
 
-evolution:
-  initial_population: uniform
-  steps: 25
+# Note: Reputation mechanisms only support model average reporting
+# Tensor-based evaluations (evolutionary_dynamics, deviation_rating) are not compatible
+# evaluation:
+#   methods: []
 
 mechanism:
   type: ReputationPrisonersDilemma

@@ -11,7 +11,7 @@ game:
 
 evolution:
   initial_population: uniform
-  steps: 25
+  steps: 3
 
 mechanism:
   type: Repetition
@@ -34,16 +34,16 @@ agents:
         temperature: 0
     type: CoTAgent
 
-  - llm:
-      provider: OpenRouter
-      model: qwen/qwen3-next-80b-a3b-instruct
-      kwargs:
-        temperature: 0
-    type: CoTAgent
+  # - llm:
+  #     provider: OpenRouter
+  #     model: qwen/qwen3-next-80b-a3b-instruct
+  #     kwargs:
+  #       temperature: 0
+  #   type: CoTAgent
 
-  - llm:
-      provider: OpenRouter
-      model: openai/gpt-5-nano
-      kwargs:
-        temperature: 0
-    type: CoTAgent
+  # - llm:
+  #     provider: OpenRouter
+  #     model: openai/gpt-5-nano
+  #     kwargs:
+  #       temperature: 0
+  #   type: CoTAgent
