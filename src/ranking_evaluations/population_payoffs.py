@@ -174,38 +174,36 @@ class PopulationPayoffs:
         payoff_sums = np.zeros([k] * n_players, dtype=float)
         counts = np.zeros([k] * n_players, dtype=int)
 
-        # Process Each Unique Profile (Specific Set of UIDs)
+        # First pass: Collect ALL observations grouped by (composition, focal_model)
+        composition_observations = defaultdict(list)
+
         for profile_key, match_list in self._profiles.items():
             uids = list(profile_key)
-
-            # Calculate Average Payoff per Seat for this Profile
-            match_scores = []
-            for match_arr in match_list:
-                s = self._compute_discounted_average(match_arr)
-                match_scores.append(s)
-
-            #Average over all matches for this profile (say, you rerun a mechanism a few times)
-            profile_avg_scores = np.mean(match_scores, axis=0)
             current_models = [self._uid_to_model[uid] for uid in uids]
 
-            #transition to models. if multiple uids have the same model, average their scores
-            model_payoff_map = defaultdict(list)
-            for score, model in zip(profile_avg_scores, current_models):
-                model_payoff_map[model].append(score)
-            avg_by_model = {
-                m: np.mean(vals) for m, vals in model_payoff_map.items()
-            }
+            # Process each match separately to avoid nested averaging
+            for match_arr in match_list:
+                discounted_scores = self._compute_discounted_average(match_arr)
 
-            # Fill all permutations to ensure the tensor is seat-agnostic
-            for perm in set(permutations(current_models)):
-                indices = tuple(model_to_idx[m] for m in perm)
-                focal_model = perm[0]
+                # Record each seat's observation
+                for model, score in zip(current_models, discounted_scores):
+                    # Use sorted tuple as canonical composition key
+                    composition_key = tuple(sorted(current_models))
+                    composition_observations[(composition_key, model)].append(score)
 
-                payoff_sums[indices] += avg_by_model[focal_model]
-                counts[indices] += 1
+        # Second pass: Sum all observations and track counts for averaging
+        for (comp_key, focal_model), scores in composition_observations.items():
+            # Fill all permutations where focal_model is in position 0
+            for perm in set(permutations(comp_key)):
+                if perm[0] == focal_model:
+                    indices = tuple(model_to_idx[m] for m in perm)
+                    # Add each observation individually to let final division handle averaging
+                    for score in scores:
+                        payoff_sums[indices] += score
+                        counts[indices] += 1
 
-        with np.errstate(invalid="ignore"):
-            tensor = np.divide(payoff_sums, counts, where=counts > 0)
+        assert np.all(counts >= 1), "All tensor entries must have at least one observation."
+        tensor = payoff_sums / counts
 
         self._payoff_tensor = tensor
         self._tensor_model_types = model_types
