@@ -1,7 +1,0 @@
-type: PrisonersDilemma
-kwargs:
-  payoff_matrix:
-    CC: [2, 2]  # Both cooperate: both get 2
-    CD: [0, 3]  # You cooperate, opponent defects: you get 0, they get 3
-    DC: [3, 0]  # You defect, opponent cooperates: you get 3, they get 0
-    DD: [1, 1]  # Both defect: both get 1

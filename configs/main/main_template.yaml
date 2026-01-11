@@ -1,4 +1,4 @@
-name: "PD Testing with OpenRouter"
+name: "Main Template"
 
 # Component references (relative to configs/)
 game_config: games/<...>.yaml
