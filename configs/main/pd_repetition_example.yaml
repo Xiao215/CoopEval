@@ -1,8 +1,8 @@
 name: "PD Testing with OpenRouter"
 
 # Component references (relative to configs/)
-game_config: games/pd_standard.yaml
-mechanism_config: mechanisms/repetition_5rounds.yaml
+game_config: games/prisoners_dilemma.yaml
+mechanism_config: mechanisms/repetition.yaml
 agents_config: agents/test_agents_3.yaml
 evaluation_config: evaluation/standard_test.yaml
 

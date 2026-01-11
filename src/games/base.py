@@ -229,8 +229,9 @@ class GridGame(Game):
         payoff_matrix: Mapping[str, Sequence[float]],
         *,
         num_players: int,
-        is_symmetric: bool = True,
+        is_symmetric: bool,
     ) -> None:
+        assert is_symmetric, "GridGame currently only supports symmetric games."
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
         
         # Build the prompt now that payoff_matrix is ready
