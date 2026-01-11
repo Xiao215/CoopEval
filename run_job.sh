@@ -13,17 +13,16 @@
 source .venv312/bin/activate
 export PYTHONPATH=.
 
-python3 script/run_evolution.py --config prisoner_dilemma.yaml
+python3 script/run_evolution.py --config legacy/prisoner_dilemma.yaml
 
-# python3 script/run_evolution.py --config public_goods.yaml --wandb
+# python3 script/run_evolution.py --config legacy/public_goods.yaml --wandb
 #
-# python3 script/run_evolution.py --config public_goods_toy.yaml --wandb
+# python3 script/run_evolution.py --config legacy/public_goods_toy.yaml --wandb
 
-# python3 script/run_evolution.py --config prisoner_dilemma_io_vs_cot.yaml --wandb
+# python3 script/run_evolution.py --config legacy/prisoner_dilemma_io_vs_cot.yaml --wandb
+# python3 script/run_evolution.py --config legacy/toy_pd.yaml
+# python3 script/run_evolution.py --config legacy/toy_disarm.yaml
+# python3 script/run_evolution.py --config legacy/toy_mediation.yaml
 
-# python3 script/run_evolution.py --config toy_pd.yaml
-# python3 script/run_evolution.py --config toy_disarm.yaml
-# python3 script/run_evolution.py --config toy_mediation.yaml
-
-# python3 script/run_evolution.py --config toy_pd_client_api.yaml
+# python3 script/run_evolution.py --config legacy/toy_pd_client_api.yaml
 # python3 script/run_evolution.py --config test/repetition/repetition_pd.yaml

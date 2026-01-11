@@ -1,0 +1,76 @@
+# Prisoners' Dilemma with Repetition mechanism using OpenRouter API models
+
+game:
+  type: PrisonersDilemma
+  kwargs:
+    payoff_matrix:
+      CC: [2, 2]  # Both cooperate: both get 2
+      CD: [0, 3]  # You cooperate, opponent defects: you get 0, they get 3
+      DC: [3, 0]  # You defect, opponent cooperates: you get 3, they get 0
+      DD: [1, 1]  # Both defect: both get 1
+
+evaluation:
+  methods:
+    - type: evolutionary_dynamics
+      kwargs:
+        initial_population: uniform
+        steps: 3
+        lr_method: constant
+        lr_nu: 0.1
+    - type: deviation_rating
+      kwargs:
+        tolerance: 1e-14
+
+mechanism:
+  type: Repetition
+  kwargs:
+    num_rounds: 5
+    discount: 0.95
+    # lookup_depth: 2
+    # include_prior_distributions: true
+
+agents:
+  # TestInstance agents (no API calls)
+  - llm:
+      provider: TestInstance
+      model: test-1
+    type: CoTAgent
+
+  - llm:
+      provider: TestInstance
+      model: test-2
+    type: CoTAgent
+
+  - llm:
+      provider: TestInstance
+      model: test-3
+    type: CoTAgent
+
+  # OpenRouter agents (commented out to avoid API calls during testing)
+  # - llm:
+  #     provider: OpenRouter
+  #     model: google/gemini-2.5-flash-lite-preview-09-2025
+  #     kwargs:
+  #       temperature: 0
+  #   type: CoTAgent
+
+  # - llm:
+  #     provider: OpenRouter
+  #     model: openai/gpt-4o-2024-05-13
+  #     kwargs:
+  #       temperature: 0
+  #   type: CoTAgent
+
+  # - llm:
+  #     provider: OpenRouter
+  #     model: qwen/qwen3-next-80b-a3b-instruct
+  #     kwargs:
+  #       temperature: 0
+  #   type: CoTAgent
+
+  # - llm:
+  #     provider: OpenRouter
+  #     model: openai/gpt-5-nano
+  #     kwargs:
+  #       temperature: 0
+  #   type: CoTAgent

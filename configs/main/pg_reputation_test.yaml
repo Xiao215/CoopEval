@@ -1,0 +1,14 @@
+name: "Public Goods Reputation Test"
+
+# Component references (relative to configs/)
+game_config: games/pg_4player.yaml
+mechanism_config: mechanisms/reputation_pg.yaml
+agents_config: agents/test_agents_3.yaml
+
+# Note: No evaluation_config specified
+# Reputation mechanisms only support model average payoffs
+# (Evolutionary dynamics and deviation ratings require payoff tensors which reputation doesn't provide)
+
+# Experiment-level settings
+concurrency:
+  max_workers: 4

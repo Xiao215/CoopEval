@@ -9,9 +9,14 @@ game:
       DC: [3, 0]
       DD: [1, 1]
 
-evolution:
-  initial_population: uniform
-  steps: 25
+evaluation:
+  methods:
+    - type: evolutionary_dynamics
+      kwargs:
+        initial_population: uniform
+        steps: 25
+        lr_method: constant
+        lr_nu: 0.1
 
 concurrency:
   max_workers: 4

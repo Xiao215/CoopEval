@@ -34,7 +34,7 @@ If you plan to run local HF checkpoints, ensure your environment can access the 
 2. **Run the evolutionary loop**:
 
 ```bash
-python script/run_evolution.py --config configs/toy_pd.yaml --log
+python script/run_evolution.py --config configs/legacy/toy_pd.yaml --log
 ```
 
 3. **Inspect outputs** in `outputs/<date>/...`.
