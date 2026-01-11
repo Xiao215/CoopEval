@@ -10,7 +10,8 @@ from typing import Iterator, Sequence
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.payoffs_base import PayoffsBase
+from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.games.base import Action, Game, Move
 from src.registry.agent_registry import create_agent
 
@@ -23,8 +24,8 @@ class Mechanism(ABC):
 
         self.record_file = f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
 
-    def _build_payoffs(self, players: list[Agent]) -> PopulationPayoffs:
-        return PopulationPayoffs(players=players)
+    def _build_payoffs(self, players: list[Agent]) -> PayoffsBase:
+        return MatchupPayoffs(players=players)
 
     def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
         """Create players with fixed player IDs from agent configurations."""
@@ -35,7 +36,7 @@ class Mechanism(ABC):
                 players.append(agent)
         return players
 
-    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
+    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
         """Run the mechanism over the base game across all players."""
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
@@ -231,5 +232,5 @@ class RepetitiveMechanism(Mechanism):
         self.discount = discount
         self.history = self.History(base_game.action_cls)
 
-    def _build_payoffs(self, players: Sequence[Agent]) -> PopulationPayoffs:
-        return PopulationPayoffs(players=players, discount=self.discount)
+    def _build_payoffs(self, players: Sequence[Agent]) -> PayoffsBase:
+        return MatchupPayoffs(players=players, discount=self.discount)

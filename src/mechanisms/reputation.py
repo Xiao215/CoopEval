@@ -9,7 +9,8 @@ from typing import Sequence
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.payoffs_base import PayoffsBase
+from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
 from src.mechanisms.base import RepetitiveMechanism
 from src.games.base import Game, Move
 from src.utils.match_scheduler_reputation import RandomMatcher, RoundRobin
@@ -44,6 +45,10 @@ class Reputation(RepetitiveMechanism, ABC):
             self.max_recursion_depth = lookup_depth + 1
         else:
             self.max_recursion_depth = max_recursion_depth
+
+    def _build_payoffs(self, players: list[Agent]) -> PayoffsBase:
+        """Override to use ReputationPayoffs instead of MatchupPayoffs."""
+        return ReputationPayoffs(players=players, discount=self.discount)
 
     def _build_history_prompts(self, players: Sequence[Agent]) -> list[str]:
         """
@@ -316,7 +321,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
         return lines
 
-    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
+    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
         """Run reputation tournament with proper player ID seating."""
         players = self._create_players_from_cfgs(agent_cfgs)
         payoffs = self._build_payoffs(players)
@@ -353,9 +358,9 @@ class Reputation(RepetitiveMechanism, ABC):
                 if round_idx > self.num_rounds:
                     break
 
-                # Play this round's matches
+                # Play this round's matches (returns all moves from this round)
                 round_moves = self._play_matchup(matches_group, round_idx)
-                all_tournament_moves.extend(round_moves)
+                all_tournament_moves.append(round_moves)
 
                 pbar.update(1)
 
@@ -363,7 +368,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
         return payoffs
 
-    def _play_matchup(self, matches_group: list[list[Agent]], round_idx: int) -> list[list[Move]]:
+    def _play_matchup(self, matches_group: list[list[Agent]], round_idx: int) -> list[Move]:
         """
         Play a single round of matches for all matchups in matches_group.
 
@@ -372,9 +377,9 @@ class Reputation(RepetitiveMechanism, ABC):
             round_idx: The current round number
 
         Returns:
-            List of moves from this round's matches.
+            Flattened list of all moves from this round (across all matches).
         """
-        batch_moves = []
+        round_moves = []
 
         print("Match Group round", round_idx)
         print(
@@ -394,6 +399,6 @@ class Reputation(RepetitiveMechanism, ABC):
                 players=match_up,
             )
             self.history.append(moves, round_number=round_idx)
-            batch_moves.append(moves)
+            round_moves.extend(moves)  # Flatten into single list
 
-        return batch_moves
+        return round_moves
