@@ -226,13 +226,39 @@ class GridGame(Game):
 
     def __init__(
         self,
-        prompt: str,
         payoff_matrix: Mapping[str, Sequence[float]],
         *,
         num_players: int,
         is_symmetric: bool = True,
     ) -> None:
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
+        
+        # Build the prompt now that payoff_matrix is ready
+        actions_block = "\n".join(
+            [f"- {act.to_token()}" for act in self.action_cls]
+        )
+        prompt = textwrap.dedent(
+            """
+        Setup:
+        You are playing a decision-making game with another player.
+        Your objective is to maximize your points received in the game described in length below.
+
+        Actions available to each player:
+        {actions_block}
+
+        Basic game rules:
+        1. You and the other player each choose a probability for each action, simultaneously.
+        2. After both decisions are locked in, the final action will be drawn from the probability distributions.
+        3. Both players receive the points specified in the payoff description below.
+
+        Payoff description:
+        {payoff_description}
+        """
+        ).format(
+            actions_block=actions_block,
+            payoff_description=self._payoff_description(),
+        )
+        
         super().__init__(
             prompt,
             num_players=num_players,

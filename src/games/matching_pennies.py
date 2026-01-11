@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import textwrap
 from typing import Callable, Mapping, Sequence
 
 from src.agents.agent_manager import Agent
@@ -25,33 +24,7 @@ class MatchingPennies(GridGame):
         self,
         payoff_matrix: Mapping[str, Sequence[float]],
     ) -> None:
-        actions_block = "\n".join(
-            [f"- {act.to_token()}" for act in self.action_cls]
-        )
-        self.prompt_template = textwrap.dedent(
-            """
-        Setup:
-        You are playing a decision-making game with another player.
-        Your objective is to maximize your points received in the game described in length below.
-
-        Actions available to each player:
-        {actions_block}
-
-        Basic game rules:
-        1. You and the other player each choose a probability for each action, simultaneously.
-        2. After both decisions are locked in, the final action will be drawn from the probability distributions.
-        3. Both players receive the points specified in the payoff description below.
-
-        Payoff description:
-        {payoff_description}
-        """
-        )
-
         super().__init__(
-            prompt=self.prompt_template.format(
-                actions_block=actions_block,
-                payoff_description=self._payoff_description(),
-            ),
             payoff_matrix=payoff_matrix,
             num_players=2,
             is_symmetric=True,
