@@ -16,14 +16,13 @@ class TrustGameAction(Action):
 
 class TrustGame(Game):
     """Two-player trust game modelled as a simultaneous move game."""
-
     def __init__(
         self,
         payoff_matrix: Mapping[str, Sequence[float]],
     ) -> None:
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
         actions_block = "\n".join(
-            [f"- {act.to_token()}" for act in TrustGameAction]
+            [f"- {act.to_token()}" for act in self.action_cls]
         )
 
         self.prompt_template = textwrap.dedent(
@@ -47,11 +46,14 @@ class TrustGame(Game):
                 actions_block=actions_block,
             ),
             num_players=2,
-            action_cls=TrustGameAction,
             is_symmetric=False,
         )
 
         self.number_to_position = {1: "first", 2: "second"}
+
+    @property
+    def action_cls(self):
+        return TrustGameAction
 
     def _payoff_description(self) -> tuple[str, str]:
         p1_lines = []
@@ -86,51 +88,47 @@ class TrustGame(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
 
-        results = self._collect_actions(
+        players_decision = self._collect_actions(
             players,
             additional_info,
         )
-        action_indices = {uid: action_idx for uid, action_idx, _ in results}
-        responses = {uid: resp for uid, _, resp in results}
-
-        mapped_indices = action_map(action_indices)
-        final_actions = {
-            uid: TrustGameAction.from_index(action)
-            for uid, action in mapped_indices.items()
-        }
 
         uid1 = player1.uid
         uid2 = player2.uid
         pts1, pts2 = self.payoff_matrix[
-            (final_actions[uid1], final_actions[uid2])
+            (
+                players_decision[uid1][0],
+                players_decision[uid2][0],
+            )
         ]
 
         return [
             Move(
                 player_name=player1.name,
                 uid=uid1,
-                action=final_actions[uid1],
+                action=players_decision[uid1][0],
                 points=pts1,
-                response=responses[uid1],
+                response=players_decision[uid1][1],
+                trace_id=players_decision[uid1][2],
             ),
             Move(
                 player_name=player2.name,
                 uid=uid2,
-                action=final_actions[uid2],
+                action=players_decision[uid2][0],
                 points=pts2,
-                response=responses[uid2],
+                response=players_decision[uid2][1],
+                trace_id=players_decision[uid2][2],
             ),
         ]
 
-    @classmethod
     def _parse_payoff_matrix(
-        cls,
+        self,
         raw_payoff: Mapping[str, Sequence[float]],
-    ) -> dict[tuple[TrustGameAction, TrustGameAction], tuple[float, float]]:
+    ) -> dict[tuple[Action, Action], tuple[float, float]]:
         """Convert a raw payoff matrix with string keys into typed action pairs."""
         payoffs = {}
         for key, (p1, p2) in raw_payoff.items():
-            a1 = TrustGameAction(key[0])
-            a2 = TrustGameAction(key[1])
+            a1 = self.action_cls(key[0])
+            a2 = self.action_cls(key[1])
             payoffs[(a1, a2)] = (p1, p2)
         return payoffs

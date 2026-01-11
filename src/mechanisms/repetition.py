@@ -6,13 +6,11 @@ from src.agents.agent_manager import Agent
 from src.games.base import Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
-from src.mechanisms.prompts import (
-    REPETITION_MECHANISM_PROMPT,
-    REPETITION_NO_HISTORY_DESCRIPTION,
-    REPETITION_OTHERPLAYER_LABEL,
-    REPETITION_ROUND_LINE,
-    REPETITION_SELF_LABEL,
-)
+from src.mechanisms.prompts import (REPETITION_MECHANISM_PROMPT,
+                                    REPETITION_NO_HISTORY_DESCRIPTION,
+                                    REPETITION_OTHERPLAYER_LABEL,
+                                    REPETITION_ROUND_LINE,
+                                    REPETITION_SELF_LABEL)
 
 
 class Repetition(RepetitiveMechanism):
@@ -103,9 +101,13 @@ class Repetition(RepetitiveMechanism):
             prior_dist = self.history.get_prior_action_distribution(
                 focus.name, lookback_rounds=history_size
             )
+            up_until = (
+                "Up until this round"
+                if start_idx == 0
+                else f"Up until round {start_idx}"
+            )
             if prior_dist:
                 prior_dist_exists = True
-                up_until = "Up until this round" if lookup_depth == 0 else f"Up until round {start_idx - 1}"
                 actions_str = ", ".join(f"{count} time{'s' if count != 1 else ''} {action.to_token()}" for action, count in sorted(
                     prior_dist.items(), key=lambda kv: str(kv[0]))) + "."
                 recent_history.append(
@@ -153,7 +155,7 @@ class Repetition(RepetitiveMechanism):
                             else str(move.action)
                         ),
                         "points": move.points,
-                        "response": move.response,
+                        "trace_id": move.trace_id,
                     }
                 )
             payload.append(round_payload)

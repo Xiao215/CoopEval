@@ -5,7 +5,7 @@ import textwrap
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Callable, Self, Sequence
+from typing import Any, Callable, Mapping, Self, Sequence
 
 from src.agents.agent_manager import Agent
 from src.utils.concurrency import run_tasks
@@ -57,6 +57,7 @@ class Move:
     action: Action
     points: float
     response: str
+    trace_id: str
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the Move to a dictionary, mostly for logging and record purpose."""
@@ -73,16 +74,15 @@ class Game(ABC):
     def __init__(
         self,
         prompt: str,
+        *,
         num_players: int,
-        action_cls: type[Action],
         is_symmetric: bool = True,
     ) -> None:
         self.prompt = prompt
         self.num_players = num_players
         self.number_to_position = {1: "first", 2: "second", 3: "third", 4: "fourth"}
         self.is_symmetric = is_symmetric
-        self.action_cls = action_cls
-        self.num_actions = len(action_cls)
+        self.num_actions = len(self.action_cls)
         self.default_output_instruction = textwrap.dedent(
             """
         Instruction:
@@ -97,6 +97,11 @@ class Game(ABC):
         {"A0": <INT>, "A1": <INT>, ...}
         """
         )
+
+    @property
+    @abstractmethod
+    def action_cls(self) -> type[Action]:
+        """Get the Action class associated with this game."""
 
     def get_player_prompt(self, player_id: int) -> str:
         """Get game prompt from specific player's perspective. Per default, this is the same for all players in symmetric games."""
@@ -117,7 +122,7 @@ class Game(ABC):
         player: Agent,
         extra_info: str | None = None,
         output_instruction: str | None = None,
-    ) -> tuple[str, dict[int, float]]:
+    ) -> tuple[str, str, dict[int, float]]:
         """
         Given the mechanism's additional info and the base game prompt,
         format the full prompt and query the player.
@@ -133,10 +138,10 @@ class Game(ABC):
             output_instruction = self.default_output_instruction
         prompt += "\n" + output_instruction
 
-        resp, mix_probs = player.chat_with_retries(
+        response, trace_id, mix_probs = player.chat_with_retries(
             prompt, self._parse_mixed_probs
         )
-        return resp, mix_probs
+        return response, trace_id, mix_probs
 
     def _parse_mixed_probs(
         self,
@@ -194,20 +199,68 @@ class Game(ABC):
         self,
         players: Sequence[Agent],
         info: Sequence[str],
-    ) -> list[tuple[int, int, str]]:
-        """Prompt players (optionally in parallel) and sample actions."""
-
+        action_map: Callable = lambda x: x,
+    ) -> dict[int, tuple[Action, str, str]]:
         if len(players) != len(info):
-            raise ValueError(
-                f"Player count ({len(players)}) does not match info entries ({len(info)})."
-            )
+            raise ValueError(f"Count mismatch: {len(players)} vs {len(info)}.")
 
-        def query(player: Agent, extra_info: str) -> tuple[int, int, str]:
-            resp, mix_probs = self.prompt_player_mix_probs(
+        def query(player: Agent, extra_info: str):
+            response, trace_id, mix_probs = self.prompt_player_mix_probs(
                 player, extra_info=extra_info
             )
             action_idx = self._choose_from_mix_strategy(mix_probs)
-            return player.uid, action_idx, resp
+            return player.uid, action_map(action_idx), response, trace_id
 
-        pairs = list(zip(players, info))
-        return run_tasks(pairs, lambda pair: query(*pair))
+        return {
+            uid: (self.action_cls.from_index(action), resp, trace)
+            for uid, action, resp, trace in run_tasks(
+                zip(players, info), lambda p: query(*p)
+            )
+        }
+
+
+class GridGame(Game):
+    """
+    A base class for grid-based games.
+    """
+
+    def __init__(
+        self,
+        prompt: str,
+        payoff_matrix: Mapping[str, Sequence[float]],
+        *,
+        num_players: int,
+        is_symmetric: bool = True,
+    ) -> None:
+        self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
+        super().__init__(
+            prompt,
+            num_players=num_players,
+            is_symmetric=is_symmetric,
+        )
+
+    def _parse_payoff_matrix(
+        self,
+        raw_payoff: Mapping[str, Sequence[float]],
+    ) -> dict[
+        tuple[Action, Action],
+        tuple[float, float],
+    ]:
+        """
+        Convert a raw payoff matrix with string keys into typed action pairs.
+        """
+        payoffs = {}
+        for key, (p1, p2) in raw_payoff.items():
+            a1 = self.action_cls(key[0])
+            a2 = self.action_cls(key[1])
+            payoffs[(a1, a2)] = (p1, p2)
+        return payoffs
+
+    def _payoff_description(self) -> str:
+        lines = []
+        for (a, b), (pts_a, pts_b) in self.payoff_matrix.items():
+            lines.append(
+                f"\t- If you choose {a.to_token()} and the other player chooses {b.to_token()}: "
+                f"you get {pts_a} points, the other player gets {pts_b} points."
+            )
+        return "\n".join(lines)

@@ -4,7 +4,7 @@ import textwrap
 from typing import Callable, Mapping, Sequence
 
 from src.agents.agent_manager import Agent
-from src.games.base import Action, Game, Move
+from src.games.base import Action, GridGame, Move
 
 
 class StagHuntAction(Action):
@@ -14,7 +14,7 @@ class StagHuntAction(Action):
     HARE = "H"
 
 
-class StagHunt(Game):
+class StagHunt(GridGame):
     """
     Stag Hunt environment that allows for one round of interaction
     between two LLM agents. This is a coordination game where players
@@ -25,10 +25,8 @@ class StagHunt(Game):
         self,
         payoff_matrix: Mapping[str, Sequence[float]],
     ) -> None:
-        self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
-
         actions_block = "\n".join(
-            [f"- {act.to_token()}" for act in StagHuntAction]
+            [f"- {act.to_token()}" for act in self.action_cls]
         )
         self.prompt_template = textwrap.dedent(
             """
@@ -54,19 +52,14 @@ class StagHunt(Game):
                 actions_block=actions_block,
                 payoff_description=self._payoff_description(),
             ),
+            payoff_matrix=payoff_matrix,
             num_players=2,
-            action_cls=StagHuntAction,
             is_symmetric=True,
         )
 
-    def _payoff_description(self) -> str:
-        lines = []
-        for (a, b), (pts_a, pts_b) in self.payoff_matrix.items():
-            lines.append(
-                f"\t- If you choose {a.to_token()} and the other player chooses {b.to_token()}: "
-                f"you get {pts_a} points, the other player gets {pts_b} points."
-            )
-        return "\n".join(lines)
+    @property
+    def action_cls(self):
+        return StagHuntAction
 
     def play(
         self,
@@ -80,55 +73,30 @@ class StagHunt(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
 
-        results = self._collect_actions(
-            players,
-            additional_info,
+        players_decision = self._collect_actions(
+            players, additional_info, action_map
         )
-        action_indices = {uid: action_idx for uid, action_idx, _ in results}
-        responses = {uid: resp for uid, _, resp in results}
-
-        mapped_indices = action_map(action_indices)
-        final_actions: dict[int, StagHuntAction] = {
-            uid: StagHuntAction.from_index(action)
-            for uid, action in mapped_indices.items()
-        }
 
         uid1 = player1.uid
         uid2 = player2.uid
         pts1, pts2 = self.payoff_matrix[
-            (final_actions[uid1], final_actions[uid2])
+            (players_decision[uid1][0], players_decision[uid2][0])
         ]
         return [
             Move(
                 player_name=player1.name,
                 uid=uid1,
-                action=final_actions[uid1],
+                action=players_decision[uid1][0],
                 points=pts1,
-                response=responses[uid1],
+                response=players_decision[uid1][1],
+                trace_id=players_decision[uid1][2],
             ),
             Move(
                 player_name=player2.name,
                 uid=uid2,
-                action=final_actions[uid2],
+                action=players_decision[uid2][0],
                 points=pts2,
-                response=responses[uid2],
+                response=players_decision[uid2][1],
+                trace_id=players_decision[uid2][2],
             ),
         ]
-
-    @classmethod
-    def _parse_payoff_matrix(
-        cls,
-        raw_payoff: Mapping[str, Sequence[float]],
-    ) -> dict[
-        tuple[StagHuntAction, StagHuntAction],
-        tuple[float, float],
-    ]:
-        """
-        Convert a raw payoff matrix with string keys into typed action pairs.
-        """
-        payoffs = {}
-        for key, (p1, p2) in raw_payoff.items():
-            a1 = StagHuntAction(key[0])
-            a2 = StagHuntAction(key[1])
-            payoffs[(a1, a2)] = (p1, p2)
-        return payoffs
