@@ -8,6 +8,7 @@ import torch
 import yaml
 
 from config import CONFIG_DIR, DATA_DIR
+from src.config_loader import ConfigLoader
 from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
 from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
@@ -17,6 +18,24 @@ from src.registry.mechanism_registry import MECHANISM_REGISTRY
 from src.logger_manager import LOGGER
 from src.utils.concurrency import set_default_max_workers
 
+
+# =============================================================================
+# DEFAULT EVALUATION PARAMETERS
+# =============================================================================
+
+# Evolutionary Dynamics defaults
+DEFAULT_EVOL_INITIAL_POPULATION = "uniform"
+DEFAULT_EVOL_STEPS = 25
+DEFAULT_EVOL_LR_METHOD = "constant"
+DEFAULT_EVOL_LR_NU = 0.1
+
+# Deviation Rating defaults
+DEFAULT_DEVIATION_TOLERANCE = 1e-14
+
+
+# =============================================================================
+# CORE FUNCTIONS
+# =============================================================================
 
 def set_seed(seed=42):
     """Set the random seed for reproducibility."""
@@ -30,12 +49,11 @@ def set_seed(seed=42):
 def load_config(filename: str) -> dict:
     """
     Load and parse a YAML configuration file.
+
+    Supports both legacy monolithic configs and modular configs.
     """
-    config_path = Path(CONFIG_DIR) / filename
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file {config_path} not found.")
-    with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    loader = ConfigLoader()
+    return loader.load_main_config(filename)
 
 
 def setup_game_and_mechanism(config: dict):
@@ -150,10 +168,10 @@ def run_evolutionary_dynamics(
     )
 
     population_history = replicator_dynamics.run_dynamics(
-        initial_population=eval_kwargs.get("initial_population", "uniform"),
-        steps=eval_kwargs.get("steps", 25),
-        lr_method=eval_kwargs.get("lr_method", "constant"),
-        lr_nu=eval_kwargs.get("lr_nu", 0.1),
+        initial_population=eval_kwargs.get("initial_population", DEFAULT_EVOL_INITIAL_POPULATION),
+        steps=eval_kwargs.get("steps", DEFAULT_EVOL_STEPS),
+        lr_method=eval_kwargs.get("lr_method", DEFAULT_EVOL_LR_METHOD),
+        lr_nu=eval_kwargs.get("lr_nu", DEFAULT_EVOL_LR_NU),
     )
 
     # Log the population history
@@ -180,7 +198,7 @@ def run_deviation_rating(payoffs: PopulationPayoffs, eval_kwargs: dict) -> None:
 
     deviation_rating = DeviationRating(
         population_payoffs=payoffs,
-        tolerance=eval_kwargs.get("tolerance", 1e-14)
+        tolerance=eval_kwargs.get("tolerance", DEFAULT_DEVIATION_TOLERANCE)
     )
 
     ratings = deviation_rating.compute_ratings()

@@ -1,0 +1,4 @@
+type: Repetition
+kwargs:
+  num_rounds: 5
+  discount: 0.95
