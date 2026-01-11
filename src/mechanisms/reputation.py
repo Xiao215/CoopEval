@@ -2,7 +2,6 @@
 
 import itertools
 import random
-
 from abc import ABC
 from typing import Sequence
 
@@ -12,15 +11,12 @@ from src.agents.agent_manager import Agent
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
 from src.mechanisms.base import RepetitiveMechanism
-from src.games.base import Game, Move
-from src.utils.match_scheduler_reputation import RandomMatcher, RoundRobin
 from src.mechanisms.prompts import (
-    REPUTATION_MECHANISM_PROMPT,
-    REPUTATION_NO_HISTORY_DESCRIPTION,
+    REPUTATION_ACTION_DISTRIBUTION, REPUTATION_MECHANISM_PROMPT,
     REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION,
-    REPUTATION_PLAYERS_HEADER,
-    REPUTATION_ACTION_DISTRIBUTION,
-)
+    REPUTATION_NO_HISTORY_DESCRIPTION, REPUTATION_PLAYERS_HEADER)
+from src.utils.match_scheduler_reputation import RandomMatcher
+from src.games.base import Game, Move
 
 
 class Reputation(RepetitiveMechanism, ABC):

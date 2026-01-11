@@ -5,15 +5,13 @@ import re
 from typing import Callable, Sequence
 
 from src.agents.agent_manager import Agent
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
-from src.mechanisms.prompts import (
-    MEDIATION_MECHANISM_PROMPT,
-    MEDIATOR_DESIGN_PROMPT,
-    MEDIATOR_APPROVAL_VOTE_PROMPT,
-)
+from src.mechanisms.prompts import (MEDIATION_MECHANISM_PROMPT,
+                                    MEDIATOR_APPROVAL_VOTE_PROMPT,
+                                    MEDIATOR_DESIGN_PROMPT)
+from src.ranking_evaluations.population_payoffs import PopulationPayoffs
 from src.utils.concurrency import run_tasks
 
 
@@ -50,11 +48,11 @@ class Mediation(Mechanism):
                 num_players=self.base_game.num_players,
             )
         )
-        response, mediator = designer.chat_with_retries(
+        _, trace_id, mediator = designer.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=self._parse_mediator,
         )
-        return response, mediator
+        return trace_id, mediator
 
     def _parse_mediator(self, response: str) -> dict[int, int]:
         """
@@ -161,11 +159,11 @@ class Mediation(Mechanism):
 
             return votes
 
-        response, votes = voter.chat_with_retries(
+        _, trace_id, votes = voter.chat_with_retries(
             base_prompt=vote_prompt,
             parse_func=parse_votes,
         )
-        return response, votes
+        return trace_id, votes
 
     def _select_mediator(
         self,
@@ -218,18 +216,18 @@ class Mediation(Mechanism):
         self._cached_agents = agents
 
         def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, int]]:
-            response, mediator = self._design_mediator(agent)
-            return agent, response, mediator
+            trace_id, mediator = self._design_mediator(agent)
+            return agent, trace_id, mediator
 
         results = run_tasks(agents, design_fn)
 
         self.mediators.clear()
         mediator_design = {}
-        for agent, response, mediator in results:
+        for agent, trace_id, mediator in results:
             key = (agent.model_type, agent.player_id)
             self.mediators[key] = mediator
             mediator_design[agent.name] = {
-                "response": response,
+                "trace_id": trace_id,
                 "mediator": mediator,
             }
         LOGGER.log_record(
@@ -253,22 +251,24 @@ class Mediation(Mechanism):
         """
         # Step 1: Collect votes from all players
         def collect_vote_fn(player: Agent) -> tuple[Agent, str, dict[int, bool]]:
-            response, votes = self._collect_vote(player, players)
-            return player, response, votes
+            trace_id, votes = self._collect_vote(player, players)
+            return player, trace_id, votes
 
         vote_results = run_tasks(players, collect_vote_fn)
 
         # Step 2: Process voting results
         all_votes = {}  # {voter_uid: {mediator_idx: approval}}
         vote_records = []
-        for player, response, votes in vote_results:
+        for player, trace_id, votes in vote_results:
             all_votes[player.uid] = votes
-            vote_records.append({
-                "voter_uid": player.uid,
-                "voter_name": player.name,
-                "votes": votes,
-                "response": response,
-            })
+            vote_records.append(
+                {
+                    "voter_uid": player.uid,
+                    "voter_name": player.name,
+                    "votes": votes,
+                    "trace_id": trace_id,
+                }
+            )
 
         # Step 3: Select winning mediator
         winning_idx, winning_agent = self._select_mediator(players, all_votes)
@@ -302,7 +302,7 @@ class Mediation(Mechanism):
                 # TODO: add the mix strategy
                 # TODO: add whether they delegated, maybe change the action
                 "points": move.points,
-                "response": move.response,
+                "trace_id": move.trace_id,
             }
             for move in moves
         ]

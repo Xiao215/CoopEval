@@ -5,8 +5,9 @@ Reimplementation of "Deviation Ratings: A General, Clone Invariant Rating Method
 """
 
 from itertools import product
-import numpy as np
+
 import gurobipy as gp
+import numpy as np
 from gurobipy import GRB
 
 from src.ranking_evaluations.population_payoffs import PopulationPayoffs

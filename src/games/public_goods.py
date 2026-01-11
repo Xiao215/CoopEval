@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import textwrap
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Sequence
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
@@ -27,7 +27,6 @@ class PublicGoods(Game):
         num_players: int,
         multiplier: float,
     ) -> None:
-
         if num_players <= 1:
             raise ValueError("Public Goods must have at least 2 players.")
         if not (1.0 <= multiplier <= num_players):
@@ -37,6 +36,9 @@ class PublicGoods(Game):
         self.multiplier = multiplier
         self.num_players = num_players
 
+        actions_block = "\n".join(
+            [f"- {act.to_token()}" for act in self.action_cls]
+        )
         self.prompt_template = textwrap.dedent(
             """
         Setup:
@@ -44,8 +46,7 @@ class PublicGoods(Game):
         Your objective is to maximize your points received in the game described in length below.
 
         Actions available to each player:
-        - {contribute_tok}
-        - {free_ride_tok}
+        {actions_block}
 
         Basic game rules:
         1. You and the other players each choose a probability for each action, simultaneously.
@@ -61,17 +62,19 @@ class PublicGoods(Game):
 
         super().__init__(
             prompt=self.prompt_template.format(
+                actions_block=actions_block,
                 endowment=self.endowment,
                 multiplier=self.multiplier,
                 num_players=num_players,
                 num_other_players=num_players - 1,
-                contribute_tok=PublicGoodsAction.CONTRIBUTE.to_token(),
-                free_ride_tok=PublicGoodsAction.FREE_RIDE.to_token(),
             ),
             num_players=num_players,
-            action_cls=PublicGoodsAction,
             is_symmetric=True,
         )
+
+    @property
+    def action_cls(self):
+        return PublicGoodsAction
 
     def play(
         self,
@@ -90,20 +93,13 @@ class PublicGoods(Game):
         if isinstance(additional_info, str):
             additional_info = [additional_info] * self.num_players
 
-        results = self._collect_actions(
+        players_decision = self._collect_actions(
             players,
             additional_info,
+            action_map,
         )
-        action_indices = {uid: action_idx for uid, action_idx, _ in results}
-        responses = {uid: resp for uid, _, resp in results}
 
-        mapped_indices = action_map(action_indices)
-        final_actions: dict[int, PublicGoodsAction] = {
-            uid: PublicGoodsAction.from_index(action)
-            for uid, action in mapped_indices.items()
-        }
-
-        share = self._calculate_share(final_actions)
+        share = self._calculate_share([v[0] for v in players_decision.values()])
 
         moves = []
         for player in players:
@@ -111,27 +107,26 @@ class PublicGoods(Game):
                 Move(
                     player_name=player.name,
                     uid=player.uid,
-                    action=final_actions[player.uid],
+                    action=players_decision[player.uid][0],
                     points=(
                         share
-                        if final_actions[player.uid]
+                        if players_decision[player.uid][0]
                         == PublicGoodsAction.CONTRIBUTE
                         else self.endowment + share
                     ),
-                    response=responses[player.uid],
+                    response=players_decision[player.uid][1],
+                    trace_id=players_decision[player.uid][2],
                 )
             )
         return moves
 
-    def _calculate_share(
-        self, actions: Mapping[int, PublicGoodsAction]
-    ) -> float:
+    def _calculate_share(self, actions: list[Action]) -> float:
         """
         Calculate the payoff for each agent based on their contributions.
         """
 
         contribution_count = sum(
-            1 for v in actions.values() if v == PublicGoodsAction.CONTRIBUTE
+            1 for v in actions if v == PublicGoodsAction.CONTRIBUTE
         )
 
         return (

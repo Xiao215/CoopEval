@@ -1,18 +1,18 @@
 """Common infrastructure for tournament mechanisms."""
 
 import copy
-from collections import Counter, defaultdict
 import itertools
 import time
 from abc import ABC, abstractmethod
+from collections import Counter, defaultdict
 from typing import Iterator, Sequence
 
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
+from src.games.base import Action, Game, Move
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
-from src.games.base import Action, Game, Move
 from src.registry.agent_registry import create_agent
 
 

@@ -10,18 +10,14 @@ from src.agents.agent_manager import Agent
 from src.games.base import Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
-from src.mechanisms.prompts import (
-    DISARMAMENT_MECHANISM_PROMPT,
-    DISARM_PROMPT_BASE,
-    DISARM_FORMAT_CAN_DISARM,
-    DISARM_FORMAT_CANNOT_DISARM,
-)
+from src.mechanisms.prompts import (DISARM_FORMAT_CAN_DISARM,
+                                    DISARM_FORMAT_CANNOT_DISARM,
+                                    DISARM_PROMPT_BASE,
+                                    DISARMAMENT_MECHANISM_PROMPT)
 from src.utils.concurrency import run_tasks
 
 Caps = list[float]
 CapsByPlayer = dict[int, Caps]
-NegotiationResult = tuple[str, str, Caps]  # (response, choice, caps)
-
 
 class Disarmament(RepetitiveMechanism):
     """
@@ -100,7 +96,7 @@ class Disarmament(RepetitiveMechanism):
     def _negotiate_disarm_caps(
         self,
         player: Agent,
-    ) -> NegotiationResult:
+    ) -> tuple[str, str, Caps]:
         """Request updated caps for player and return parsed response.
 
         Returns:
@@ -112,11 +108,11 @@ class Disarmament(RepetitiveMechanism):
         def parse_func(resp: str) -> tuple[str, Caps]:
             return self._parse_disarm_caps(resp, uid)
 
-        response, (choice, new_caps) = player.chat_with_retries(
+        _, trace_id, (choice, new_caps) = player.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=parse_func,
         )
-        return response, choice, new_caps
+        return trace_id, choice, new_caps
 
     def _parse_disarm_caps(
         self,
@@ -231,7 +227,7 @@ class Disarmament(RepetitiveMechanism):
     def _run_negotiations(
         self,
         players: Sequence[Agent],
-    ) -> dict[int, NegotiationResult]:
+    ) -> dict[int, tuple[str, str, Caps]]:
         """Prompt all players for their disarmament choices and return results."""
 
         results = run_tasks(players, self._negotiate_disarm_caps)
@@ -276,7 +272,7 @@ class Disarmament(RepetitiveMechanism):
             # First pass: collect all choices and proposed caps
             for player in players:
                 puid = player.uid
-                disarm_rsp, choice, player_cap = negotiation_results[puid]
+                trace_id, choice, player_cap = negotiation_results[puid]
 
                 player_choices[puid] = choice
                 proposed_caps[puid] = player_cap
@@ -284,7 +280,7 @@ class Disarmament(RepetitiveMechanism):
                 round_records.append(
                     {
                         "player": puid,
-                        "response": disarm_rsp,
+                        "trace_id": trace_id,
                         "choice": choice,
                         "proposed_upper_bound": player_cap,
                     }
@@ -388,7 +384,7 @@ class Disarmament(RepetitiveMechanism):
                             else str(m.action)
                         ),
                         "points": m.points,
-                        "response": m.response,
+                        "trace_id": m.trace_id,
                         "match_id": "|".join(sorted(p.name for p in players)),
                     }
                     for r, m in zip(round_records, moves)

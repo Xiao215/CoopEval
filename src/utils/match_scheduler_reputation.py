@@ -1,6 +1,5 @@
-from typing import Sequence
 import random
-from itertools import product, combinations
+from itertools import combinations
 
 from src.agents.agent_manager import Agent
 
