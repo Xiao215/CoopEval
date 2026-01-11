@@ -48,7 +48,10 @@ class TrustGame(Game):
             ),
             num_players=2,
             action_cls=TrustGameAction,
+            is_symmetric=False,
         )
+
+        self.number_to_position = {1: "first", 2: "second"}
 
     def _payoff_description(self) -> tuple[str, str]:
         p1_lines = []
@@ -69,7 +72,7 @@ class TrustGame(Game):
         p1_desc, p2_desc = self._payoff_description()
         player_desc = p1_desc if player_id == 1 else p2_desc
         payoff_section = "\nPayoff description:\n" + player_desc
-        return self.prompt + payoff_section + f"\nIn case player identification becomes relevant, you are Player {player_id} in this game.\n"
+        return self.prompt + payoff_section + f"\nIn case player identification becomes relevant, you are playing in the position of Player {player_id} in this game.\n"
 
     def play(
         self,

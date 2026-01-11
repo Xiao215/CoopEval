@@ -70,7 +70,7 @@ class Repetition(RepetitiveMechanism):
         if lookup_depth < 0:
             raise ValueError("lookup_depth must be non-negative")
         global_names = {
-            p.uid: f"PlayerID {p.player_id}" for p in players
+            p.uid: f"Player {p.player_id}" for p in players
         }
 
         total_rounds = len(self.history.records)
@@ -105,20 +105,12 @@ class Repetition(RepetitiveMechanism):
             )
             if prior_dist:
                 prior_dist_exists = True
-                if lookup_depth == 0:
-                    recent_history.append(
-                        "The aggregate counts of how often each player has chosen each action in the past are:"
-                    )
-                else:
-                    last_rounds_text = "last round" if history_size == 1 else f"{history_size} last rounds"
-                    recent_history.append(
-                        f"Before and up until the {last_rounds_text}, we had the following aggregate counts of how often each player has chosen each action."
-                    )
-                recent_history.append("You:")
-                for action, count in sorted(
-                    prior_dist.items(), key=lambda kv: str(kv[0])
-                ):
-                    recent_history.append(f"\t{action.to_token()}: played {count} time{'s' if count != 1 else ''}")
+                up_until = "Up until this round" if lookup_depth == 0 else f"Up until round {start_idx - 1}"
+                actions_str = ", ".join(f"{count} time{'s' if count != 1 else ''} {action.to_token()}" for action, count in sorted(
+                    prior_dist.items(), key=lambda kv: str(kv[0]))) + "."
+                recent_history.append(
+                    f"{up_until}, You have played actions as often as follows: {actions_str}"
+                )
             else:
                 prior_dist_exists = False
 
@@ -132,13 +124,11 @@ class Repetition(RepetitiveMechanism):
                     assert prior_dist_exists, (
                         "If other player's prior distribution exists, then the focus player's prior distribution must also exist."
                     )
+                    actions_str = ", ".join(f"{count} time{'s' if count != 1 else ''} {action.to_token()}" for action, count in sorted(
+                        prior_dist.items(), key=lambda kv: str(kv[0]))) + "."
                     recent_history.append(
-                        f"{global_names[player.uid]}:"
+                        f"{up_until}, {global_names[player.uid]} has played actions as often as follows: {actions_str}"
                     )
-                    for action, count in sorted(
-                        prior_dist.items(), key=lambda kv: str(kv[0])
-                    ):
-                        recent_history.append(f"\t{action.to_token()}: played {count} time{'s' if count != 1 else ''}")
                 else:
                     assert not prior_dist_exists, (
                         "If one player's prior distribution does not exist, then the focus player's prior distribution should not exist either."
@@ -209,7 +199,7 @@ class Repetition(RepetitiveMechanism):
 
         Deprecated: Not used currently."""
         global_names = {
-            p.uid: f"PlayerID {p.player_id}" for p in players
+            p.uid: f"Player {p.player_id}" for p in players
         }
         lines: list[str] = []
         for round_index, round_moves in enumerate(self.history, start=1):

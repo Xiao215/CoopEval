@@ -88,6 +88,7 @@ class TravellersDilemma(Game):
             ),
             num_players=2,
             action_cls=self.action_cls,
+            is_symmetric=True,
         )
 
         # Override mixed-strategy instruction to reflect multi-action correctly

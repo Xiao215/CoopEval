@@ -70,6 +70,7 @@ class PublicGoods(Game):
             ),
             num_players=num_players,
             action_cls=PublicGoodsAction,
+            is_symmetric=True,
         )
 
     def play(
