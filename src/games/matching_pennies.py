@@ -11,6 +11,7 @@ class MatchingPenniesAction(Action):
 
     HEADS = "H"
     TAILS = "T"
+    MEDIATOR = "M"
 
 
 class MatchingPennies(GridGame):
@@ -49,32 +50,31 @@ class MatchingPennies(GridGame):
         players_decision = self._collect_actions(
             players,
             additional_info,
-            action_map,
         )
 
-        uid1 = player1.uid
-        uid2 = player2.uid
+        action_map(players_decision)
+
         pts1, pts2 = self.payoff_matrix[
             (
-                players_decision[uid1][0],
-                players_decision[uid2][0],
+                players_decision[player1][0],
+                players_decision[player2][0],
             )
         ]
         return [
             Move(
-                player_name=player1.name,
-                uid=uid1,
-                action=players_decision[uid1][0],
+                player=player1,
+                action=players_decision[player1][0],
                 points=pts1,
-                response=players_decision[uid1][1],
-                trace_id=players_decision[uid1][2],
+                response=players_decision[player1][1],
+                trace_id=players_decision[player1][2],
+                mediated=players_decision[player1][3],
             ),
             Move(
-                player_name=player2.name,
-                uid=uid2,
-                action=players_decision[uid2][0],
+                player=player2,
+                action=players_decision[player2][0],
                 points=pts2,
-                response=players_decision[uid2][1],
-                trace_id=players_decision[uid2][2],
+                response=players_decision[player2][1],
+                trace_id=players_decision[player2][2],
+                mediated=players_decision[player2][3],
             ),
         ]

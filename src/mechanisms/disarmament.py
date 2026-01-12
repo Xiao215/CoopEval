@@ -374,20 +374,8 @@ class Disarmament(RepetitiveMechanism):
 
             disarmament_records.append(
                 [
-                    {
-                        **r,
-                        "uid": m.uid,
-                        "player_name": m.player_name,
-                        "action": (
-                            m.action.value
-                            if hasattr(m.action, "value")
-                            else str(m.action)
-                        ),
-                        "points": m.points,
-                        "trace_id": m.trace_id,
-                        "match_id": "|".join(sorted(p.name for p in players)),
-                    }
-                    for r, m in zip(round_records, moves)
+                    {**record, **move.serialize()}
+                    for record, move in zip(round_records, moves)
                 ]
             )
 

@@ -102,13 +102,15 @@ class RepetitiveMechanism(Mechanism):
             # Maps each record index to its tournament round number
             self.round_numbers: list[int] = []
 
-            # Maps player_name -> List of global round indices they participated in
-            self.player_round_indices: dict[str, list[int]] = defaultdict(list)
+            # Maps player -> List of global round indices they participated in
+            self.player_round_indices: dict[Agent, list[int]] = defaultdict(
+                list
+            )
 
-            # Maps player_name -> List of cumulative distributions at each step
+            # Maps player -> List of cumulative distributions at each step
             # Index i corresponds to the state after the player's i-th game
             self.player_cumulative_actions: dict[
-                str, list[dict[Action, int]]
+                Agent, list[dict[Action, int]]
             ] = defaultdict(list)
 
         def __len__(self) -> int:
@@ -136,7 +138,7 @@ class RepetitiveMechanism(Mechanism):
             self.round_numbers.append(round_number)
 
             for m in moves:
-                p = m.player_name
+                p = m.player
                 a = m.action
                 self.player_round_indices[p].append(record_idx)
 
@@ -150,7 +152,7 @@ class RepetitiveMechanism(Mechanism):
 
         def get_prior_rounds(
             self,
-            player_name: str,
+            player: Agent,
             lookback_rounds: int,
             lookup_depth: int,
         ) -> list[tuple[int, list[Move]]]:
@@ -168,7 +170,7 @@ class RepetitiveMechanism(Mechanism):
                     "lookback_rounds must be >= 0 and lookup_depth > 0"
                 )
 
-            indices = self.player_round_indices.get(player_name)
+            indices = self.player_round_indices.get(player, [])
             if not indices:
                 return []
 
@@ -186,7 +188,7 @@ class RepetitiveMechanism(Mechanism):
 
         def get_prior_action_distribution(
             self,
-            player_name: str,
+            player: Agent,
             lookback_rounds: int,
         ) -> dict[Action, int] | None:
             """
@@ -197,7 +199,7 @@ class RepetitiveMechanism(Mechanism):
                 raise ValueError(
                     "lookback_rounds must be >= 0 and lookup_depth > 0"
                 )
-            history = self.player_cumulative_actions.get(player_name)
+            history = self.player_cumulative_actions.get(player, [])
             if not history:
                 return None
 
@@ -211,11 +213,11 @@ class RepetitiveMechanism(Mechanism):
             result.update(history[target_idx])
             return result
 
-        def get_rounds_played_count(self, player_name: str) -> int:
+        def get_rounds_played_count(self, player: Agent) -> int:
             """
             Return the total number of rounds a specific player has participated in.
             """
-            return len(self.player_round_indices[player_name])
+            return len(self.player_round_indices[player])
 
         def clear(self) -> None:
             """Clear the history records."""
@@ -232,5 +234,5 @@ class RepetitiveMechanism(Mechanism):
         self.discount = discount
         self.history = self.History(base_game.action_cls)
 
-    def _build_payoffs(self, players: Sequence[Agent]) -> PayoffsBase:
+    def _build_payoffs(self, players: list[Agent]) -> PayoffsBase:
         return MatchupPayoffs(players=players, discount=self.discount)

@@ -13,7 +13,8 @@ def build_travellers_action(claims: Iterable[int]) -> type[Action]:
     claims = tuple(claims)
     if not claims:
         raise ValueError("claims must be a non-empty tuple.")
-    members = {f"A{i}": int(claim) for i, claim in enumerate(claims)}
+    members = {f"CLAIM_{i}": int(claim) for i, claim in enumerate(claims)}
+    members["MEDIATOR"] = -1
     return Enum("TravellersDilemmaAction", members, type=Action)  # type: ignore[misc]
 
 
@@ -123,31 +124,29 @@ class TravellersDilemma(Game):
         players_decision = self._collect_actions(
             players,
             additional_info,
-            action_map,
         )
+        action_map(players_decision)
 
-        uid1 = player1.uid
-        uid2 = player2.uid
         pts1, pts2 = self._calculate_payoffs(
-            players_decision[uid1][0], players_decision[uid2][0]
+            players_decision[player1][0], players_decision[player2][0]
         )
 
         return [
             Move(
-                player_name=player1.name,
-                uid=uid1,
-                action=players_decision[uid1][0],
+                player=player1,
+                action=players_decision[player1][0],
                 points=pts1,
-                response=players_decision[uid1][1],
-                trace_id=players_decision[uid1][2],
+                response=players_decision[player1][1],
+                trace_id=players_decision[player1][2],
+                mediated=players_decision[player1][3],
             ),
             Move(
-                player_name=player2.name,
-                uid=uid2,
-                action=players_decision[uid2][0],
+                player=player2,
+                action=players_decision[player2][0],
                 points=pts2,
-                response=players_decision[uid2][1],
-                trace_id=players_decision[uid2][2],
+                response=players_decision[player2][1],
+                trace_id=players_decision[player2][2],
+                mediated=players_decision[player2][3],
             ),
         ]
 

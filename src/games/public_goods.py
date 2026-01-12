@@ -12,6 +12,7 @@ class PublicGoodsAction(Action):
 
     CONTRIBUTE = "C"
     FREE_RIDE = "F"
+    MEDIATOR = "M"
 
 
 class PublicGoods(Game):
@@ -96,8 +97,8 @@ class PublicGoods(Game):
         players_decision = self._collect_actions(
             players,
             additional_info,
-            action_map,
         )
+        action_map(players_decision)
 
         share = self._calculate_share([v[0] for v in players_decision.values()])
 
@@ -105,17 +106,17 @@ class PublicGoods(Game):
         for player in players:
             moves.append(
                 Move(
-                    player_name=player.name,
-                    uid=player.uid,
-                    action=players_decision[player.uid][0],
+                    player=player,
+                    action=players_decision[player][0],
                     points=(
                         share
-                        if players_decision[player.uid][0]
+                        if players_decision[player][0]
                         == PublicGoodsAction.CONTRIBUTE
                         else self.endowment + share
                     ),
-                    response=players_decision[player.uid][1],
-                    trace_id=players_decision[player.uid][2],
+                    response=players_decision[player][1],
+                    trace_id=players_decision[player][2],
+                    mediated=players_decision[player][3],
                 )
             )
         return moves

@@ -15,7 +15,7 @@ from src.mechanisms.prompts import (
     CONTRACT_MECHANISM_PROMPT,
     CONTRACT_REJECTION_PROMPT,
 )
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.utils.concurrency import run_tasks
 
 
@@ -260,7 +260,7 @@ class Contracting(Mechanism):
             return self._cached_agents
         return super()._create_players_from_cfgs(agent_cfgs)
 
-    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
+    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
         # Create num_players agents per config using base class method
         # This ensures each agent gets unique UID and designs their own contract
         agents = super()._create_players_from_cfgs(agent_cfgs)
@@ -377,20 +377,7 @@ class Contracting(Mechanism):
         )
 
         # Step 7: Serialize game results
-        serialized_moves = [
-            {
-                "uid": move.uid,
-                "player_name": move.player_name,
-                "action": (
-                    move.action.value
-                    if hasattr(move.action, "value")
-                    else str(move.action)
-                ),
-                "points": move.points,
-                "trace_id": move.trace_id,
-            }
-            for move in moves
-        ]
+        serialized_moves = [move.serialize() for move in moves]
 
         # Step 8: Log voting, signatures, and game results
         record = {
