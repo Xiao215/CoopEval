@@ -4,7 +4,7 @@ name: "PD Testing with OpenRouter"
 game_config: games/prisoners_dilemma.yaml
 mechanism_config: mechanisms/repetition.yaml
 agents_config: agents/test_agents_3.yaml
-evaluation_config: evaluation/standard_test.yaml
+evaluation_config: evaluation/default_evaluation.yaml
 
 # Experiment-level settings
 concurrency:

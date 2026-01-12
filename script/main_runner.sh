@@ -2,8 +2,8 @@
 # Main runner script to execute run_experiment.py for all combinations of games and mechanisms
 # Usage: ./main_runner.sh
 
-# Exit on error
-set -e
+# Don't exit on error - we want to continue even if individual experiments fail
+set +e
 
 # Trap Ctrl+C and cleanup
 trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_summary.json"; exit 130' INT
@@ -21,15 +21,19 @@ EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
 # Concurrency setting (number of parallel workers)
 CONCURRENCY=1
 
+# Batch directory - set to existing path to resume, or leave empty for new batch with timestamp
+RESUME_BATCH_DIR="outputs/2026/01/11/22:32"
+# RESUME_BATCH_DIR=""
+
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    "games/matching_pennies.yaml"
-    "games/prisoners_dilemma.yaml"
+    # "games/matching_pennies.yaml"
+    # "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    "games/stag_hunt.yaml"
-    "games/travellers_dilemma.yaml"
-    "games/trust_game.yaml"
+    # "games/stag_hunt.yaml"
+    # "games/travellers_dilemma.yaml"
+    # "games/trust_game.yaml"
 )
 
 # List of mechanism config paths (relative to configs/)
@@ -74,18 +78,34 @@ echo ""
 # BATCH SETUP
 # =============================================================================
 
-# Create batch directory with timestamp
-BATCH_TIMESTAMP=$(date +"%Y/%m/%d/%H:%M")
-BATCH_DIR="${PROJECT_ROOT}/outputs/${BATCH_TIMESTAMP}"
-BATCH_CONFIGS_DIR="${BATCH_DIR}/configs"
-mkdir -p "$BATCH_DIR"
-mkdir -p "$BATCH_CONFIGS_DIR"
+# Set up batch directory - either resume existing or create new
+if [ -n "$RESUME_BATCH_DIR" ]; then
+    BATCH_DIR="${PROJECT_ROOT}/${RESUME_BATCH_DIR}"
+    echo "Resuming batch: $BATCH_DIR"
 
-echo "Batch directory: $BATCH_DIR"
-echo ""
+    # Verify the batch directory exists
+    if [ ! -d "$BATCH_DIR" ]; then
+        echo "ERROR: Resume batch directory does not exist: $BATCH_DIR"
+        exit 1
+    fi
 
-# Initialize batch_summary.json
-cat > "${BATCH_DIR}/batch_summary.json" << EOF
+    # Verify batch_summary.json exists
+    if [ ! -f "${BATCH_DIR}/batch_summary.json" ]; then
+        echo "ERROR: batch_summary.json not found in: $BATCH_DIR"
+        echo "Cannot resume - this may not be a valid batch directory."
+        exit 1
+    fi
+else
+    BATCH_TIMESTAMP=$(date +"%Y/%m/%d/%H:%M")
+    BATCH_DIR="${PROJECT_ROOT}/outputs/${BATCH_TIMESTAMP}"
+    echo "Creating new batch: $BATCH_DIR"
+
+    BATCH_CONFIGS_DIR="${BATCH_DIR}/configs"
+    mkdir -p "$BATCH_DIR"
+    mkdir -p "$BATCH_CONFIGS_DIR"
+
+    # Initialize batch_summary.json (only for new batches)
+    cat > "${BATCH_DIR}/batch_summary.json" << EOF
 {
   "batch_start_time": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "batch_dir": "$BATCH_DIR",
@@ -95,8 +115,8 @@ cat > "${BATCH_DIR}/batch_summary.json" << EOF
 }
 EOF
 
-# Create batch_config.json
-cat > "${BATCH_DIR}/batch_config.json" << EOF
+    # Create batch_config.json (only for new batches)
+    cat > "${BATCH_DIR}/batch_config.json" << EOF
 {
   "agents_config": "$AGENTS_CONFIG",
   "evaluation_config": "$EVALUATION_CONFIG",
@@ -106,6 +126,13 @@ cat > "${BATCH_DIR}/batch_config.json" << EOF
   "total_experiments": $total_experiments
 }
 EOF
+fi
+
+BATCH_CONFIGS_DIR="${BATCH_DIR}/configs"
+mkdir -p "$BATCH_CONFIGS_DIR"
+
+echo "Batch directory: $BATCH_DIR"
+echo ""
 
 # =============================================================================
 # RESUME HELPER
@@ -120,7 +147,7 @@ is_experiment_completed() {
     fi
 
     # Check if experiment exists and has a status
-    python -c "
+    python3 -c "
 import json
 import sys
 
@@ -160,34 +187,49 @@ for game in "${GAME_CONFIGS[@]}"; do
             continue
         fi
 
-        # Check for orphaned experiment directory
+        # Check for orphaned/crashed experiment directory
         experiment_dir="${BATCH_DIR}/${experiment_name}"
         if [ -d "$experiment_dir" ]; then
-            echo ""
-            echo "ERROR: Experiment directory already exists but is not tracked in batch_summary.json"
-            echo "  Experiment: $experiment_name"
-            echo "  Directory: $experiment_dir"
-            echo ""
-            echo "This usually means the experiment started but crashed before updating batch_summary.json."
-            echo ""
-            echo "To fix this and resume the batch:"
-            echo "  Option 1: Delete the orphaned directory:"
-            echo "    rm -rf \"$experiment_dir\""
-            echo ""
-            echo "  Option 2: Mark it as failed in batch_summary.json and it will be skipped:"
-            echo "    (Manually edit ${BATCH_DIR}/batch_summary.json)"
-            echo ""
-            echo "After fixing, re-run this script to resume from where it left off."
-            echo ""
-            exit 1
+            # Directory exists but experiment not marked as completed
+            # This means it crashed - delete and retry
+            echo "[$current/$total_experiments] RETRYING (crashed previously): $experiment_name"
+            echo "  Removing crashed experiment directory..."
+            rm -rf "$experiment_dir"
+        else
+            echo "[$current/$total_experiments] Running: $experiment_name"
         fi
+
         mkdir -p "$experiment_dir"
 
-        echo "[$current/$total_experiments] Running: $experiment_name"
         echo "  Game: $game"
         echo "  Mechanism: $mechanism"
         echo "  Output: $experiment_dir"
         echo "--------------------------------------------------"
+
+        # Mark experiment as in_progress in batch_summary.json BEFORE running
+        # This prevents orphaned directories if the experiment crashes
+        experiment_start=$(date +%s)
+        experiment_start_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        python3 -c "
+import json
+from pathlib import Path
+
+summary_path = Path('${BATCH_DIR}/batch_summary.json')
+with open(summary_path, 'r') as f:
+    summary = json.load(f)
+
+summary['experiments']['${experiment_name}'] = {
+    'game': '${game}',
+    'mechanism': '${mechanism}',
+    'start_time': '${experiment_start_iso}',
+    'status': 'in_progress',
+    'output_dir': '${experiment_dir}'
+}
+
+with open(summary_path, 'w') as f:
+    json.dump(summary, f, indent=2)
+"
 
         # Create temp config in batch configs directory
         TEMP_CONFIG="${BATCH_CONFIGS_DIR}/${experiment_name}.yaml"
@@ -203,13 +245,11 @@ concurrency:
 EOF
 
         # Run experiment with timing and output capture
-        experiment_start=$(date +%s)
-        experiment_start_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
         # Get relative path from project root to temp config
         TEMP_CONFIG_RELATIVE="${TEMP_CONFIG#$PROJECT_ROOT/configs/}"
 
-        python script/run_experiment.py \
+        python3 script/run_experiment.py \
             --config "$TEMP_CONFIG_RELATIVE" \
             --output-dir "$BATCH_DIR" \
             --experiment-name "$experiment_name" \
@@ -221,7 +261,7 @@ EOF
         duration=$((experiment_end - experiment_start))
 
         # Update batch_summary.json
-        python -c "
+        python3 -c "
 import json
 from pathlib import Path
 
@@ -265,7 +305,7 @@ done
 # =============================================================================
 
 # Finalize batch_summary.json with statistics
-python -c "
+python3 -c "
 import json
 from datetime import datetime
 from pathlib import Path
