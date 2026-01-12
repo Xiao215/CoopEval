@@ -1,0 +1,11 @@
+name: "Matching Pennies with Mediation"
+
+# Component references (relative to configs/)
+game_config: games/matching_pennies.yaml
+mechanism_config: mechanisms/mediation.yaml
+agents_config: agents/test_agents_3.yaml
+evaluation_config: evaluation/default_evaluation.yaml
+
+# Experiment-level settings
+concurrency:
+  max_workers: 4
