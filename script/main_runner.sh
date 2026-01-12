@@ -22,18 +22,18 @@ EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
 CONCURRENCY=1
 
 # Batch directory - set to existing path to resume, or leave empty for new batch with timestamp
-RESUME_BATCH_DIR="outputs/2026/01/11/22:32"
-# RESUME_BATCH_DIR=""
+# RESUME_BATCH_DIR="outputs/2026/01/11/23:00"
+RESUME_BATCH_DIR=""
 
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    # "games/matching_pennies.yaml"
-    # "games/prisoners_dilemma.yaml"
+    "games/matching_pennies.yaml"
+    "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    # "games/stag_hunt.yaml"
-    # "games/travellers_dilemma.yaml"
-    # "games/trust_game.yaml"
+    "games/stag_hunt.yaml"
+    "games/travellers_dilemma.yaml"
+    "games/trust_game.yaml"
 )
 
 # List of mechanism config paths (relative to configs/)
@@ -42,7 +42,7 @@ MECHANISM_CONFIGS=(
     "mechanisms/no_mechanism.yaml"
     "mechanisms/contracting.yaml"
     "mechanisms/disarmament.yaml"
-    "mechanisms/mediation.yaml"
+    # "mechanisms/mediation.yaml"
     "mechanisms/repetition.yaml"
     "mechanisms/reputation.yaml"
 )
@@ -151,16 +151,19 @@ is_experiment_completed() {
 import json
 import sys
 
+summary_file = '${summary_file}'
+exp_name = '${exp_name}'
+
 try:
-    with open('${summary_file}', 'r') as f:
+    with open(summary_file, 'r') as f:
         summary = json.load(f)
 
-    exp = summary.get('experiments', {}).get('${exp_name}')
+    exp = summary.get('experiments', {}).get(exp_name)
     if exp and exp.get('status') in ['success', 'failed']:
         sys.exit(0)  # true - experiment completed
     else:
         sys.exit(1)  # false - experiment not completed
-except:
+except Exception as e:
     sys.exit(1)  # false - error reading file
 "
     return $?
