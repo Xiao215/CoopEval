@@ -1,7 +1,0 @@
-type: Reputation
-kwargs:
-  num_rounds: 10
-  discount: 0.95
-  lookup_depth: 3
-  max_recursion_depth: 2
-  include_prior_distributions: false
