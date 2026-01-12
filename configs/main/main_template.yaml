@@ -1,0 +1,11 @@
+name: "Main Template"
+
+# Component references (relative to configs/)
+game_config: games/<...>.yaml
+mechanism_config: mechanisms/<...>.yaml
+agents_config: agents/<...>.yaml
+evaluation_config: evaluation/<...>.yaml
+
+# Experiment-level settings
+concurrency:
+  max_workers: 4
