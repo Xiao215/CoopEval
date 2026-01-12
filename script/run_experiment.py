@@ -280,8 +280,29 @@ def main():
         default=None,
         help="Path to a JSON file containing precomputed population payoffs.",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Custom output directory for this experiment (overrides default timestamped directory)"
+    )
+    parser.add_argument(
+        "--experiment-name",
+        type=str,
+        default=None,
+        help="Name for this experiment (used as subdirectory under output-dir)"
+    )
 
     args = parser.parse_args()
+
+    # 0. Setup custom logging directory if provided
+    if args.output_dir:
+        if args.experiment_name:
+            experiment_dir = Path(args.output_dir) / args.experiment_name
+        else:
+            experiment_dir = Path(args.output_dir)
+        LOGGER.set_log_dir(experiment_dir)
+        print(f"Logging to: {experiment_dir}")
 
     # 1. Load config
     config = load_config(filename=args.config)
