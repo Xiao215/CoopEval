@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import textwrap
-from typing import Callable, Sequence
+from typing import Callable, Sequence, override
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
@@ -31,13 +31,13 @@ class PublicGoods(Game):
             raise ValueError("Public Goods must have at least 2 players.")
         if not (1.0 <= multiplier <= num_players):
             raise ValueError("Multiplier should be between 1 and num_players.")
-
+        action_class = PublicGoodsAction
         self.endowment = 1  # value of endowment does not matter
         self.multiplier = multiplier
         self.num_players = num_players
 
         actions_block = "\n".join(
-            [f"- {act.to_token()}" for act in self.action_cls]
+            [f"- {act.to_token()}" for act in action_class]
         )
         self.prompt_template = textwrap.dedent(
             """
@@ -70,14 +70,12 @@ class PublicGoods(Game):
                 contribute_tok=PublicGoodsAction.CONTRIBUTE.to_token(),
                 free_ride_tok=PublicGoodsAction.FREE_RIDE.to_token(),
             ),
+            action_class=action_class,
             num_players=num_players,
             is_symmetric=True,
         )
 
-    @property
-    def action_cls(self):
-        return PublicGoodsAction
-
+    @override
     def play(
         self,
         additional_info: list[str] | str,
@@ -98,8 +96,8 @@ class PublicGoods(Game):
         players_decision = self._collect_actions(
             players,
             additional_info,
-            action_map,
         )
+        players_decision = action_map(players_decision)
 
         share = self._calculate_share([v[0] for v in players_decision.values()])
 
@@ -107,17 +105,17 @@ class PublicGoods(Game):
         for player in players:
             moves.append(
                 Move(
-                    player_name=player.name,
-                    uid=player.uid,
-                    action=players_decision[player.uid][0],
+                    player=player,
+                    action=players_decision[player][0],
                     points=(
                         share
-                        if players_decision[player.uid][0]
+                        if players_decision[player][0]
                         == PublicGoodsAction.CONTRIBUTE
                         else self.endowment + share
                     ),
-                    response=players_decision[player.uid][1],
-                    trace_id=players_decision[player.uid][2],
+                    response=players_decision[player][1],
+                    trace_id=players_decision[player][2],
+                    mediated=players_decision[player][3],
                 )
             )
         return moves

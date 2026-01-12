@@ -7,7 +7,6 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from src.agents.agent_manager import Agent
 from src.games.base import Move
 
 
@@ -23,7 +22,6 @@ class PayoffsBase(ABC):
 
     def __init__(
         self,
-        players: Sequence[Agent],
         *,
         discount: float | None = None,
     ) -> None:
@@ -33,23 +31,12 @@ class PayoffsBase(ABC):
                 This is required to map UIDs to model types.
             discount: Geometric discount factor in (0, 1].
         """
-        if not players:
-            raise ValueError(
-                f"{self.__class__.__name__} requires a non-empty sequence of players."
-            )
-
         self.discount = discount if discount is not None else 1.0
         if not 0.0 < self.discount <= 1.0:
             warnings.warn(
                 f"Discount factor should be in (0, 1], got {self.discount}. "
                 "Ensure this is intended."
             )
-
-        # Single Source of Truth: Build mapping directly from players
-        self._uid_to_model: dict[int, str] = {
-            int(p.uid): str(p.model_type) for p in players
-        }
-        self._player_configs = [p.get_agent_config() for p in players]
 
     @abstractmethod
     def reset(self) -> None:
@@ -60,9 +47,6 @@ class PayoffsBase(ABC):
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
         """
         Record match outcomes.
-
-        Args:
-            moves_over_rounds: Sequence of rounds, where each round is a sequence of moves.
         """
         raise NotImplementedError
 
@@ -108,31 +92,16 @@ class PayoffsBase(ABC):
     def model_average_payoff(self) -> dict[str, float | None]:
         """
         Compute the average payoff of each model type in the population.
-
-        Returns:
-            Dictionary mapping model type to average payoff, or None for models
-            that were never drawn/observed.
         """
         raise NotImplementedError
 
     @abstractmethod
     def to_json(self) -> dict[str, Any]:
-        """Serialize payoff records.
-
-        Returns:
-            JSON-serializable dictionary of payoff data.
-        """
+        """Serialize payoff records."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def from_json(cls, json_data: dict[str, Any]) -> "PayoffsBase":
-        """Reconstruct instance from JSON.
-
-        Args:
-            json_data: JSON data from to_json()
-
-        Returns:
-            Reconstructed instance.
-        """
+        """Reconstruct instance from JSON."""
         raise NotImplementedError

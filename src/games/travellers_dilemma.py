@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import textwrap
 from enum import Enum
-from typing import Callable, Iterable, Mapping, Sequence
+from typing import Callable, Iterable, Mapping, Sequence, override
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
@@ -13,7 +13,7 @@ def build_travellers_action(claims: Iterable[int]) -> type[Action]:
     claims = tuple(claims)
     if not claims:
         raise ValueError("claims must be a non-empty tuple.")
-    members = {f"A{i}": int(claim) for i, claim in enumerate(claims)}
+    members = {f"CLAIM_{i}": str(claim) for i, claim in enumerate(claims)}
     return Enum("TravellersDilemmaAction", members, type=Action)  # type: ignore[misc]
 
 
@@ -46,9 +46,10 @@ class TravellersDilemma(Game):
         )
         self.bonus = float(bonus)
 
+        self.action_class = build_travellers_action(self.claims)
         actions_block = "\n".join(
             f"- {act.to_token()}: correspond to the number {act.value}"
-            for act in self.action_cls
+            for act in self.action_class
         )
 
         payoff_description = textwrap.dedent(
@@ -84,6 +85,7 @@ class TravellersDilemma(Game):
                 actions_block=actions_block,
                 payoff_description=payoff_description,
             ),
+            action_class=self.action_class,
             num_players=2,
             is_symmetric=True,
         )
@@ -104,10 +106,7 @@ class TravellersDilemma(Game):
         """
         )
 
-    @property
-    def action_cls(self) -> type[Action]:
-        return build_travellers_action(self.claims)
-
+    @override
     def play(
         self,
         additional_info: list[str] | str,
@@ -123,31 +122,29 @@ class TravellersDilemma(Game):
         players_decision = self._collect_actions(
             players,
             additional_info,
-            action_map,
         )
+        players_decision = action_map(players_decision)
 
-        uid1 = player1.uid
-        uid2 = player2.uid
         pts1, pts2 = self._calculate_payoffs(
-            players_decision[uid1][0], players_decision[uid2][0]
+            players_decision[player1][0], players_decision[player2][0]
         )
 
         return [
             Move(
-                player_name=player1.name,
-                uid=uid1,
-                action=players_decision[uid1][0],
+                player=player1,
+                action=players_decision[player1][0],
                 points=pts1,
-                response=players_decision[uid1][1],
-                trace_id=players_decision[uid1][2],
+                response=players_decision[player1][1],
+                trace_id=players_decision[player1][2],
+                mediated=players_decision[player1][3],
             ),
             Move(
-                player_name=player2.name,
-                uid=uid2,
-                action=players_decision[uid2][0],
+                player=player2,
+                action=players_decision[player2][0],
                 points=pts2,
-                response=players_decision[uid2][1],
-                trace_id=players_decision[uid2][2],
+                response=players_decision[player2][1],
+                trace_id=players_decision[player2][2],
+                mediated=players_decision[player2][3],
             ),
         ]
 
@@ -155,7 +152,7 @@ class TravellersDilemma(Game):
         self, action_a: Action, action_b: Action
     ) -> tuple[float, float]:
         """Return payoffs for a pair of claims given the Traveller's Dilemma rules."""
-        claim_a, claim_b = action_a.value, action_b.value
+        claim_a, claim_b = int(action_a.value), int(action_b.value)
         if claim_a == claim_b:
             value = float(claim_a)
             return value, value
