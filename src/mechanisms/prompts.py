@@ -230,8 +230,8 @@ REPETITION_NO_HISTORY_DESCRIPTION = (
     "You haven't played any rounds with the other player(s) yet."
 )
 REPETITION_ROUND_LINE = "[Round {round_idx}] \n{actions}"
-REPETITION_SELF_LABEL = "\tYou: {action}"
-REPETITION_OTHERPLAYER_LABEL = "\t{other_player}: {action}"
+REPETITION_SELF_LABEL = "\tYou: {action_token}"
+REPETITION_OTHERPLAYER_LABEL = "\t{other_player}: {action_token}"
 
 # Reputation mechanism prompts
 REPUTATION_MECHANISM_PROMPT = textwrap.dedent(

@@ -2,7 +2,8 @@
 
 import json
 import re
-from typing import Sequence
+from typing import Sequence, override
+import random
 
 from src.agents.agent_manager import Agent
 from src.games.base import Game, Move
@@ -17,6 +18,7 @@ from src.mechanisms.prompts import (
 )
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.utils.concurrency import run_tasks
+from src.registry.agent_registry import create_players_with_player_id
 
 
 class Contracting(Mechanism):
@@ -219,9 +221,7 @@ class Contracting(Mechanism):
         return trace_id, votes
 
     def _select_contract(
-        self,
-        players: Sequence[Agent],
-        all_votes: dict[int, dict[int, bool]]
+        self, players: Sequence[Agent], all_votes: dict[Agent, dict[int, bool]]
     ) -> tuple[int, Agent]:
         """
         Select winning contract based on approval votes.
@@ -233,11 +233,10 @@ class Contracting(Mechanism):
         Returns:
             (winning_index, winning_agent): Index (1-based) and Agent who designed winner
         """
-        import random
 
         # Count approvals per contract
         approval_counts = {i: 0 for i in range(1, len(players) + 1)}
-        for _voter_uid, votes in all_votes.items():
+        for _voter, votes in all_votes.items():
             for contract_idx, approved in votes.items():
                 if approved:
                     approval_counts[contract_idx] += 1
@@ -254,16 +253,11 @@ class Contracting(Mechanism):
 
         return winning_idx, winning_agent
 
-    def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
-        """Return cached agents if available, otherwise create new ones."""
-        if self._cached_agents is not None:
-            return self._cached_agents
-        return super()._create_players_from_cfgs(agent_cfgs)
-
+    @override
     def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
-        # Create num_players agents per config using base class method
-        # This ensures each agent gets unique UID and designs their own contract
-        agents = super()._create_players_from_cfgs(agent_cfgs)
+        agents = create_players_with_player_id(
+            agent_cfgs, self.base_game.num_players
+        )
 
         # Cache agents so base class reuses them
         self._cached_agents = agents
@@ -296,6 +290,7 @@ class Contracting(Mechanism):
 
         return result
 
+    @override
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """
         Have players vote on contracts, select winner, get signatures, and play once.
@@ -313,13 +308,12 @@ class Contracting(Mechanism):
         vote_results = run_tasks(players, collect_vote_fn)
 
         # Step 2: Process voting results
-        all_votes = {}  # {voter_uid: {contract_idx: approval}}
+        all_votes = {}  # {voter: {contract_idx: approval}}
         vote_records = []
         for player, trace_id, votes in vote_results:
-            all_votes[player.uid] = votes
+            all_votes[player] = votes
             vote_records.append(
                 {
-                    "voter_uid": player.uid,
                     "voter_name": player.name,
                     "votes": votes,
                     "trace_id": trace_id,
@@ -383,7 +377,6 @@ class Contracting(Mechanism):
         record = {
             "votes": vote_records,
             "selected_contract_index": winning_idx,
-            "selected_contract_designer_uid": winning_agent.uid,
             "selected_contract_designer_name": winning_agent.name,
             "signatures": signature_records,
             "all_signed": all_agree,

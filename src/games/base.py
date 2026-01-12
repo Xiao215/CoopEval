@@ -5,7 +5,7 @@ import textwrap
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Callable, Mapping, Self, Sequence
+from typing import Any, Callable, Mapping, Self, Sequence, cast, override
 
 from src.agents.agent_manager import Agent
 from src.utils.concurrency import run_tasks
@@ -38,38 +38,15 @@ class Action(Enum):
             raise ValueError(f"Unknown action index {index!r}") from exp
         return action
 
-    @classmethod
-    def game_actions(cls) -> list[Self]:
-        """Return all playable moves (excluding the Mediator action)."""
-        return [act for act in cls if not act.is_mediator]
-
     @property
     def is_mediator(self) -> bool:
         """Check if this specific action is the Mediator action."""
         return self.name == "MEDIATOR"
 
-    def __init_subclass__(cls, **kwargs: Any):
-        """
-        Enforce that every subclass has MEDIATOR as its very last member.
-        """
-        super().__init_subclass__(**kwargs)
-
-        members = list(cls)
-        if not members:
-            return
-
-        # Ensure MEDIATOR exists
-        if "MEDIATOR" not in cls.__members__:
-            raise TypeError(
-                f"Class '{cls.__name__}' is missing the required 'MEDIATOR' action."
-            )
-        # Ensure MEDIATOR is the LAST member
-        last_member = members[-1]
-        if last_member.name != "MEDIATOR":
-            raise TypeError(
-                f"In class '{cls.__name__}', 'MEDIATOR' must be the last defined member. "
-                f"Found '{last_member.name}' at the end instead."
-            )
+    @classmethod
+    def game_actions(cls) -> list[Self]:
+        """Return all playable moves (excluding the Mediator action)."""
+        return [act for act in cls if not act.is_mediator]
 
 
 @dataclass
@@ -94,6 +71,26 @@ class Move:
             d.pop("mediated")
         return d
 
+    @classmethod
+    def deserialize(
+        cls,
+        data: dict[str, Any],
+        *,
+        agent_resolver: Callable[[str], Agent],
+        action_resolver: Callable[[str], Action],
+    ) -> "Move":
+        """
+        Rebuild a Move from serialized data.
+        """
+        return cls(
+            player=agent_resolver(data["player"]),
+            action=action_resolver(data["action"]),
+            points=data["points"],
+            response=data["response"],
+            trace_id=data["trace_id"],
+            mediated=data.get("mediated", False),
+        )
+
 
 class Game(ABC):
     """
@@ -103,6 +100,7 @@ class Game(ABC):
     def __init__(
         self,
         prompt: str,
+        action_class: type[Action],
         *,
         num_players: int,
         is_symmetric: bool = True,
@@ -111,7 +109,8 @@ class Game(ABC):
         self.num_players = num_players
         self.number_to_position = {1: "first", 2: "second", 3: "third", 4: "fourth"}
         self.is_symmetric = is_symmetric
-        self.num_actions = len(self.action_cls)
+        self.action_class: type[Action] = action_class
+        self.num_actions = len(self.action_class)
         self.default_output_instruction = textwrap.dedent(
             """
         Instruction:
@@ -127,10 +126,18 @@ class Game(ABC):
         """
         )
 
-    @property
-    @abstractmethod
-    def action_cls(self) -> type[Action]:
-        """Get the Action class associated with this game."""
+    def add_mediator_action(self) -> None:
+        """Dynamically replace action_cls with a version containing MEDIATOR."""
+        members = {action.name: action.value for action in self.action_class}
+        members["MEDIATOR"] = "MEDIATOR"
+
+        new_enum = Enum(
+            self.action_class.__name__,
+            members,
+            type=Action,
+        )
+
+        self.action_class = cast(type[Action], new_enum)
 
     def get_player_prompt(self, player_id: int) -> str:
         """Get game prompt from specific player's perspective. Per default, this is the same for all players in symmetric games."""
@@ -241,12 +248,12 @@ class Game(ABC):
 
         return {
             player: (
-                self.action_cls.from_index(action),
+                self.action_class.from_index(action_idx),
                 response,
                 trace_id,
                 False,  # mediated=False, could be modified with action_map
             )
-            for player, (action, response, trace_id) in zip(
+            for player, (action_idx, response, trace_id) in zip(
                 players, run_tasks(zip(players, info), lambda p: query(*p))
             )
         }
@@ -260,16 +267,18 @@ class GridGame(Game):
     def __init__(
         self,
         payoff_matrix: Mapping[str, Sequence[float]],
+        action_class: type[Action],
         *,
         num_players: int,
         is_symmetric: bool,
     ) -> None:
         assert is_symmetric, "GridGame currently only supports symmetric games."
+        self.action_class = action_class
+        self.raw_payoff_matrix = payoff_matrix
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
-
         # Build the prompt now that payoff_matrix is ready
         actions_block = "\n".join(
-            [f"- {act.to_token()}" for act in self.action_cls.game_actions()]
+            [f"- {act.to_token()}" for act in action_class]
         )
         prompt = textwrap.dedent(
             """
@@ -288,13 +297,14 @@ class GridGame(Game):
         Payoff description:
         {payoff_description}
         """
-        ).format(
-            actions_block=actions_block,
-            payoff_description=self._payoff_description(),
         )
 
         super().__init__(
-            prompt,
+            prompt.format(
+                actions_block=actions_block,
+                payoff_description=self._payoff_description(),
+            ),
+            action_class,
             num_players=num_players,
             is_symmetric=is_symmetric,
         )
@@ -311,8 +321,8 @@ class GridGame(Game):
         """
         payoffs = {}
         for key, (p1, p2) in raw_payoff.items():
-            a1 = self.action_cls(key[0])
-            a2 = self.action_cls(key[1])
+            a1 = self.action_class(key[0])
+            a2 = self.action_class(key[1])
             payoffs[(a1, a2)] = (p1, p2)
         return payoffs
 
@@ -324,3 +334,8 @@ class GridGame(Game):
                 f"you get {pts_a} points, the other player gets {pts_b} points."
             )
         return "\n".join(lines)
+
+    @override
+    def add_mediator_action(self) -> None:
+        super().add_mediator_action()
+        self.payoff_matrix = self._parse_payoff_matrix(self.raw_payoff_matrix)

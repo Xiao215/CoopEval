@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Mapping, Sequence, override
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, GridGame, Move
@@ -11,7 +11,6 @@ class PrisonersDilemmaAction(Action):
 
     COOPERATE = "C"
     DEFECT = "D"
-    MEDIATOR = "M"
 
 
 class PrisonersDilemma(GridGame):
@@ -26,14 +25,12 @@ class PrisonersDilemma(GridGame):
     ) -> None:
         super().__init__(
             payoff_matrix=payoff_matrix,
+            action_class=PrisonersDilemmaAction,
             num_players=2,
             is_symmetric=True,
         )
 
-    @property
-    def action_cls(self):
-        return PrisonersDilemmaAction
-
+    @override
     def play(
         self,
         additional_info: list[str] | str,
@@ -51,7 +48,7 @@ class PrisonersDilemma(GridGame):
             additional_info,
         )
 
-        action_map(players_decision)
+        players_decision = action_map(players_decision)
 
         pts1, pts2 = self.payoff_matrix[
             (

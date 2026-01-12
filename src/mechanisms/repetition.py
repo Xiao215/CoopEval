@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, override
 
 from tqdm import tqdm
 
@@ -61,7 +61,9 @@ class Repetition(RepetitiveMechanism):
         focus_move = next(m for m in moves if m.player == focus)
 
         actions = [
-            REPETITION_SELF_LABEL.format(action=focus_move.action.to_token())
+            REPETITION_SELF_LABEL.format(
+                action_token=focus_move.action.to_token()
+            )
         ]
 
         # Add other players' moves
@@ -71,7 +73,7 @@ class Repetition(RepetitiveMechanism):
             actions.append(
                 REPETITION_OTHERPLAYER_LABEL.format(
                     other_player=f"Player {move.player.player_id}",
-                    action=move.action.to_token(),
+                    action_token=move.action.to_token(),
                 )
             )
 
@@ -184,6 +186,7 @@ class Repetition(RepetitiveMechanism):
             payload.append(round_payload)
         return payload
 
+    @override
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """Repeat the base game for a specified number of repetitions.
 
@@ -212,36 +215,3 @@ class Repetition(RepetitiveMechanism):
         )
 
         return self.history.records
-
-    def _format_entire_history(
-        self,
-        players: Sequence[Agent],
-        focus: Agent,
-    ) -> str:
-        """Format prompt including every recorded round.
-
-        Deprecated: Not used currently."""
-        global_names = {
-            p.uid: f"Player {p.player_id}" for p in players
-        }
-        lines: list[str] = []
-        for round_index, round_moves in enumerate(self.history, start=1):
-            move_map = {m.uid: m.action.to_token() for m in round_moves}
-            actions = [
-                REPETITION_SELF_LABEL.format(action=move_map[focus.uid]),
-            ]
-            for other in players:
-                if other.uid == focus.uid:
-                    continue
-                actions.append(
-                    REPETITION_OTHERPLAYER_LABEL.format(
-                        other_player=global_names[other.uid],
-                        action=move_map[other.uid],
-                    )
-                )
-            lines.append(
-                REPETITION_ROUND_LINE.format(
-                    round_idx=round_index, actions="\n".join(actions)
-                )
-            )
-        return "\n".join(lines)

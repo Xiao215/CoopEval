@@ -51,17 +51,6 @@ class Agent(ABC):
         self.pipeline = type(self).llm_manager.get_llm(
             self.model_type, llm_config["provider"]
         )
-
-        if llm_config.get("uid") is None:
-            self.uid = next(type(self)._instance_counter)
-            llm_config["uid"] = self.uid
-        else:
-            # UID is provided only for reconstructing from a prior run
-            self.uid = int(llm_config["uid"])
-            next_uid = next(type(self)._instance_counter)
-            while next_uid <= self.uid:
-                next_uid = next(type(self)._instance_counter)
-
         self.player_id: int = agent_config["player_id"]
         self.agent_config = agent_config
 
@@ -151,7 +140,7 @@ class Agent(ABC):
         """Return the name of the agent."""
         raise NotImplementedError
 
-    def get_agent_config(self) -> dict:
+    def serialize(self) -> dict:
         """Return the LLM configuration dictionary for this agent."""
         return self.agent_config
 
@@ -159,12 +148,13 @@ class Agent(ABC):
         return self.name
 
     def __eq__(self, other):
-        if not isinstance(other, Agent):
-            return False
         return self.name == other.name
 
     def __hash__(self):
         return hash(self.name)
+
+    def __lt__(self, other):
+        return self.name < other.name
 
 
 class IOAgent(Agent):
@@ -188,7 +178,7 @@ class IOAgent(Agent):
     @property
     def name(self) -> str:
         """Return the name of the agent."""
-        return f"{self.model_type}(IO)[#{self.uid}]#P{self.player_id}"
+        return f"{self.model_type}(IO)#P{self.player_id}"
 
 
 class CoTAgent(Agent):
@@ -214,4 +204,4 @@ class CoTAgent(Agent):
     @property
     def name(self) -> str:
         """Return the name of the agent."""
-        return f"{self.model_type}(CoT)[#{self.uid}]#P{self.player_id}"
+        return f"{self.model_type}(CoT)#P{self.player_id}"

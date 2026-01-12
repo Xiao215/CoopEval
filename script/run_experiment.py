@@ -7,9 +7,9 @@ import numpy as np
 import torch
 import yaml
 
-from config import CONFIG_DIR, DATA_DIR
+from config import DATA_DIR
 from src.config_loader import ConfigLoader
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
 from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
 from src.ranking_evaluations.deviation_rating import DeviationRating
@@ -80,19 +80,19 @@ def setup_game_and_mechanism(config: dict):
     return game, mechanism
 
 
-def _load_population_payoffs_from_file(path: Path) -> PopulationPayoffs:
-    """Load pre-computed population payoffs from a JSON file."""
+def _load_matchup_payoffs_from_file(path: Path) -> MatchupPayoffs:
+    """Load pre-computed matchup payoffs from a JSON file."""
     if not path.exists():
-        raise FileNotFoundError(
-            f"Population payoff file {path} was not found."
-        )
+        raise FileNotFoundError(f"Matchup payoff file {path} was not found.")
     with open(path, "r", encoding="utf-8") as f:
         payload = json.load(f)
-    print(f"Loaded precomputed population payoffs from {path}.")
-    return PopulationPayoffs.from_json(payload)
+    print(f"Loaded precomputed matchup payoffs from {path}.")
+    return MatchupPayoffs.from_json(payload)
 
 
-def run_mechanism(mechanism, config: dict, args) -> PopulationPayoffs | ReputationPayoffs:
+def run_mechanism(
+    mechanism, config: dict, args
+) -> MatchupPayoffs | ReputationPayoffs:
     """
     Run the mechanism tournament or load pre-computed payoffs.
 
@@ -102,24 +102,24 @@ def run_mechanism(mechanism, config: dict, args) -> PopulationPayoffs | Reputati
         args: Command-line arguments
 
     Returns:
-        PayoffsBase instance (either MatchupPayoffs/PopulationPayoffs or ReputationPayoffs)
+        PayoffsBase instance (either MatchupPayoffs or ReputationPayoffs)
     """
-    if args.population_payoffs:
-        payoffs = _load_population_payoffs_from_file(
-            DATA_DIR / args.population_payoffs
+    if args.matchup_payoffs:
+        payoffs = _load_matchup_payoffs_from_file(
+            DATA_DIR / args.matchup_payoffs
         )
     else:
-        print("No precomputed population payoff provided; running tournament...")
+        print("No precomputed matchup payoff provided; running tournament...")
         payoffs = mechanism.run_tournament(agent_cfgs=config["agents"])
         LOGGER.log_record(
             record=payoffs.to_json(),
-            file_name="population_payoffs.json",
+            file_name="matchup_payoffs.json",
         )
 
     return payoffs
 
 
-def report_model_averages(payoffs: PopulationPayoffs | ReputationPayoffs) -> None:
+def report_model_averages(payoffs: MatchupPayoffs | ReputationPayoffs) -> None:
     """
     Report model average payoffs for all agents.
 
@@ -146,15 +146,13 @@ def report_model_averages(payoffs: PopulationPayoffs | ReputationPayoffs) -> Non
 
 
 def run_evolutionary_dynamics(
-    payoffs: PopulationPayoffs,
-    agent_cfgs: list[dict],
-    eval_kwargs: dict
+    payoffs: MatchupPayoffs, agent_cfgs: list[dict], eval_kwargs: dict
 ) -> None:
     """
     Run evolutionary dynamics evaluation.
 
     Args:
-        payoffs: MatchupPayoffs/PopulationPayoffs instance
+        payoffs: MatchupPayoffs instance
         agent_cfgs: Agent configurations from config
         eval_kwargs: Evaluation-specific kwargs from config
     """
@@ -164,7 +162,7 @@ def run_evolutionary_dynamics(
 
     replicator_dynamics = DiscreteReplicatorDynamics(
         agent_cfgs=agent_cfgs,
-        population_payoffs=payoffs,
+        matchup_payoffs=payoffs,
     )
 
     population_history = replicator_dynamics.run_dynamics(
@@ -180,12 +178,12 @@ def run_evolutionary_dynamics(
     print("\n" + "="*60 + "\n")
 
 
-def run_deviation_rating(payoffs: PopulationPayoffs, eval_kwargs: dict) -> None:
+def run_deviation_rating(payoffs: MatchupPayoffs, eval_kwargs: dict) -> None:
     """
     Run deviation rating evaluation.
 
     Args:
-        payoffs: MatchupPayoffs/PopulationPayoffs instance
+        payoffs: MatchupPayoffs instance
         eval_kwargs: Evaluation-specific kwargs from config
     """
     print("\n" + "="*60)
@@ -197,8 +195,10 @@ def run_deviation_rating(payoffs: PopulationPayoffs, eval_kwargs: dict) -> None:
         payoffs.build_payoff_tensor()
 
     deviation_rating = DeviationRating(
-        population_payoffs=payoffs,
-        tolerance=float(eval_kwargs.get("tolerance", DEFAULT_DEVIATION_TOLERANCE))
+        matchup_payoffs=payoffs,
+        tolerance=float(
+            eval_kwargs.get("tolerance", DEFAULT_DEVIATION_TOLERANCE)
+        ),
     )
 
     ratings = deviation_rating.compute_ratings()
@@ -214,23 +214,21 @@ def run_deviation_rating(payoffs: PopulationPayoffs, eval_kwargs: dict) -> None:
 
 
 def run_evaluations(
-    payoffs: PopulationPayoffs | ReputationPayoffs,
+    payoffs: MatchupPayoffs | ReputationPayoffs,
     config: dict,
-    is_reputation: bool
 ) -> None:
     """
     Run all configured evaluations.
 
     Args:
-        payoffs: PayoffsBase instance
+        payoffs: MatchupPayoffs instance
         config: Configuration dictionary
-        is_reputation: Whether this is a reputation mechanism
     """
     # Always report model averages first
     report_model_averages(payoffs)
 
     # For reputation: ONLY model averages possible
-    if is_reputation:
+    if isinstance(payoffs, ReputationPayoffs):
         print("\n" + "!"*60)
         print("! REPUTATION MECHANISM DETECTED")
         print("! Only model averages available (no tensor-based evaluations)")
@@ -275,10 +273,10 @@ def main():
         "--wandb", action="store_true", help="Enable Weights & Biases figure saving"
     )
     parser.add_argument(
-        "--population-payoffs",
+        "--matchup-payoffs",
         type=str,
         default=None,
-        help="Path to a JSON file containing precomputed population payoffs.",
+        help="Path to a JSON file containing precomputed matchup payoffs.",
     )
     parser.add_argument(
         "--output-dir",
@@ -320,11 +318,8 @@ def main():
     # 3. Run mechanism (tournament)
     payoffs = run_mechanism(mechanism, config, args)
 
-    # 4. Detect payoff type
-    is_reputation = isinstance(payoffs, ReputationPayoffs)
-
     # 5. Run evaluations
-    run_evaluations(payoffs, config, is_reputation)
+    run_evaluations(payoffs, config)
 
 
 if __name__ == "__main__":

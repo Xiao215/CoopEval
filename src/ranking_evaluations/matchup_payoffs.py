@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from itertools import permutations, product
-from typing import Any, Sequence, TypeAlias
+from typing import Any, Sequence, TypeAlias, override
 
 import math
 import numpy as np
@@ -12,7 +12,7 @@ from src.games.base import Move
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.registry.agent_registry import create_agent
 
-ProfileKey: TypeAlias = tuple[int, ...]
+ProfileKey: TypeAlias = tuple[Agent, ...]
 
 
 class MatchupPayoffs(PayoffsBase):
@@ -25,7 +25,6 @@ class MatchupPayoffs(PayoffsBase):
 
     def __init__(
         self,
-        players: Sequence[Agent],
         *,
         discount: float | None = None,
     ) -> None:
@@ -35,7 +34,7 @@ class MatchupPayoffs(PayoffsBase):
                 This is required to map UIDs to model types.
             discount: Geometric discount factor in (0, 1].
         """
-        super().__init__(players, discount=discount)
+        super().__init__(discount=discount)
 
         # Storage: Map sorted UIDs to a list of match arrays.
         # Structure: { (1, 2): [ ndarray(Point1, Points2, ...), ... ] }
@@ -45,12 +44,14 @@ class MatchupPayoffs(PayoffsBase):
         self._payoff_tensor: np.ndarray | None = None
         self._tensor_model_types: list[str] | None = None
 
+    @override
     def reset(self) -> None:
         """Clear all recorded matchup outcomes."""
         self._profiles.clear()
         self._payoff_tensor = None
         self._tensor_model_types = None
 
+    @override
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
         """
         Record match outcomes.
@@ -68,7 +69,7 @@ class MatchupPayoffs(PayoffsBase):
         )
 
         for round_moves in moves_over_rounds:
-            round_data = {int(m.uid): float(m.points) for m in round_moves}
+            round_data = {m.player: float(m.points) for m in round_moves}
             key = tuple(sorted(round_data.keys()))
             ordered_points = [round_data[uid] for uid in key]
             match_accumulator[key].append(ordered_points)
@@ -78,6 +79,7 @@ class MatchupPayoffs(PayoffsBase):
             match_array = np.array(history_list, dtype=float)
             self._profiles[key].append(match_array)
 
+    @override
     def model_average_payoff(self) -> dict[str, float | None]:
         """
         Compute the average payoff of each model type in the population.
@@ -88,14 +90,15 @@ class MatchupPayoffs(PayoffsBase):
         """
 
         aggregated_payoffs: dict[str, list[float]] = defaultdict(list)
-        for uids, payoff_list in self._profiles.items():
-            for rounds_payoff in payoff_list:
+        for players, match_list in self._profiles.items():
+            for rounds_payoff in match_list:
                 discounted_score = self._compute_discounted_average(
                     rounds_payoff
                 )
-                for i, uid in enumerate(uids):
-                    model_type = self._uid_to_model[uid]
-                    aggregated_payoffs[model_type].append(discounted_score[i])
+                for i, player in enumerate(players):
+                    aggregated_payoffs[player.model_type].append(
+                        discounted_score[i]
+                    )
         return {
             model_type: float(np.mean(np.array(scores)))
             for model_type, scores in aggregated_payoffs.items()
@@ -114,7 +117,13 @@ class MatchupPayoffs(PayoffsBase):
                 "No matches recorded. Cannot compute payoff tensor."
             )
 
-        model_types = sorted(set(self._uid_to_model.values()))
+        model_types = sorted(
+            {
+                player.model_type
+                for players in self._profiles.keys()
+                for player in players
+            }
+        )
         model_to_idx = {m: i for i, m in enumerate(model_types)}
 
         k = len(model_types)
@@ -129,9 +138,8 @@ class MatchupPayoffs(PayoffsBase):
         # First pass: Collect ALL observations grouped by (composition, focal_model)
         composition_observations = defaultdict(list)
 
-        for profile_key, match_list in self._profiles.items():
-            uids = list(profile_key)
-            current_models = [self._uid_to_model[uid] for uid in uids]
+        for players, match_list in self._profiles.items():
+            current_models = [player.model_type for player in players]
 
             # Process each match separately to avoid nested averaging
             for match_arr in match_list:
@@ -248,45 +256,44 @@ class MatchupPayoffs(PayoffsBase):
 
         return {m: float(fitness_vec[i]) for i, m in enumerate(model_types)}
 
+    @override
     def to_json(self) -> dict[str, Any]:
         """Serialize payoff records.
 
         Note: We store the current uid_to_model mapping and player configs
         in the JSON so from_json can reconstruct when players are not provided.
         """
-        serialized_matches = []
+        serialized_profile = []
 
-        for uids, match_list in sorted(self._profiles.items()):
+        for players, match_list in sorted(self._profiles.items()):
             payoffs_data = [m.tolist() for m in match_list]
-            serialized_matches.append(
-                {"uids": list(uids), "payoffs": payoffs_data}
+            serialized_profile.append(
+                {
+                    "players": [p.serialize() for p in players],
+                    "payoffs": payoffs_data,
+                }
             )
 
         return {
             "discount": self.discount,
-            "player_configs": self._player_configs,
-            "debug_uids_map": {
-                str(k): v for k, v in self._uid_to_model.items()
-            },  # for debugging only
-            "matchups": serialized_matches,
+            "profile": serialized_profile,
         }
 
     @classmethod
+    @override
     def from_json(
         cls,
         json_data: dict[str, Any],
     ) -> "MatchupPayoffs":
         """Reconstruct instance from JSON."""
-        players = [create_agent(cfg) for cfg in json_data["player_configs"]]
         instance = cls(
-            players=players,
             discount=json_data["discount"],
         )
 
-        for entry in json_data.get("matchups", []):
-            uids = tuple(sorted(entry["uids"]))
+        for entry in json_data["profile"]:
+            players = tuple(create_agent(p_data) for p_data in entry["players"])
             raw_payoffs = entry["payoffs"]
             restored_arrays = [np.array(p, dtype=float) for p in raw_payoffs]
-            instance._profiles[uids].extend(restored_arrays)
+            instance._profiles[players].extend(restored_arrays)
 
         return instance

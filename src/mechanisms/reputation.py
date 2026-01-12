@@ -1,7 +1,7 @@
 """Mechanisms that expose behavioural reputation across repeated rounds."""
 
 from abc import ABC
-from typing import Sequence
+from typing import Sequence, override
 
 from tqdm import tqdm
 
@@ -15,6 +15,7 @@ from src.mechanisms.prompts import (
     REPUTATION_NO_HISTORY_DESCRIPTION, REPUTATION_PLAYERS_HEADER)
 from src.utils.match_scheduler_reputation import RandomMatcher
 from src.games.base import Game, Move
+from src.registry.agent_registry import create_players_with_player_id
 
 
 class Reputation(RepetitiveMechanism, ABC):
@@ -35,6 +36,7 @@ class Reputation(RepetitiveMechanism, ABC):
         super().__init__(base_game, num_rounds, discount)
         self.reputation_depth = lookup_depth
         self.include_prior_distributions = include_prior_distributions
+        self.player_to_uid = {}
         if not max_recursion_depth:
             self.max_recursion_depth = lookup_depth + 1
         else:
@@ -45,17 +47,18 @@ class Reputation(RepetitiveMechanism, ABC):
         Returns 'You' if the target is the observer, otherwise 'Agent {uid}'.
         This removes the need for stateful dictionary mutation.
         """
-        if target_player.uid == observer.uid:
+        if target_player == observer:
             return "You"
-        return f"Agent {target_player.uid}"
+        return f"Agent {self.player_to_uid[target_player]}"
 
     def _get_verb(self, display_name: str) -> str:
         """Helper for grammar: 'You have' vs 'Agent X has'."""
         return "have" if display_name == "You" else "has"
 
-    def _build_payoffs(self, players: list[Agent]) -> ReputationPayoffs:
+    @override
+    def _build_payoffs(self) -> ReputationPayoffs:
         """Override to use ReputationPayoffs instead of MatchupPayoffs."""
-        return ReputationPayoffs(players=players, discount=self.discount)
+        return ReputationPayoffs(discount=self.discount)
 
     def _build_history_prompts(self, players: Sequence[Agent]) -> list[str]:
         """
@@ -65,9 +68,7 @@ class Reputation(RepetitiveMechanism, ABC):
         prompts = []
 
         for observer in players:
-            round_idx = (
-                self.history.get_rounds_played_count(observer.name) + 1
-            )
+            round_idx = self.history.get_rounds_played_count(observer) + 1
             direct_opponents = [p for p in players if p != observer]
             reputation_text = self._format_reputation(
                 observer=observer,
@@ -116,7 +117,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
             # Get player's history within window
             recent_rounds = self.history.get_prior_rounds(
-                player.name, lookback_rounds=0, lookup_depth=self.reputation_depth
+                player, lookback_rounds=0, lookup_depth=self.reputation_depth
             )
             filtered_rounds = [
                 (idx, moves)
@@ -175,7 +176,7 @@ class Reputation(RepetitiveMechanism, ABC):
         if window_start > 1:
             lookback_for_distribution = current_round - window_start
             stats = self.history.get_prior_action_distribution(
-                target_player.name, lookback_rounds=lookback_for_distribution
+                target_player, lookback_rounds=lookback_for_distribution
             )
 
             player_label = self._get_display_name(target_player, observer)
@@ -244,7 +245,7 @@ class Reputation(RepetitiveMechanism, ABC):
         # Get player's history before encounter_round
         lookback = current_round - encounter_round
         recent_rounds = self.history.get_prior_rounds(
-            target_player.name, lookback, self.reputation_depth
+            target_player, lookback, self.reputation_depth
         )
 
         # Filter to time window and before encounter
@@ -350,27 +351,32 @@ class Reputation(RepetitiveMechanism, ABC):
 
         return lines
 
+    @override
     def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
         """Run reputation tournament with proper player ID seating."""
-        players = self._create_players_from_cfgs(agent_cfgs)
-        payoffs = self._build_payoffs(players)
+        players = create_players_with_player_id(
+            agent_cfgs, self.base_game.num_players
+        )
+        self.player_to_uid = {
+            player: idx + 1 for idx, player in enumerate(players)
+        }
+        payoffs = self._build_payoffs()
 
-        # Group players by their player_id to ensure proper seating in matchups
-        k = self.base_game.num_players
-        players_by_id = [
-            [p for p in players if p.player_id == player_id]
-            for player_id in range(1, k + 1)
-        ]
-
-        # Initialize matcher
-        matcher = RandomMatcher(players_by_id)
-
-        # Clear history at the start of tournament
         self.history.clear()
 
-        all_tournament_moves = []
+        all_tournament_moves = self._play_matchup(players=players)
 
-        # Loop through num_rounds
+        payoffs.add_profile(all_tournament_moves)
+
+        return payoffs
+
+    @override
+    def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
+        """
+        Play all rounds/batches for the reputation mechanism,
+        """
+        all_tournament_moves = []
+        matcher = RandomMatcher(players)
         with tqdm(
             total=self.num_rounds,
             desc="Reputation rounds",
@@ -380,48 +386,15 @@ class Reputation(RepetitiveMechanism, ABC):
             for round_idx, matches_group in enumerate(matcher, 1):
                 if round_idx > self.num_rounds:
                     break
-
-                print("Match Group round", round_idx)
-                print(
-                    "Match Group:",
-                    " | ".join(
-                        ", ".join(p.name for p in match_up)
-                        for match_up in matches_group
-                    ),
-                )
-                # Play this round's matches (returns all moves from this round)
-                round_moves = [
-                    self._play_matchup(match_up, round_idx)
-                    for match_up in matches_group
-                ]
-                all_tournament_moves.append(round_moves)
-
+                for match_up in matches_group:
+                    reputation_information = self._build_history_prompts(
+                        match_up
+                    )
+                    moves = self.base_game.play(
+                        additional_info=reputation_information,
+                        players=match_up,
+                    )
+                    self.history.append(moves, round_number=round_idx)
+                    all_tournament_moves.append(moves)
                 pbar.update(1)
-
-        payoffs.add_profile(all_tournament_moves)
-
-        return payoffs
-
-    def _play_matchup(
-        self, players: Sequence[Agent], round_idx: int
-    ) -> list[Move]:
-        """
-        Play a single round of matches for all matchups in matches_group.
-
-        Args:
-            matches_group: List of matchups, where each matchup is a list of agents
-            round_idx: The current round number
-
-        Returns:
-            Flattened list of all moves from this round (across all matches).
-        """
-
-            reputation_information = self._build_history_prompts(match_up)
-
-            # Play the game
-            moves = self.base_game.play(
-                additional_info=reputation_information,
-                players=match_up,
-            )
-            self.history.append(moves, round_number=round_idx)
-            round_moves.extend(moves)  # Flatten into single list
+        return all_tournament_moves

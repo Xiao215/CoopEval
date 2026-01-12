@@ -1,7 +1,7 @@
 """Track payoffs for reputation-based mechanisms where matchups are history-dependent."""
 
 from collections import defaultdict
-from typing import Any, Sequence
+from typing import Any, Sequence, override
 
 import numpy as np
 
@@ -21,25 +21,25 @@ class ReputationPayoffs(PayoffsBase):
 
     def __init__(
         self,
-        players: Sequence[Agent],
         *,
         discount: float | None = None,
     ) -> None:
         """
         Args:
-            players: List of Agents involved in the tournament.
             discount: Geometric discount factor in (0, 1].
         """
-        super().__init__(players, discount=discount)
+        super().__init__(discount=discount)
 
-        # Storage: All moves grouped by UID
-        # Structure: {uid: list of (round_idx, points) tuples}
-        self._moves_by_uid: dict[int, list[tuple[int, float]]] = defaultdict(list)
+        # Storage: All points grouped by Player
+        # Structure: {player: list of points over all rounds}
+        self._profiles: dict[Agent, list[float]] = defaultdict(list)
 
+    @override
     def reset(self) -> None:
-        """Clear all recorded move outcomes."""
-        self._moves_by_uid.clear()
+        """Clear all recorded payoff outcomes."""
+        self._profiles.clear()
 
+    @override
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
         """
         Record match outcomes without grouping by matchup.
@@ -49,12 +49,9 @@ class ReputationPayoffs(PayoffsBase):
         Args:
             moves_over_rounds: Sequence of rounds, where each round is a sequence of moves.
         """
-        if not moves_over_rounds:
-            raise ValueError("Cannot add empty moves list to payoff table")
-
-        for round_idx, round_moves in enumerate(moves_over_rounds, 1):
+        for round_moves in moves_over_rounds:
             for move in round_moves:
-                self._moves_by_uid[int(move.uid)].append((round_idx, float(move.points)))
+                self._profiles[move.player].append(move.points)
 
     def model_average_payoff(self) -> dict[str, float | None]:
         """
@@ -64,26 +61,17 @@ class ReputationPayoffs(PayoffsBase):
             Dictionary mapping model type to average discounted payoff, or None
             for models that were never drawn.
         """
-        if not self._moves_by_uid:
-            return {model: None for model in set(self._uid_to_model.values())}
-
         # Aggregate payoffs by model type
         model_payoffs: dict[str, list[float]] = defaultdict(list)
 
-        for uid, move_list in self._moves_by_uid.items():
-            model_type = self._uid_to_model[uid]
+        for player, points_list in self._profiles.items():
+            model_type = player.model_type
 
-            if not move_list:
+            if not points_list:
                 continue
 
-            # Moves should already be ordered by round index
-            assert all(
-                move_list[i][0] < move_list[i + 1][0]
-                for i in range(len(move_list) - 1)
-            ), "move_list must be sorted by round index. maybe you added multiple mechanism experiments into this object?"
-
             # Extract payoffs
-            payoffs_array = np.array([points for _, points in move_list], dtype=float)
+            payoffs_array = np.array(points_list, dtype=float)
 
             # Reshape to (num_rounds, 1) for discounting
             payoffs_2d = payoffs_array.reshape(-1, 1)
@@ -96,36 +84,36 @@ class ReputationPayoffs(PayoffsBase):
 
         # Average across all instances of each model
         # Include all models from _uid_to_model, with None for those never drawn
-        all_models = set(self._uid_to_model.values())
+        all_models = set(player.model_type for player in self._profiles.keys())
         return {
             model_type: float(np.mean(model_payoffs[model_type])) if model_type in model_payoffs else None
             for model_type in all_models
         }
 
+    @override
     def to_json(self) -> dict[str, Any]:
         """Serialize payoff records.
 
         Returns:
             JSON-serializable dictionary.
         """
-        serialized_moves = []
+        serialized_profile = []
 
-        for uid, move_list in sorted(self._moves_by_uid.items()):
-            serialized_moves.append({
-                "uid": uid,
-                "moves": [{"round": round_idx, "points": points} for round_idx, points in move_list]
-            })
+        for player, points_list in sorted(self._profiles.items()):
+            serialized_profile.append(
+                {
+                    "player": player.serialize(),
+                    "points": points_list,
+                }
+            )
 
         return {
             "discount": self.discount,
-            "player_configs": self._player_configs,
-            "debug_uids_map": {
-                str(k): v for k, v in self._uid_to_model.items()
-            },  # for debugging only
-            "moves": serialized_moves,
+            "profile": serialized_profile,
         }
 
     @classmethod
+    @override
     def from_json(
         cls,
         json_data: dict[str, Any],
@@ -138,17 +126,12 @@ class ReputationPayoffs(PayoffsBase):
         Returns:
             Reconstructed ReputationPayoffs instance.
         """
-        players = [create_agent(cfg) for cfg in json_data["player_configs"]]
         instance = cls(
-            players=players,
             discount=json_data["discount"],
         )
 
-        for entry in json_data.get("moves", []):
-            uid = entry["uid"]
-            for move_record in entry["moves"]:
-                round_idx = move_record["round"]
-                points = move_record["points"]
-                instance._moves_by_uid[uid].append((round_idx, points))
-
+        for entry in json_data["profile"]:
+            player = create_agent(entry["player"])
+            for point in entry["points"]:
+                instance._profiles[player].append(float(point))
         return instance
