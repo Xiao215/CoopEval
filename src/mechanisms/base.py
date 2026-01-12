@@ -10,8 +10,8 @@ from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
-from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
+from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.registry.agent_registry import create_players_with_player_id
 
 

@@ -1,5 +1,6 @@
-from src.agents.agent_manager import Agent, CoTAgent, IOAgent
 import copy
+
+from src.agents.agent_manager import Agent, CoTAgent, IOAgent
 
 AGENT_REGISTRY = {
     "IOAgent": IOAgent,

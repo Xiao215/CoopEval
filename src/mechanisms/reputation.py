@@ -6,16 +6,16 @@ from typing import Sequence, override
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
-from src.ranking_evaluations.payoffs_base import PayoffsBase
-from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
+from src.games.base import Game, Move
 from src.mechanisms.base import RepetitiveMechanism
 from src.mechanisms.prompts import (
     REPUTATION_ACTION_DISTRIBUTION, REPUTATION_MECHANISM_PROMPT,
     REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION,
     REPUTATION_NO_HISTORY_DESCRIPTION, REPUTATION_PLAYERS_HEADER)
-from src.utils.match_scheduler_reputation import RandomMatcher
-from src.games.base import Game, Move
+from src.ranking_evaluations.payoffs_base import PayoffsBase
+from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
 from src.registry.agent_registry import create_players_with_player_id
+from src.utils.match_scheduler_reputation import RandomMatcher
 
 
 class Reputation(RepetitiveMechanism, ABC):

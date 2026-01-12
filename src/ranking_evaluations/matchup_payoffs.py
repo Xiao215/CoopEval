@@ -1,10 +1,10 @@
 """Store and aggregate matchup-based tournament payoffs for evolutionary dynamics."""
 
+import math
 from collections import defaultdict
 from itertools import permutations, product
 from typing import Any, Sequence, TypeAlias, override
 
-import math
 import numpy as np
 
 from src.agents.agent_manager import Agent

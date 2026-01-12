@@ -1,22 +1,20 @@
 """Mechanism where agents may delegate their action to a mediator design."""
 
 import json
+import random
 import re
 from typing import Callable, Sequence, override
-import random
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
-from src.mechanisms.prompts import (
-    MEDIATION_MECHANISM_PROMPT,
-    MEDIATOR_APPROVAL_VOTE_PROMPT,
-    MEDIATOR_DESIGN_PROMPT,
-)
-from src.utils.concurrency import run_tasks
+from src.mechanisms.prompts import (MEDIATION_MECHANISM_PROMPT,
+                                    MEDIATOR_APPROVAL_VOTE_PROMPT,
+                                    MEDIATOR_DESIGN_PROMPT)
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.registry.agent_registry import create_players_with_player_id
+from src.utils.concurrency import run_tasks
 
 
 class Mediation(Mechanism):

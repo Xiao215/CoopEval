@@ -4,7 +4,7 @@ import itertools
 import textwrap
 import uuid
 from abc import ABC, abstractmethod
-from typing import Callable, Any
+from typing import Any, Callable
 
 from src.agents.base import LLM
 from src.agents.client_api_llm import ClientAPILLM
