@@ -43,7 +43,7 @@ class PublicGoods(Game):
             """
         Setup:
         You are playing a decision-making game with {num_other_players} other players.
-        Your objective is to maximize your points received in the game described in length below.
+        Your objective is to maximize your total points received in the game described in length below.
 
         Actions available to each player:
         {actions_block}
@@ -55,8 +55,8 @@ class PublicGoods(Game):
 
         Payoff description:
         Suppose k out of {num_players} players play {contribute_tok}.
-            If player i plays {contribute_tok}, their payoff is: {multiplier} * k / {num_players}.
-            If player i plays {free_ride_tok}, their payoff is: 1 + ({multiplier} * k / {num_players}).
+            If a player plays {contribute_tok}, their payoff is: {multiplier} * k / {num_players}.
+            If a player plays {free_ride_tok}, their payoff is: 1 + ({multiplier} * k / {num_players}).
         """
         )
 

@@ -74,10 +74,11 @@ class Agent(ABC):
     def _log_inference(self, prompt: str, response: str, trace_id: str) -> None:
         """Log the inference to the game log."""
         entry = (
-            f"===== Inference [ID: {trace_id}] =====\n"
+            f"===== Prompt [ID: {trace_id}] =====\n"
             f"agent: {self.name}\n"
             "prompt:\n"
             f"{prompt}\n"
+            f"===== Response [ID: {trace_id}] =====\n"
             "response:\n"
             f"{response}\n\n"
         )

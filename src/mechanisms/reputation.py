@@ -355,6 +355,7 @@ class Reputation(RepetitiveMechanism, ABC):
     @override
     def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
         """Run reputation tournament with proper player ID seating."""
+        self.history.clear()
         players = create_players_with_player_id(
             agent_cfgs, self.base_game.num_players
         )
@@ -362,16 +363,13 @@ class Reputation(RepetitiveMechanism, ABC):
             player: idx + 1 for idx, player in enumerate(players)
         }
         payoffs = self._build_payoffs()
+
+        all_tournament_moves = self._play_matchup(players=players)
+        payoffs.add_profile(all_tournament_moves)
         LOGGER.log_record(
             record=self.history.records,
             file_name=self.record_file,
         )
-
-        self.history.clear()
-
-        all_tournament_moves = self._play_matchup(players=players)
-        payoffs.add_profile(all_tournament_moves)
-
         return payoffs
 
     @override

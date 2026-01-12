@@ -65,7 +65,7 @@ class TravellersDilemma(Game):
             """
         Setup:
         You are playing a decision-making game with another player.
-        Your objective is to maximize your points received in the game described in length below.
+        Your objective is to maximize your total points received in the game described in length below.
 
         Actions available to each player:
         {actions_block}
