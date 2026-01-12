@@ -92,25 +92,18 @@ class ReputationPayoffs(PayoffsBase):
 
     @override
     def to_json(self) -> dict[str, Any]:
-        """Serialize payoff records.
-
-        Returns:
-            JSON-serializable dictionary.
-        """
+        """Serialize payoff records."""
         serialized_profile = []
 
         for player, points_list in sorted(self._profiles.items()):
             serialized_profile.append(
                 {
-                    "player": player.serialize(),
+                    "player": player,
                     "points": points_list,
                 }
             )
 
-        return {
-            "discount": self.discount,
-            "profile": serialized_profile,
-        }
+        return {"discount": self.discount, "profile": serialized_profile}
 
     @classmethod
     @override

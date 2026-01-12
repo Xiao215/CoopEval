@@ -173,19 +173,6 @@ class Repetition(RepetitiveMechanism):
         recent_history.extend(priors)
 
         return "\n".join(recent_history)
-
-    @staticmethod
-    def _serialize_records(
-        records: list[list[Move]],
-    ) -> list[list[dict]]:
-        payload: list[list[dict]] = []
-        for round_moves in records:
-            round_payload: list[dict] = []
-            for move in round_moves:
-                round_payload.append(move.serialize())
-            payload.append(round_payload)
-        return payload
-
     @override
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """Repeat the base game for a specified number of repetitions.
@@ -208,9 +195,8 @@ class Repetition(RepetitiveMechanism):
             )
             self.history.append(moves)
 
-        # Log the interaction to file
         LOGGER.log_record(
-            record=self._serialize_records(self.history.records),
+            record=self.history.records,
             file_name=self.record_file,
         )
 

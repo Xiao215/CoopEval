@@ -269,7 +269,7 @@ class MatchupPayoffs(PayoffsBase):
             payoffs_data = [m.tolist() for m in match_list]
             serialized_profile.append(
                 {
-                    "players": [p.serialize() for p in players],
+                    "players": players,
                     "payoffs": payoffs_data,
                 }
             )

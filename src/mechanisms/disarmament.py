@@ -270,7 +270,7 @@ class Disarmament(RepetitiveMechanism):
 
             proposed_caps: CapsByPlayer = {}
             player_choices = {}
-            round_records: list[dict[str, Any]] = []
+            disarming_phase_records: list[dict[str, Any]] = []
 
             # First pass: collect all choices and proposed caps
             for player in players:
@@ -279,7 +279,7 @@ class Disarmament(RepetitiveMechanism):
                 player_choices[player] = choice
                 proposed_caps[player] = player_cap
 
-                round_records.append(
+                disarming_phase_records.append(
                     {
                         "player": player,
                         "trace_id": trace_id,
@@ -369,14 +369,16 @@ class Disarmament(RepetitiveMechanism):
             self.current_disarm_caps = caps_to_use
 
             # Update round_records with the actual caps used and termination reason
-            for record in round_records:
-                record["actual_upper_bound"] = caps_to_use[record["player"]]
-                record["termination_reason"] = termination_reason
+            for disarm_info in disarming_phase_records:
+                disarm_info["actual_upper_bound"] = caps_to_use[
+                    disarm_info["player"]
+                ]
+                disarm_info["termination_reason"] = termination_reason
 
             disarmament_records.append(
                 [
-                    {**record, **move.serialize()}
-                    for record, move in zip(round_records, moves)
+                    {"disarm_info": disarm_info, "move": move}
+                    for disarm_info, move in zip(disarming_phase_records, moves)
                 ]
             )
 

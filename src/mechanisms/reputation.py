@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
 from src.games.base import Game, Move
+from src.logger_manager import LOGGER
 from src.mechanisms.base import RepetitiveMechanism
 from src.mechanisms.prompts import (
     REPUTATION_ACTION_DISTRIBUTION, REPUTATION_MECHANISM_PROMPT,
@@ -361,11 +362,14 @@ class Reputation(RepetitiveMechanism, ABC):
             player: idx + 1 for idx, player in enumerate(players)
         }
         payoffs = self._build_payoffs()
+        LOGGER.log_record(
+            record=self.history.records,
+            file_name=self.record_file,
+        )
 
         self.history.clear()
 
         all_tournament_moves = self._play_matchup(players=players)
-
         payoffs.add_profile(all_tournament_moves)
 
         return payoffs

@@ -47,9 +47,6 @@ class PayoffsBase(ABC):
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
         """
         Record match outcomes.
-
-        Args:
-            moves_over_rounds: Sequence of rounds, where each round is a sequence of moves.
         """
         raise NotImplementedError
 
@@ -95,31 +92,16 @@ class PayoffsBase(ABC):
     def model_average_payoff(self) -> dict[str, float | None]:
         """
         Compute the average payoff of each model type in the population.
-
-        Returns:
-            Dictionary mapping model type to average payoff, or None for models
-            that were never drawn/observed.
         """
         raise NotImplementedError
 
     @abstractmethod
     def to_json(self) -> dict[str, Any]:
-        """Serialize payoff records.
-
-        Returns:
-            JSON-serializable dictionary of payoff data.
-        """
+        """Serialize payoff records."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def from_json(cls, json_data: dict[str, Any]) -> "PayoffsBase":
-        """Reconstruct instance from JSON.
-
-        Args:
-            json_data: JSON data from to_json()
-
-        Returns:
-            Reconstructed instance.
-        """
+        """Reconstruct instance from JSON."""
         raise NotImplementedError

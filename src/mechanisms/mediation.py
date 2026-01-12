@@ -290,15 +290,12 @@ class Mediation(Mechanism):
             action_map=self.mediator_mapping(winning_mediator),
         )
 
-        # Step 5: Serialize game results
-        serialized_moves = [move.serialize() for move in moves]
-
         # Step 6: Log voting and game results
         record = {
             "votes": vote_records,
             "selected_mediator_index": winning_idx,
             "selected_mediator_designer_name": winning_agent.name,
-            "moves": serialized_moves,
+            "moves": moves,
         }
         LOGGER.log_record(record=[record], file_name=self.record_file)
 

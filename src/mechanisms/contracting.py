@@ -368,9 +368,6 @@ class Contracting(Mechanism):
             players=players,
         )
 
-        # Step 7: Serialize game results
-        serialized_moves = [move.serialize() for move in moves]
-
         # Step 8: Log voting, signatures, and game results
         record = {
             "votes": vote_records,
@@ -378,7 +375,7 @@ class Contracting(Mechanism):
             "selected_contract_designer_name": winning_agent.name,
             "signatures": signature_records,
             "all_signed": all_agree,
-            "moves": serialized_moves,
+            "moves": moves,
         }
         LOGGER.log_record(record=[record], file_name=self.record_file)
 

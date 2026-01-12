@@ -20,8 +20,7 @@ class Mechanism(ABC):
 
     def __init__(self, base_game: Game):
         self.base_game = base_game
-
-        self.record_file = f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
+        self.record_file = "records.jsonl"
 
     def _build_payoffs(self) -> PayoffsBase:
         return MatchupPayoffs()
