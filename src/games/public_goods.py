@@ -68,6 +68,8 @@ class PublicGoods(Game):
                 multiplier=self.multiplier,
                 num_players=num_players,
                 num_other_players=num_players - 1,
+                contribute_tok=PublicGoodsAction.CONTRIBUTE.to_token(),
+                free_ride_tok=PublicGoodsAction.FREE_RIDE.to_token(),
             ),
             num_players=num_players,
             is_symmetric=True,
