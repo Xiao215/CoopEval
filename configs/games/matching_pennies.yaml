@@ -1,0 +1,7 @@
+type: MatchingPennies
+kwargs:
+  payoff_matrix:
+    HH: [1, -1]
+    HT: [-1, 1]
+    TH: [-1, 1]
+    TT: [1, -1]

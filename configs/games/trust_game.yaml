@@ -1,0 +1,7 @@
+type: TrustGame
+kwargs:
+  payoff_matrix:
+    GG: [10, 10]
+    GK: [0, 20]
+    KG: [6, 2]
+    KK: [4, 4]

@@ -1,0 +1,6 @@
+type: TravellersDilemma
+kwargs:
+  min_claim: 2
+  num_actions: 4
+  claim_spacing: 1
+  bonus: 2.0

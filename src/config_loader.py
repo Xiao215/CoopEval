@@ -21,7 +21,18 @@ class ConfigLoader:
             main_config_path: Path to main config (relative to CONFIG_DIR)
 
         Returns:
-            Fully resolved configuration dictionary
+            Fully resolved configuration dictionary with keys:
+            - 'game': Game configuration dict
+            - 'mechanism': Mechanism configuration dict
+            - 'agents': List of agent configurations
+            - 'evaluation': Evaluation configuration dict (OPTIONAL - may be absent)
+            - 'concurrency': Concurrency settings (if specified in main config)
+            - 'name': Experiment name (if specified in main config)
+
+        Note:
+            The 'evaluation' key will NOT be present if evaluation_config is omitted
+            from the main config. Downstream code should use config.get('evaluation')
+            rather than config['evaluation'].
         """
         main_path = self._resolve_config_path(main_config_path)
         main = self._load_yaml(main_path)
@@ -34,10 +45,14 @@ class ConfigLoader:
             return main
 
     def _is_modular_config(self, config: dict) -> bool:
-        """Detect if config is modular (has component references)."""
-        # Only require the core gameplay components
+        """
+        Detect if config is modular (has component references).
+
+        Requires ALL three core gameplay components to be present
+        to avoid false positives.
+        """
         modular_keys = {'game_config', 'mechanism_config', 'agents_config'}
-        return any(key in config for key in modular_keys)
+        return all(key in config for key in modular_keys)
 
     def _load_modular_config(self, main: dict) -> dict:
         """Load and merge all component configs referenced in main."""
@@ -56,14 +71,14 @@ class ConfigLoader:
         # Load agents component
         if 'agents_config' in main:
             agents_path = self._resolve_config_path(main['agents_config'])
-            agents_data = self._load_yaml(agents_path)
-            # Agent configs have an 'agents' key wrapping the list
-            resolved['agents'] = agents_data.get('agents', agents_data)
+            # Agent configs are lists directly (no wrapper key)
+            resolved['agents'] = self._load_yaml(agents_path)
 
-        # Load evaluation component
+        # Load evaluation component (OPTIONAL - may be omitted for reputation mechanisms)
         if 'evaluation_config' in main:
             evaluation_path = self._resolve_config_path(main['evaluation_config'])
             resolved['evaluation'] = self._load_yaml(evaluation_path)
+        # Note: If evaluation_config is omitted, 'evaluation' key will NOT be present in returned dict
 
         # Add experiment-level settings from main
         if 'concurrency' in main:
@@ -74,7 +89,7 @@ class ConfigLoader:
 
         return resolved
 
-    def load_component(self, component_path: str, component_type: str) -> dict:
+    def load_component(self, component_path: str, component_type: str):
         """
         Load a single component config.
 
@@ -83,16 +98,10 @@ class ConfigLoader:
             component_type: Type of component (game, mechanism, agents, evaluation)
 
         Returns:
-            Component configuration dict
+            Component configuration (dict for game/mechanism/evaluation, list for agents)
         """
         path = self._resolve_config_path(component_path)
-        data = self._load_yaml(path)
-
-        # For agents component, extract the 'agents' key if present
-        if component_type == 'agents' and 'agents' in data:
-            return data['agents']
-
-        return data
+        return self._load_yaml(path)
 
     def _resolve_config_path(self, config_path: str) -> Path:
         """

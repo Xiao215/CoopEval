@@ -1,16 +1,15 @@
-agents:
-  # TestInstance agents (no API calls)
-  - llm:
-      provider: TestInstance
-      model: test-1
-    type: CoTAgent
+# TestInstance agents (no API calls)
+- llm:
+    provider: TestInstance
+    model: test-1
+  type: CoTAgent
 
-  - llm:
-      provider: TestInstance
-      model: test-2
-    type: CoTAgent
+- llm:
+    provider: TestInstance
+    model: test-2
+  type: CoTAgent
 
-  - llm:
-      provider: TestInstance
-      model: test-3
-    type: CoTAgent
+- llm:
+    provider: TestInstance
+    model: test-3
+  type: CoTAgent

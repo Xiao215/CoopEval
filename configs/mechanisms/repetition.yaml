@@ -1,0 +1,6 @@
+type: Repetition
+kwargs:
+  num_rounds: 10
+  discount: 0.95
+  lookup_depth: 3
+  include_prior_distributions: false

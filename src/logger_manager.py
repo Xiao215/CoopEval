@@ -13,21 +13,46 @@ from config import OUTPUTS_DIR
 
 
 class Logger:
-    def __init__(self, base_dir: Path = OUTPUTS_DIR) -> None:
+    def __init__(
+        self, base_dir: Path = OUTPUTS_DIR, custom_dir: Path | None = None
+    ) -> None:
         """
         Initialize logging directory and any integrations.
-        Creates a timestamped subdirectory under `base_dir`.
+
+        Args:
+            base_dir: Base directory for outputs (default: OUTPUTS_DIR)
+            custom_dir: If provided, use this exact directory instead of creating
+                       a timestamped subdirectory. This is useful for batch operations.
         """
-        now = datetime.now()
-        self.log_dir = (
-            base_dir
-            / f"{now.year}"
-            / f"{now.month:02}"
-            / f"{now.day:02}"
-            / f"{now.hour:02}:{now.minute:02}"
-        )
+        if custom_dir is not None:
+            self.log_dir = Path(custom_dir)
+        else:
+            # Original timestamping logic
+            now = datetime.now()
+            self.log_dir = (
+                base_dir
+                / f"{now.year}"
+                / f"{now.month:02}"
+                / f"{now.day:02}"
+                / f"{now.hour:02}:{now.minute:02}"
+            )
         os.makedirs(self.log_dir, exist_ok=True)
         self._lock = threading.Lock()
+
+    def set_log_dir(self, log_dir: Path) -> None:
+        """
+        Override the current log directory with a custom path.
+        Creates the directory if it doesn't exist.
+
+        This allows external code to redirect all logging to a specific location
+        without recreating the Logger instance.
+
+        Args:
+            log_dir: The new directory path for logging
+        """
+        with self._lock:
+            self.log_dir = Path(log_dir)
+            os.makedirs(self.log_dir, exist_ok=True)
 
     def log_record(self, record: dict | list, file_name: str) -> None:
         """
