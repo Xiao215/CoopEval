@@ -15,7 +15,7 @@
 
 - llm:
     provider: OpenRouter
-    model: deepseek/deepseek-r1-distill-llama-70b
+    model: z-ai/glm-4.5-air
     kwargs:
       temperature: 0
   type: CoTAgent

@@ -14,13 +14,14 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 
 # Agents configuration (relative to configs/)
 # AGENTS_CONFIG="agents/test_agents_3.yaml"
-AGENTS_CONFIG="agents/cheap_llms_3.yaml"
+# AGENTS_CONFIG="agents/cheap_llms_3.yaml"
 
 # Evaluation configuration (relative to configs/)
 EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
 
-# Concurrency setting (number of parallel workers)
-CONCURRENCY=1
+# Parallel execution settings
+PARALLEL_EXPERIMENTS=4  # Number of experiments to run simultaneously
+EXPERIMENT_WORKERS=2    # Number of parallel workers within each experiment (for LLM queries)
 
 # Batch directory - set to existing path to resume, or leave empty for new batch with timestamp
 # RESUME_BATCH_DIR="outputs/2026/01/11/23:00"
@@ -62,8 +63,35 @@ PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 # Change to project root
 cd "$PROJECT_ROOT"
 
-# Activate conda environment if needed (uncomment and modify as needed)
-# source ~/anaconda3/bin/activate llmcoop
+# Activate conda environment
+echo "Activating conda environment: llmcoop"
+
+# Try to initialize conda if not already initialized
+if [ -z "$CONDA_EXE" ]; then
+    # Find conda installation
+    if [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
+        source "$HOME/anaconda3/etc/profile.d/conda.sh"
+    elif [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+        source "$HOME/miniconda3/etc/profile.d/conda.sh"
+    else
+        eval "$(conda shell.bash hook)" 2>/dev/null || true
+    fi
+fi
+
+conda activate llmcoop
+
+# Store the python path to use consistently throughout the script
+# First try to get python from conda environment, fall back to which
+if [ -n "$CONDA_PREFIX" ]; then
+    PYTHON_BIN="${CONDA_PREFIX}/bin/python"
+else
+    PYTHON_BIN="$(which python3)"
+fi
+
+# Verify activation
+echo "Python path: $PYTHON_BIN"
+echo "Conda env: $CONDA_DEFAULT_ENV"
+echo "Conda prefix: $CONDA_PREFIX"
 
 # Counter for tracking experiments
 total_experiments=$((${#GAME_CONFIGS[@]} * ${#MECHANISM_CONFIGS[@]}))
@@ -121,7 +149,8 @@ EOF
 {
   "agents_config": "$AGENTS_CONFIG",
   "evaluation_config": "$EVALUATION_CONFIG",
-  "concurrency": $CONCURRENCY,
+  "parallel_experiments": $PARALLEL_EXPERIMENTS,
+  "experiment_workers": $EXPERIMENT_WORKERS,
   "games": [$(printf '"%s",' "${GAME_CONFIGS[@]}" | sed 's/,$//')],
   "mechanisms": [$(printf '"%s",' "${MECHANISM_CONFIGS[@]}" | sed 's/,$//')],
   "total_experiments": $total_experiments
@@ -148,7 +177,7 @@ is_experiment_completed() {
     fi
 
     # Check if experiment exists and has a status
-    python3 -c "
+    $PYTHON_BIN -c "
 import json
 import sys
 
@@ -171,73 +200,80 @@ except Exception as e:
 }
 
 # =============================================================================
-# MAIN EXPERIMENT LOOP
+# PARALLEL EXECUTION HELPERS
 # =============================================================================
 
-# Loop through all combinations
-for game in "${GAME_CONFIGS[@]}"; do
-    for mechanism in "${MECHANISM_CONFIGS[@]}"; do
-        current=$((current + 1))
+# Function to run a single experiment
+run_single_experiment() {
+    local game=$1
+    local mechanism=$2
+    local current=$3
 
-        # Generate experiment name
-        game_name=$(basename "$game" .yaml)
-        mechanism_name=$(basename "$mechanism" .yaml)
-        experiment_name="${mechanism_name}_${game_name}"
+    # Generate experiment name
+    game_name=$(basename "$game" .yaml)
+    mechanism_name=$(basename "$mechanism" .yaml)
+    experiment_name="${mechanism_name}_${game_name}"
 
-        # Skip if already completed (resume support)
-        if is_experiment_completed "$experiment_name"; then
-            echo "[$current/$total_experiments] SKIPPING (already completed): $experiment_name"
-            echo ""
-            continue
-        fi
+    # Skip if already completed (resume support)
+    if is_experiment_completed "$experiment_name"; then
+        echo "[$current/$total_experiments] SKIPPING (already completed): $experiment_name"
+        echo ""
+        return 0
+    fi
 
-        # Check for orphaned/crashed experiment directory
-        experiment_dir="${BATCH_DIR}/${experiment_name}"
-        if [ -d "$experiment_dir" ]; then
-            # Directory exists but experiment not marked as completed
-            # This means it crashed - delete and retry
-            echo "[$current/$total_experiments] RETRYING (crashed previously): $experiment_name"
-            echo "  Removing crashed experiment directory..."
-            rm -rf "$experiment_dir"
-        else
-            echo "[$current/$total_experiments] Running: $experiment_name"
-        fi
+    # Check for orphaned/crashed experiment directory
+    experiment_dir="${BATCH_DIR}/${experiment_name}"
+    if [ -d "$experiment_dir" ]; then
+        # Directory exists but experiment not marked as completed
+        # This means it crashed - delete and retry
+        echo "[$current/$total_experiments] RETRYING (crashed previously): $experiment_name"
+        echo "  Removing crashed experiment directory..."
+        rm -rf "$experiment_dir"
+    else
+        echo "[$current/$total_experiments] Running: $experiment_name"
+    fi
 
-        mkdir -p "$experiment_dir"
+    mkdir -p "$experiment_dir"
 
-        echo "  Game: $game"
-        echo "  Mechanism: $mechanism"
-        echo "  Output: $experiment_dir"
-        echo "--------------------------------------------------"
+    echo "  Game: $game"
+    echo "  Mechanism: $mechanism"
+    echo "  Output: $experiment_dir"
+    echo "--------------------------------------------------"
 
-        # Mark experiment as in_progress in batch_summary.json BEFORE running
-        # This prevents orphaned directories if the experiment crashes
-        experiment_start=$(date +%s)
-        experiment_start_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    # Mark experiment as in_progress in batch_summary.json BEFORE running
+    # This prevents orphaned directories if the experiment crashes
+    experiment_start=$(date +%s)
+    experiment_start_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-        python3 -c "
+    $PYTHON_BIN -c "
 import json
 from pathlib import Path
+import fcntl
 
 summary_path = Path('${BATCH_DIR}/batch_summary.json')
-with open(summary_path, 'r') as f:
+
+# Use file locking for concurrent writes
+with open(summary_path, 'r+') as f:
+    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
     summary = json.load(f)
 
-summary['experiments']['${experiment_name}'] = {
-    'game': '${game}',
-    'mechanism': '${mechanism}',
-    'start_time': '${experiment_start_iso}',
-    'status': 'in_progress',
-    'output_dir': '${experiment_dir}'
-}
+    summary['experiments']['${experiment_name}'] = {
+        'game': '${game}',
+        'mechanism': '${mechanism}',
+        'start_time': '${experiment_start_iso}',
+        'status': 'in_progress',
+        'output_dir': '${experiment_dir}'
+    }
 
-with open(summary_path, 'w') as f:
+    f.seek(0)
+    f.truncate()
     json.dump(summary, f, indent=2)
+    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 "
 
-        # Create temp config in batch configs directory
-        TEMP_CONFIG="${BATCH_CONFIGS_DIR}/${experiment_name}.yaml"
-        cat > "$TEMP_CONFIG" << EOF
+    # Create temp config in batch configs directory
+    TEMP_CONFIG="${BATCH_CONFIGS_DIR}/${experiment_name}.yaml"
+    cat > "$TEMP_CONFIG" << EOF
 # Auto-generated config for game-mechanism combination
 game_config: $game
 mechanism_config: $mechanism
@@ -245,71 +281,146 @@ agents_config: $AGENTS_CONFIG
 evaluation_config: $EVALUATION_CONFIG
 name: $experiment_name
 concurrency:
-  max_workers: $CONCURRENCY
+  max_workers: $EXPERIMENT_WORKERS
 EOF
 
-        # Run experiment with timing and output capture
+    # Run experiment with timing and output capture
 
-        # Get relative path from project root to temp config
-        TEMP_CONFIG_RELATIVE="${TEMP_CONFIG#$PROJECT_ROOT/configs/}"
+    # Get relative path from project root to temp config
+    TEMP_CONFIG_RELATIVE="${TEMP_CONFIG#$PROJECT_ROOT/configs/}"
 
-        python3 script/run_experiment.py \
-            --config "$TEMP_CONFIG_RELATIVE" \
-            --output-dir "$BATCH_DIR" \
-            --experiment-name "$experiment_name" \
-            > "${experiment_dir}/stdout.txt" 2> "${experiment_dir}/stderr.txt"
+    $PYTHON_BIN script/run_experiment.py \
+        --config "$TEMP_CONFIG_RELATIVE" \
+        --output-dir "$BATCH_DIR" \
+        --experiment-name "$experiment_name" \
+        > "${experiment_dir}/stdout.txt" 2> "${experiment_dir}/stderr.txt"
 
-        exit_code=$?
-        experiment_end=$(date +%s)
-        experiment_end_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        duration=$((experiment_end - experiment_start))
+    exit_code=$?
+    experiment_end=$(date +%s)
+    experiment_end_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    duration=$((experiment_end - experiment_start))
 
-        # Update batch_summary.json
-        python3 -c "
+    # Update batch_summary.json with file locking
+    $PYTHON_BIN -c "
 import json
 from pathlib import Path
+import fcntl
 
 summary_path = Path('${BATCH_DIR}/batch_summary.json')
-with open(summary_path, 'r') as f:
+
+# Use file locking for concurrent writes
+with open(summary_path, 'r+') as f:
+    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
     summary = json.load(f)
 
-summary['experiments']['${experiment_name}'] = {
-    'game': '${game}',
-    'mechanism': '${mechanism}',
-    'start_time': '${experiment_start_iso}',
-    'end_time': '${experiment_end_iso}',
-    'duration_seconds': ${duration},
-    'status': 'success' if ${exit_code} == 0 else 'failed',
-    'exit_code': ${exit_code},
-    'output_dir': '${experiment_dir}'
-}
+    summary['experiments']['${experiment_name}'] = {
+        'game': '${game}',
+        'mechanism': '${mechanism}',
+        'start_time': '${experiment_start_iso}',
+        'end_time': '${experiment_end_iso}',
+        'duration_seconds': ${duration},
+        'status': 'success' if ${exit_code} == 0 else 'failed',
+        'exit_code': ${exit_code},
+        'output_dir': '${experiment_dir}'
+    }
 
-summary['completed_experiments'] = len([
-    e for e in summary['experiments'].values()
-    if e['status'] in ['success', 'failed']
-])
+    summary['completed_experiments'] = len([
+        e for e in summary['experiments'].values()
+        if e['status'] in ['success', 'failed']
+    ])
 
-with open(summary_path, 'w') as f:
+    f.seek(0)
+    f.truncate()
     json.dump(summary, f, indent=2)
+    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 "
 
-        # Print status
-        if [ $exit_code -eq 0 ]; then
-            echo "✓ Completed successfully (${duration}s)"
-        else
-            echo "✗ Failed with exit code $exit_code (${duration}s)"
-        fi
+    # Print status
+    if [ $exit_code -eq 0 ]; then
+        echo "✓ Completed successfully (${duration}s)"
+    else
+        echo "✗ Failed with exit code $exit_code (${duration}s)"
+    fi
 
-        echo ""
+    echo ""
+    return $exit_code
+}
+
+# Export function and variables for parallel execution
+export -f run_single_experiment
+export -f is_experiment_completed
+export PYTHON_BIN
+export BATCH_DIR
+export BATCH_CONFIGS_DIR
+export AGENTS_CONFIG
+export EVALUATION_CONFIG
+export EXPERIMENT_WORKERS
+export PROJECT_ROOT
+export total_experiments
+
+# =============================================================================
+# MAIN EXPERIMENT LOOP (PARALLEL)
+# =============================================================================
+
+echo "Running experiments with parallel_experiments: $PARALLEL_EXPERIMENTS, experiment_workers: $EXPERIMENT_WORKERS"
+echo ""
+
+# Array to hold background job PIDs
+declare -a job_pids=()
+declare -a job_names=()
+
+# Loop through all combinations and launch jobs
+current=0
+for game in "${GAME_CONFIGS[@]}"; do
+    for mechanism in "${MECHANISM_CONFIGS[@]}"; do
+        current=$((current + 1))
+
+        # Wait if we've reached max concurrency
+        while [ ${#job_pids[@]} -ge $PARALLEL_EXPERIMENTS ]; do
+            # Check each job
+            for i in "${!job_pids[@]}"; do
+                pid=${job_pids[$i]}
+                # Check if job is still running
+                if ! kill -0 $pid 2>/dev/null; then
+                    # Job finished, remove from array
+                    wait $pid  # Collect exit status
+                    unset 'job_pids[$i]'
+                    unset 'job_names[$i]'
+                fi
+            done
+            # Re-index arrays to remove gaps
+            job_pids=("${job_pids[@]}")
+            job_names=("${job_names[@]}")
+
+            # If still at max capacity, sleep briefly
+            if [ ${#job_pids[@]} -ge $PARALLEL_EXPERIMENTS ]; then
+                sleep 1
+            fi
+        done
+
+        # Launch experiment in background
+        run_single_experiment "$game" "$mechanism" "$current" &
+        job_pids+=($!)
+        job_names+=("${mechanism}_$(basename "$game" .yaml)")
     done
 done
+
+# Wait for all remaining jobs to complete
+echo ""
+echo "Waiting for remaining experiments to complete..."
+for pid in "${job_pids[@]}"; do
+    wait $pid
+done
+
+echo "All experiments launched and completed."
+echo ""
 
 # =============================================================================
 # BATCH FINALIZATION
 # =============================================================================
 
 # Finalize batch_summary.json with statistics
-python3 -c "
+$PYTHON_BIN -c "
 import json
 from datetime import datetime
 from pathlib import Path
