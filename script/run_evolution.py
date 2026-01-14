@@ -8,7 +8,7 @@ import torch
 import yaml
 
 from config import CONFIG_DIR, DATA_DIR
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
 from src.registry.game_registry import GAME_REGISTRY
 from src.registry.mechanism_registry import MECHANISM_REGISTRY
@@ -35,34 +35,31 @@ def load_config(filename: str) -> dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-def _load_population_payoffs_from_file(path: Path) -> PopulationPayoffs:
+
+def _load_matchup_payoffs_from_file(path: Path) -> MatchupPayoffs:
     if not path.exists():
-        raise FileNotFoundError(
-            f"Population payoff file {path} was not found."
-        )
+        raise FileNotFoundError(f"Matchup payoff file {path} was not found.")
     with open(path, "r", encoding="utf-8") as f:
         payload = json.load(f)
-    print(f"Loaded precomputed population payoffs from {path}.")
-    return PopulationPayoffs.from_json(payload)
+    print(f"Loaded precomputed matchup payoffs from {path}.")
+    return MatchupPayoffs.from_json(payload)
 
 
-def _prepare_population_payoffs(
+def _prepare_matchup_payoffs(
     mechanism,
     agent_cfgs: list[dict],
-    population_payoffs_path: str | None,
-) -> PopulationPayoffs:
-    if population_payoffs_path:
-        return _load_population_payoffs_from_file(
-            DATA_DIR / population_payoffs_path
-        )
+    matchup_payoffs_path: str | None,
+) -> MatchupPayoffs:
+    if matchup_payoffs_path:
+        return _load_matchup_payoffs_from_file(DATA_DIR / matchup_payoffs_path)
 
-    print("No precomputed population payoff provided; running tournament...")
-    population_payoffs = mechanism.run_tournament(agent_cfgs=agent_cfgs)
+    print("No precomputed matchup payoff provided; running tournament...")
+    matchup_payoffs = mechanism.run_tournament(agent_cfgs=agent_cfgs)
     LOGGER.log_record(
-        record=population_payoffs.to_json(),
-        file_name="population_payoffs.json",
+        record=matchup_payoffs.to_json(),
+        file_name="matchup_payoffs.json",
     )
-    return population_payoffs
+    return matchup_payoffs
 
 
 def main():
@@ -102,15 +99,15 @@ def main():
         f"Running {config['game']['type']} with mechanism {config['mechanism']['type']}.\n"
     )
 
-    population_payoffs = _prepare_population_payoffs(
+    matchup_payoffs = _prepare_matchup_payoffs(
         mechanism=mechanism,
         agent_cfgs=config["agents"],
-        population_payoffs_path=args.population_payoffs,
+        matchup_payoffs_path=args.matchup_payoffs,
     )
 
     replicator_dynamics = DiscreteReplicatorDynamics(
         agent_cfgs=config["agents"],
-        population_payoffs=population_payoffs,
+        matchup_payoffs=matchup_payoffs,
     )
 
     # TODO: currently initial_population can only be a string, rather than a dynamic population

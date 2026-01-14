@@ -77,11 +77,13 @@ class Logger:
             match path.suffix:
                 case ".jsonl":
                     with open(path, "a", encoding="utf-8") as f:
-                        json.dump(record, f)
+                        json.dump(record, f, default=lambda x: x.serialize())
                         f.write("\n")
                 case ".json":
                     with open(path, "w", encoding="utf-8") as f:
-                        json.dump(record, f, indent=2)
+                        json.dump(
+                            record, f, indent=2, default=lambda x: x.serialize()
+                        )
                 case _:
                     raise ValueError(f"Unsupported file type: {path.suffix}")
 

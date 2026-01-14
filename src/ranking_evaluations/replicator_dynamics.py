@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.logger_manager import LOGGER
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 
 
 class DiscreteReplicatorDynamics:
@@ -24,11 +24,11 @@ class DiscreteReplicatorDynamics:
         self,
         agent_cfgs: list[dict],
         *,
-        population_payoffs: PopulationPayoffs | None = None,
+        matchup_payoffs: MatchupPayoffs | None = None,
     ) -> None:
         """Bind a population of ``agents`` to the tournament payoffs."""
         self.agent_cfgs = agent_cfgs
-        self.population_payoffs = population_payoffs
+        self.matchup_payoffs = matchup_payoffs
 
     def population_update(
         self,
@@ -59,7 +59,7 @@ class DiscreteReplicatorDynamics:
         *,
         lr_method: Literal["constant", "sqrt"] = "constant",
         lr_nu: float = 0.1,
-        population_payoffs: PopulationPayoffs | None = None,
+        matchup_payoffs: MatchupPayoffs | None = None,
     ) -> list[dict[str, float]]:
         """
         Run the multiplicative weights dynamics for a specified number of steps.
@@ -104,20 +104,15 @@ class DiscreteReplicatorDynamics:
             {model: float(prob) for model, prob in zip(model_types, population)}
         ]
 
-        population_payoffs = population_payoffs or self.population_payoffs
-        if population_payoffs is None:
+        matchup_payoffs = matchup_payoffs or self.matchup_payoffs
+        if matchup_payoffs is None:
             raise ValueError(
-                "Population payoffs must be provided before running dynamics."
+                "Matchup payoffs must be provided before running dynamics."
             )
 
-        if population_payoffs._payoff_tensor is None:
-            population_payoffs.build_payoff_tensor()
-
-        model_average_payoff = population_payoffs.model_average_payoff()
-
-        # print(f"Population payoffs (JSON): {population_payoffs.to_json()}")
-        # print(f"Population payoffs (tensor):\n{population_payoffs._payoff_tensor}")
-        # print(f"Model average payoff: {model_average_payoff}")
+        if matchup_payoffs._payoff_tensor is None:
+            matchup_payoffs.build_payoff_tensor()
+        model_average_payoff = matchup_payoffs.model_average_payoff()
 
         LOGGER.log_record(
             record=model_average_payoff, file_name="model_average_payoff.json"
@@ -128,7 +123,7 @@ class DiscreteReplicatorDynamics:
                 model: float(prob)
                 for model, prob in zip(model_types, population)
             }
-            fitness_dict = population_payoffs.fitness(population_dict)
+            fitness_dict = matchup_payoffs.fitness(population_dict)
             if step % 10 == 0 or step == 1:
                 print(f"Step {step}: Population fitness is {fitness_dict}")
             fitness = np.array([fitness_dict[model] for model in model_types])

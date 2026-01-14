@@ -4,6 +4,8 @@
 
 # Don't exit on error - we want to continue even if individual experiments fail
 set +e
+# Don't exit on error - we want to continue even if individual experiments fail
+set +e
 
 # Trap Ctrl+C and cleanup
 trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_summary.json"; exit 130' INT
@@ -132,7 +134,34 @@ else
     BATCH_CONFIGS_DIR="${BATCH_DIR}/configs"
     mkdir -p "$BATCH_DIR"
     mkdir -p "$BATCH_CONFIGS_DIR"
+# Set up batch directory - either resume existing or create new
+if [ -n "$RESUME_BATCH_DIR" ]; then
+    BATCH_DIR="${PROJECT_ROOT}/${RESUME_BATCH_DIR}"
+    echo "Resuming batch: $BATCH_DIR"
 
+    # Verify the batch directory exists
+    if [ ! -d "$BATCH_DIR" ]; then
+        echo "ERROR: Resume batch directory does not exist: $BATCH_DIR"
+        exit 1
+    fi
+
+    # Verify batch_summary.json exists
+    if [ ! -f "${BATCH_DIR}/batch_summary.json" ]; then
+        echo "ERROR: batch_summary.json not found in: $BATCH_DIR"
+        echo "Cannot resume - this may not be a valid batch directory."
+        exit 1
+    fi
+else
+    BATCH_TIMESTAMP=$(date +"%Y/%m/%d/%H:%M")
+    BATCH_DIR="${PROJECT_ROOT}/outputs/${BATCH_TIMESTAMP}"
+    echo "Creating new batch: $BATCH_DIR"
+
+    BATCH_CONFIGS_DIR="${BATCH_DIR}/configs"
+    mkdir -p "$BATCH_DIR"
+    mkdir -p "$BATCH_CONFIGS_DIR"
+
+    # Initialize batch_summary.json (only for new batches)
+    cat > "${BATCH_DIR}/batch_summary.json" << EOF
     # Initialize batch_summary.json (only for new batches)
     cat > "${BATCH_DIR}/batch_summary.json" << EOF
 {
@@ -146,6 +175,8 @@ EOF
 
     # Create batch_config.json (only for new batches)
     cat > "${BATCH_DIR}/batch_config.json" << EOF
+    # Create batch_config.json (only for new batches)
+    cat > "${BATCH_DIR}/batch_config.json" << EOF
 {
   "agents_config": "$AGENTS_CONFIG",
   "evaluation_config": "$EVALUATION_CONFIG",
@@ -156,6 +187,13 @@ EOF
   "total_experiments": $total_experiments
 }
 EOF
+fi
+
+BATCH_CONFIGS_DIR="${BATCH_DIR}/configs"
+mkdir -p "$BATCH_CONFIGS_DIR"
+
+echo "Batch directory: $BATCH_DIR"
+echo ""
 fi
 
 BATCH_CONFIGS_DIR="${BATCH_DIR}/configs"
@@ -184,15 +222,21 @@ import sys
 summary_file = '${summary_file}'
 exp_name = '${exp_name}'
 
+summary_file = '${summary_file}'
+exp_name = '${exp_name}'
+
 try:
+    with open(summary_file, 'r') as f:
     with open(summary_file, 'r') as f:
         summary = json.load(f)
 
+    exp = summary.get('experiments', {}).get(exp_name)
     exp = summary.get('experiments', {}).get(exp_name)
     if exp and exp.get('status') in ['success', 'failed']:
         sys.exit(0)  # true - experiment completed
     else:
         sys.exit(1)  # false - experiment not completed
+except Exception as e:
 except Exception as e:
     sys.exit(1)  # false - error reading file
 "

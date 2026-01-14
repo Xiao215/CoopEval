@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import textwrap
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Mapping, Sequence, override
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
@@ -20,16 +20,18 @@ class TrustGame(Game):
         self,
         payoff_matrix: Mapping[str, Sequence[float]],
     ) -> None:
+        self.action_class = TrustGameAction
+        self.raw_payoff_matrix = payoff_matrix
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
         actions_block = "\n".join(
-            [f"- {act.to_token()}" for act in self.action_cls]
+            [f"- {act.to_token()}" for act in self.action_class]
         )
 
         self.prompt_template = textwrap.dedent(
             """
         Setup:
         You are playing a decision-making game with another player.
-        Your objective is to maximize your points received in the game described in length below.
+        Your objective is to maximize your total points received in the game described in length below.
 
         Actions available to each player:
         {actions_block}
@@ -45,15 +47,12 @@ class TrustGame(Game):
             prompt=self.prompt_template.format(
                 actions_block=actions_block,
             ),
+            action_class=self.action_class,
             num_players=2,
             is_symmetric=False,
         )
 
         self.number_to_position = {1: "first", 2: "second"}
-
-    @property
-    def action_cls(self):
-        return TrustGameAction
 
     def _payoff_description(self) -> tuple[str, str]:
         p1_lines = []
@@ -76,6 +75,7 @@ class TrustGame(Game):
         payoff_section = "\nPayoff description:\n" + player_desc
         return self.prompt + payoff_section + f"\nIn case player identification becomes relevant, you are playing in the position of Player {player_id} in this game.\n"
 
+    @override
     def play(
         self,
         additional_info: list[str] | str,
@@ -92,32 +92,31 @@ class TrustGame(Game):
             players,
             additional_info,
         )
+        players_decision = action_map(players_decision)
 
-        uid1 = player1.uid
-        uid2 = player2.uid
         pts1, pts2 = self.payoff_matrix[
             (
-                players_decision[uid1][0],
-                players_decision[uid2][0],
+                players_decision[player1][0],
+                players_decision[player2][0],
             )
         ]
 
         return [
             Move(
-                player_name=player1.name,
-                uid=uid1,
-                action=players_decision[uid1][0],
+                player=player1,
+                action=players_decision[player1][0],
                 points=pts1,
-                response=players_decision[uid1][1],
-                trace_id=players_decision[uid1][2],
+                response=players_decision[player1][1],
+                trace_id=players_decision[player1][2],
+                mediated=players_decision[player1][3],
             ),
             Move(
-                player_name=player2.name,
-                uid=uid2,
-                action=players_decision[uid2][0],
+                player=player2,
+                action=players_decision[player2][0],
                 points=pts2,
-                response=players_decision[uid2][1],
-                trace_id=players_decision[uid2][2],
+                response=players_decision[player2][1],
+                trace_id=players_decision[player2][2],
+                mediated=players_decision[player2][3],
             ),
         ]
 
@@ -128,7 +127,12 @@ class TrustGame(Game):
         """Convert a raw payoff matrix with string keys into typed action pairs."""
         payoffs = {}
         for key, (p1, p2) in raw_payoff.items():
-            a1 = self.action_cls(key[0])
-            a2 = self.action_cls(key[1])
+            a1 = self.action_class(key[0])
+            a2 = self.action_class(key[1])
             payoffs[(a1, a2)] = (p1, p2)
         return payoffs
+
+    @override
+    def add_mediator_action(self) -> None:
+        super().add_mediator_action()
+        self.payoff_matrix = self._parse_payoff_matrix(self.raw_payoff_matrix)

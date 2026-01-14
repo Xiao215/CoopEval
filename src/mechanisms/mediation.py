@@ -1,17 +1,19 @@
 """Mechanism where agents may delegate their action to a mediator design."""
 
 import json
+import random
 import re
-from typing import Callable, Sequence
+from typing import Callable, Sequence, override
 
 from src.agents.agent_manager import Agent
-from src.games.base import Game, Move
+from src.games.base import Action, Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
 from src.mechanisms.prompts import (MEDIATION_MECHANISM_PROMPT,
                                     MEDIATOR_APPROVAL_VOTE_PROMPT,
                                     MEDIATOR_DESIGN_PROMPT)
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.payoffs_base import PayoffsBase
+from src.registry.agent_registry import create_players_with_player_id
 from src.utils.concurrency import run_tasks
 
 
@@ -24,21 +26,18 @@ class Mediation(Mechanism):
     ) -> None:
         super().__init__(base_game)
         # keyed by (model_type, player_id)
-        self.mediators: dict[tuple[str, int], dict[int, int]] = {}
+        self.mediators: dict[tuple[str, int], dict[int, Action]] = {}
         self.mediator_design_prompt = MEDIATOR_DESIGN_PROMPT
         self.mediation_mechanism_prompt = MEDIATION_MECHANISM_PROMPT
         self._cached_agents: list[Agent] | None = None
+        self.base_game.add_mediator_action()
 
     def _design_mediator(
         self,
         designer: Agent,
-    ) -> tuple[str, dict[int, int]]:
+    ) -> tuple[str, dict[int, Action]]:
         """
         Design the mediator agent by the given LLM agent.
-
-        Returns:
-            response (str): The raw response from the designer.
-            mediator (dict[int, int]): A dictionary mapping number of delegating players to recommended action.
         """
         game_prompt = self.base_game.get_player_prompt(designer.player_id)
         base_prompt = (
@@ -54,7 +53,7 @@ class Mediation(Mechanism):
         )
         return trace_id, mediator
 
-    def _parse_mediator(self, response: str) -> dict[int, int]:
+    def _parse_mediator(self, response: str) -> dict[int, Action]:
         """
         Parse the mediator design from the response.
         Expecting a Python dictionary in string format.
@@ -84,7 +83,7 @@ class Mediation(Mechanism):
                     f"Invalid action {v} for the pair {k}: {v}, "
                     f"must be one of {[f'A{a}' for a in range(self.base_game.num_actions)]}."
                 )
-            mediator[k] = int(v[1:])
+            mediator[k] = self.base_game.action_class.from_index(int(v[1:]))
         if len(mediator) != self.base_game.num_players:
             raise ValueError(
                 "There are missing cases in the mediator design, "
@@ -93,13 +92,13 @@ class Mediation(Mechanism):
             )
         return mediator
 
-    def _mediator_description(self, mediator: dict[int, int]) -> str:
+    def _mediator_description(self, mediator: dict[int, Action]) -> str:
         """Format the prompt for the mediator agent."""
         lines = []
         for num_delegating, action in mediator.items():
             lines.append(
                 f"\t• If {num_delegating} player(s) delegate to the mediator, "
-                f"it will play action A{action}."
+                f"it will play action {action.to_token()}."
             )
         return "\n".join(lines)
 
@@ -115,16 +114,10 @@ class Mediation(Mechanism):
         return "\n".join(lines)
 
     def _collect_vote(
-        self,
-        voter: Agent,
-        players: Sequence[Agent]
+        self, voter: Agent, players: Sequence[Agent]
     ) -> tuple[str, dict[int, bool]]:
         """
         Ask an agent to vote on which mediators they approve.
-
-        Returns:
-            response (str): The raw response from the voter
-            votes (dict[int, bool]): Mapping from mediator index to approval (True/False)
         """
         game_prompt = self.base_game.get_player_prompt(voter.player_id)
         all_mediators = self._all_mediators_description(players)
@@ -139,7 +132,9 @@ class Mediation(Mechanism):
         def parse_votes(response: str) -> dict[int, bool]:
             matches = re.findall(r"\{.*?\}", response, re.DOTALL)
             if not matches:
-                raise ValueError(f"No JSON object found in response {response!r}")
+                raise ValueError(
+                    f"No JSON object found in response {response!r}"
+                )
 
             json_str = matches[-1]
             try:
@@ -154,7 +149,9 @@ class Mediation(Mechanism):
                 if key not in json_obj:
                     raise ValueError(f"Missing vote for {key}")
                 if not isinstance(json_obj[key], bool):
-                    raise ValueError(f"Vote for {key} must be boolean, got {json_obj[key]!r}")
+                    raise ValueError(
+                        f"Vote for {key} must be boolean, got {json_obj[key]!r}"
+                    )
                 votes[i] = json_obj[key]
 
             return votes
@@ -166,9 +163,7 @@ class Mediation(Mechanism):
         return trace_id, votes
 
     def _select_mediator(
-        self,
-        players: Sequence[Agent],
-        all_votes: dict[int, dict[int, bool]]
+        self, players: Sequence[Agent], all_votes: dict[Agent, dict[int, bool]]
     ) -> tuple[int, Agent]:
         """
         Select winning mediator based on approval votes.
@@ -180,11 +175,10 @@ class Mediation(Mechanism):
         Returns:
             (winning_index, winning_agent): Index (1-based) and Agent who designed winner
         """
-        import random
 
         # Count approvals per mediator
         approval_counts = {i: 0 for i in range(1, len(players) + 1)}
-        for _voter_uid, votes in all_votes.items():
+        for _voter, votes in all_votes.items():
             for mediator_idx, approved in votes.items():
                 if approved:
                     approval_counts[mediator_idx] += 1
@@ -193,7 +187,11 @@ class Mediation(Mechanism):
         max_approvals = max(approval_counts.values())
 
         # Get all mediators with max approvals (for tie-breaking)
-        winners = [idx for idx, count in approval_counts.items() if count == max_approvals]
+        winners = [
+            idx
+            for idx, count in approval_counts.items()
+            if count == max_approvals
+        ]
 
         # Break ties uniformly at random
         winning_idx = random.choice(winners)
@@ -201,21 +199,18 @@ class Mediation(Mechanism):
 
         return winning_idx, winning_agent
 
-    def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
-        """Return cached agents if available, otherwise create new ones."""
-        if self._cached_agents is not None:
-            return self._cached_agents
-        return super()._create_players_from_cfgs(agent_cfgs)
-
-    def run_tournament(self, agent_cfgs: list[dict]) -> PopulationPayoffs:
+    @override
+    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
         # Create num_players agents per config using base class method
         # This ensures each agent gets unique UID and designs their own mediator
-        agents = super()._create_players_from_cfgs(agent_cfgs)
+        agents = create_players_with_player_id(
+            agent_cfgs, self.base_game.num_players
+        )
 
         # Cache agents so base class reuses them
         self._cached_agents = agents
 
-        def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, int]]:
+        def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, Action]]:
             trace_id, mediator = self._design_mediator(agent)
             return agent, trace_id, mediator
 
@@ -228,7 +223,10 @@ class Mediation(Mechanism):
             self.mediators[key] = mediator
             mediator_design[agent.name] = {
                 "trace_id": trace_id,
-                "mediator": mediator,
+                "mediator": [
+                    (num_delegating, action.to_token())
+                    for num_delegating, action in mediator.items()
+                ]
             }
         LOGGER.log_record(
             record=mediator_design, file_name="mediator_design.json"
@@ -242,6 +240,7 @@ class Mediation(Mechanism):
 
         return result
 
+    @override
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """
         Have players vote on mediators, select winner, and play once.
@@ -249,21 +248,23 @@ class Mediation(Mechanism):
         Returns:
             A list containing a single move sequence (one game result).
         """
+
         # Step 1: Collect votes from all players
-        def collect_vote_fn(player: Agent) -> tuple[Agent, str, dict[int, bool]]:
+        def collect_vote_fn(
+            player: Agent,
+        ) -> tuple[Agent, str, dict[int, bool]]:
             trace_id, votes = self._collect_vote(player, players)
             return player, trace_id, votes
 
         vote_results = run_tasks(players, collect_vote_fn)
 
         # Step 2: Process voting results
-        all_votes = {}  # {voter_uid: {mediator_idx: approval}}
+        all_votes = {}  # {voter: {mediator_idx: approval}}
         vote_records = []
         for player, trace_id, votes in vote_results:
-            all_votes[player.uid] = votes
+            all_votes[player] = votes
             vote_records.append(
                 {
-                    "voter_uid": player.uid,
                     "voter_name": player.name,
                     "votes": votes,
                     "trace_id": trace_id,
@@ -280,7 +281,7 @@ class Mediation(Mechanism):
         mediator_mechanism = self.mediation_mechanism_prompt.format(
             mediator_description=mediator_description,
             additional_action_id=self.base_game.num_actions,
-            designer_player_id=winning_agent.player_id
+            designer_player_id=winning_agent.player_id,
         )
 
         moves = self.base_game.play(
@@ -289,59 +290,48 @@ class Mediation(Mechanism):
             action_map=self.mediator_mapping(winning_mediator),
         )
 
-        # Step 5: Serialize game results
-        serialized_moves = [
-            {
-                "uid": move.uid,
-                "player_name": move.player_name,
-                "action": (
-                    move.action.value
-                    if hasattr(move.action, "value")
-                    else str(move.action)
-                ),
-                # TODO: add the mix strategy
-                # TODO: add whether they delegated, maybe change the action
-                "points": move.points,
-                "trace_id": move.trace_id,
-            }
-            for move in moves
-        ]
-
         # Step 6: Log voting and game results
         record = {
             "votes": vote_records,
             "selected_mediator_index": winning_idx,
-            "selected_mediator_designer_uid": winning_agent.uid,
             "selected_mediator_designer_name": winning_agent.name,
-            "moves": serialized_moves,
+            "moves": moves,
         }
         LOGGER.log_record(record=[record], file_name=self.record_file)
 
         # Return list with single game result (base class will call payoffs.add_profile)
         return [moves]
 
-    def mediator_mapping(self, mediator: dict[int, int]) -> Callable:
+    def mediator_mapping(self, mediator: dict[int, Action]) -> Callable:
         """
         Given the original actions and the mediator design, return the final actions
         after applying the mediator's recommendations.
         """
 
         def apply_mediation(
-            player_action_map: dict[str, int],
-        ) -> dict[str, int]:
-            actions: dict[str, int] = {}
+            players_decision: dict[Agent, tuple[Action, str, str, bool]],
+        ) -> dict[Agent, tuple[Action, str, str, bool]]:
+            post_mapping_decision = players_decision.copy()
+
             num_delegating = sum(
-                a == self.base_game.num_actions
-                for a in player_action_map.values()
+                a[0].is_mediator for a in players_decision.values()
             )
+
             if num_delegating == 0:
-                return player_action_map
+                return post_mapping_decision
+
             recommended_action = mediator[num_delegating]
-            for player_id, action_idx in player_action_map.items():
-                if action_idx == self.base_game.num_actions:
-                    actions[player_id] = recommended_action
-                else:
-                    actions[player_id] = action_idx
-            return actions
+
+            for player_id, val in players_decision.items():
+                action, response, trace_id, _ = val  # Clean unpacking
+
+                if action.is_mediator:
+                    post_mapping_decision[player_id] = (
+                        recommended_action,
+                        response,
+                        trace_id,
+                        True,
+                    )
+            return post_mapping_decision
 
         return apply_mediation

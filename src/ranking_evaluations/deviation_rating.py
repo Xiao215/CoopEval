@@ -10,7 +10,7 @@ import gurobipy as gp
 import numpy as np
 from gurobipy import GRB
 
-from src.ranking_evaluations.population_payoffs import PopulationPayoffs
+from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 
 
 class DeviationRating:
@@ -22,7 +22,7 @@ class DeviationRating:
     """
 
     def __init__(
-        self, population_payoffs: PopulationPayoffs, tolerance: float = 1e-14
+        self, matchup_payoffs: MatchupPayoffs, tolerance: float = 1e-14
     ) -> None:
         """
         Initialize deviation rating computation.
@@ -32,19 +32,19 @@ class DeviationRating:
             tolerance: Base tolerance for numerical comparisons (will be scaled by payoff range).
         """
         # Validate that tensor has been built
-        if population_payoffs._payoff_tensor is None:
+        if matchup_payoffs._payoff_tensor is None:
             raise ValueError(
                 "Must call build_payoff_tensor() before creating DeviationRating"
             )
-        if population_payoffs._tensor_model_types is None:
+        if matchup_payoffs._tensor_model_types is None:
             raise ValueError(
-                "PopulationPayoffs must have _tensor_model_types populated"
+                "MatchupPayoffs must have _tensor_model_types populated"
             )
 
         # Extract game parameters
-        self.n_players = population_payoffs._payoff_tensor.ndim
-        self.n_strategies = population_payoffs._payoff_tensor.shape[0]
-        self.model_types = population_payoffs._tensor_model_types
+        self.n_players = matchup_payoffs._payoff_tensor.ndim
+        self.n_strategies = matchup_payoffs._payoff_tensor.shape[0]
+        self.model_types = matchup_payoffs._tensor_model_types
 
         if len(self.model_types) != self.n_strategies:
             raise ValueError(
@@ -53,7 +53,7 @@ class DeviationRating:
         )
 
         # Build full payoff tensor for all players
-        self.G = population_payoffs.build_full_payoff_tensor()
+        self.G = matchup_payoffs.build_full_payoff_tensor()
 
         # Store tolerance
         self.base_tolerance = tolerance
@@ -223,7 +223,7 @@ class DeviationRating:
         Verify symmetry and extract final ratings as a dictionary.
 
         Args:
-            ratings: Flattened ratings array of shape (N×S,).
+            ratings: Flattened ratings array of shape (NxS,).
             rel_tol: Relative tolerance for symmetry verification.
 
         Returns:

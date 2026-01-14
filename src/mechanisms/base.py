@@ -1,19 +1,18 @@
 """Common infrastructure for tournament mechanisms."""
 
-import copy
 import itertools
 import time
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
-from typing import Iterator, Sequence
+from typing import Iterator, Sequence, override
 
 from tqdm import tqdm
 
 from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
-from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
-from src.registry.agent_registry import create_agent
+from src.ranking_evaluations.payoffs_base import PayoffsBase
+from src.registry.agent_registry import create_players_with_player_id
 
 
 class Mechanism(ABC):
@@ -21,25 +20,17 @@ class Mechanism(ABC):
 
     def __init__(self, base_game: Game):
         self.base_game = base_game
+        self.record_file = "records.jsonl"
 
-        self.record_file = f"{self.__class__.__name__}_{self.base_game.__class__.__name__}.jsonl"
-
-    def _build_payoffs(self, players: list[Agent]) -> PayoffsBase:
-        return MatchupPayoffs(players=players)
-
-    def _create_players_from_cfgs(self, agent_cfgs: list[dict]) -> list[Agent]:
-        """Create players with fixed player IDs from agent configurations."""
-        players = []
-        for cfg in agent_cfgs:
-            for player_id in range(1, self.base_game.num_players + 1):
-                agent = create_agent(copy.deepcopy(cfg), player_id=player_id)
-                players.append(agent)
-        return players
+    def _build_payoffs(self) -> PayoffsBase:
+        return MatchupPayoffs()
 
     def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
         """Run the mechanism over the base game across all players."""
-        players = self._create_players_from_cfgs(agent_cfgs)
-        payoffs = self._build_payoffs(players)
+        players = create_players_with_player_id(
+            agent_cfgs, self.base_game.num_players
+        )
+        payoffs = self._build_payoffs()
 
         k = self.base_game.num_players
 
@@ -93,8 +84,9 @@ class RepetitiveMechanism(Mechanism):
 
     class History:
         """History of moves across multiple rounds."""
-        def __init__(self, action_cls: type[Action]):
-            self.action_cls = action_cls
+
+        def __init__(self, action_class: type[Action]) -> None:
+            self.action_class = action_class
             # List of all rounds information.
             # Note, the indices is arbitrary and only used for lookup.
             self.records: list[list[Move]] = []
@@ -102,13 +94,15 @@ class RepetitiveMechanism(Mechanism):
             # Maps each record index to its tournament round number
             self.round_numbers: list[int] = []
 
-            # Maps player_name -> List of global round indices they participated in
-            self.player_round_indices: dict[str, list[int]] = defaultdict(list)
+            # Maps player -> List of global round indices they participated in
+            self.player_round_indices: dict[Agent, list[int]] = defaultdict(
+                list
+            )
 
-            # Maps player_name -> List of cumulative distributions at each step
+            # Maps player -> List of cumulative distributions at each step
             # Index i corresponds to the state after the player's i-th game
             self.player_cumulative_actions: dict[
-                str, list[dict[Action, int]]
+                Agent, list[dict[Action, int]]
             ] = defaultdict(list)
 
         def __len__(self) -> int:
@@ -117,7 +111,9 @@ class RepetitiveMechanism(Mechanism):
         def __iter__(self) -> Iterator[list[Move]]:
             return iter(self.records)
 
-        def append(self, moves: list[Move], round_number: int | None = None) -> None:
+        def append(
+            self, moves: list[Move], round_number: int | None = None
+        ) -> None:
             """Append a new round of moves to the history.
 
             Args:
@@ -136,7 +132,7 @@ class RepetitiveMechanism(Mechanism):
             self.round_numbers.append(round_number)
 
             for m in moves:
-                p = m.player_name
+                p = m.player
                 a = m.action
                 self.player_round_indices[p].append(record_idx)
 
@@ -150,7 +146,7 @@ class RepetitiveMechanism(Mechanism):
 
         def get_prior_rounds(
             self,
-            player_name: str,
+            player: Agent,
             lookback_rounds: int,
             lookup_depth: int,
         ) -> list[tuple[int, list[Move]]]:
@@ -168,7 +164,7 @@ class RepetitiveMechanism(Mechanism):
                     "lookback_rounds must be >= 0 and lookup_depth > 0"
                 )
 
-            indices = self.player_round_indices.get(player_name)
+            indices = self.player_round_indices.get(player, [])
             if not indices:
                 return []
 
@@ -182,11 +178,14 @@ class RepetitiveMechanism(Mechanism):
             selected_indices = indices[start_index:end_index]
 
             # Return tuples of (tournament_round_number, moves)
-            return [(self.round_numbers[idx], self.records[idx]) for idx in selected_indices]
+            return [
+                (self.round_numbers[idx], self.records[idx])
+                for idx in selected_indices
+            ]
 
         def get_prior_action_distribution(
             self,
-            player_name: str,
+            player: Agent,
             lookback_rounds: int,
         ) -> dict[Action, int] | None:
             """
@@ -197,7 +196,7 @@ class RepetitiveMechanism(Mechanism):
                 raise ValueError(
                     "lookback_rounds must be >= 0 and lookup_depth > 0"
                 )
-            history = self.player_cumulative_actions.get(player_name)
+            history = self.player_cumulative_actions.get(player, [])
             if not history:
                 return None
 
@@ -207,15 +206,15 @@ class RepetitiveMechanism(Mechanism):
             if target_idx < 0:
                 return None
 
-            result = {action: 0 for action in self.action_cls}
+            result = {action: 0 for action in self.action_class.game_actions()}
             result.update(history[target_idx])
             return result
 
-        def get_rounds_played_count(self, player_name: str) -> int:
+        def get_rounds_played_count(self, player: Agent) -> int:
             """
             Return the total number of rounds a specific player has participated in.
             """
-            return len(self.player_round_indices[player_name])
+            return len(self.player_round_indices[player])
 
         def clear(self) -> None:
             """Clear the history records."""
@@ -230,7 +229,8 @@ class RepetitiveMechanism(Mechanism):
         super().__init__(base_game)
         self.num_rounds = num_rounds
         self.discount = discount
-        self.history = self.History(base_game.action_cls)
+        self.history = self.History(self.base_game.action_class)
 
-    def _build_payoffs(self, players: Sequence[Agent]) -> PayoffsBase:
-        return MatchupPayoffs(players=players, discount=self.discount)
+    @override
+    def _build_payoffs(self) -> PayoffsBase:
+        return MatchupPayoffs(discount=self.discount)
