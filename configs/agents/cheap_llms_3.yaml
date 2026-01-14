@@ -3,19 +3,19 @@
     provider: OpenRouter
     model: google/gemini-2.5-flash-lite-preview-09-2025
     kwargs:
-      temperature: 0
+      temperature: 1
   type: CoTAgent
 
 - llm:
     provider: OpenRouter
     model: openai/gpt-oss-120b
     kwargs:
-      temperature: 0
+      temperature: 1
   type: CoTAgent
 
 - llm:
     provider: OpenRouter
     model: z-ai/glm-4.5-air
     kwargs:
-      temperature: 0
+      temperature: 1
   type: CoTAgent

@@ -45,15 +45,15 @@ class Reputation(RepetitiveMechanism, ABC):
 
     def _get_display_name(self, target_player: Agent, observer: Agent) -> str:
         """
-        Returns 'You' if the target is the observer, otherwise 'Agent {uid}'.
+        Returns 'You' if the target is the observer, otherwise 'Agent #{uid}'.
         This removes the need for stateful dictionary mutation.
         """
         if target_player == observer:
             return "You"
-        return f"Agent {self.player_to_uid[target_player]}"
+        return f"Agent #{self.player_to_uid[target_player]}"
 
     def _get_verb(self, display_name: str) -> str:
-        """Helper for grammar: 'You have' vs 'Agent X has'."""
+        """Helper for grammar: 'You have' vs 'Agent #X has'."""
         return "have" if display_name == "You" else "has"
 
     @override
@@ -69,16 +69,17 @@ class Reputation(RepetitiveMechanism, ABC):
         prompts = []
 
         for observer in players:
-            round_idx = self.history.get_rounds_played_count(observer) + 1
+            rounds_played = self.history.get_rounds_played_count(observer)
+            current_round = rounds_played + 1  # The round about to be played
             direct_opponents = [p for p in players if p != observer]
             reputation_text = self._format_reputation(
                 observer=observer,
                 direct_opponents=direct_opponents,
-                current_round=round_idx
+                current_round=current_round
             )
 
             base_prompt = REPUTATION_MECHANISM_PROMPT.format(
-                round_idx=round_idx,
+                round_idx=rounds_played,
                 discount=int(self.discount * 100),
                 history_context=reputation_text,
             )
@@ -235,7 +236,7 @@ class Reputation(RepetitiveMechanism, ABC):
 
         Args:
             target_player: The player whose history we are formatting.
-            observer: The player who will receive this prompt (determines 'You' vs 'Agent X').
+            observer: The player who will receive this prompt (determines 'You' vs 'Agent #X').
         """
         lines = []
 
