@@ -13,8 +13,8 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-AGENTS_CONFIG="agents/test_agents_3.yaml"
-# AGENTS_CONFIG="agents/cheap_llms_3.yaml"
+# AGENTS_CONFIG="agents/test_agents_3.yaml"
+AGENTS_CONFIG="agents/cheap_llms_3.yaml"
 
 # Evaluation configuration (relative to configs/)
 EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
@@ -23,17 +23,20 @@ EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
 PARALLEL_EXPERIMENTS=4  # Number of experiments to run simultaneously
 EXPERIMENT_WORKERS=2    # Number of parallel workers within each experiment (for LLM queries)
 
+# Retry settings
+RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead of retrying them
+
 # Batch directory - set to existing path to resume, or leave empty for new batch with timestamp
-# RESUME_BATCH_DIR="outputs/2026/01/11/23:00"
-RESUME_BATCH_DIR=""
+RESUME_BATCH_DIR="outputs/2026/01/12/01:57"
+# RESUME_BATCH_DIR=""
 
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    # "games/matching_pennies.yaml"
+    "games/matching_pennies.yaml"
     "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    # "games/stag_hunt.yaml"
+    "games/stag_hunt.yaml"
     "games/travellers_dilemma.yaml"
     "games/trust_game.yaml"
 )
@@ -176,23 +179,38 @@ is_experiment_completed() {
         return 1  # false - summary doesn't exist
     fi
 
-    # Check if experiment exists and has a status
+    # Check if experiment exists and should be skipped
     $PYTHON_BIN -c "
 import json
 import sys
 
 summary_file = '${summary_file}'
 exp_name = '${exp_name}'
+retry_failed = '${RETRY_FAILED_EXPERIMENTS}'
 
 try:
     with open(summary_file, 'r') as f:
         summary = json.load(f)
 
     exp = summary.get('experiments', {}).get(exp_name)
-    if exp and exp.get('status') in ['success', 'failed']:
-        sys.exit(0)  # true - experiment completed
-    else:
-        sys.exit(1)  # false - experiment not completed
+    if not exp:
+        sys.exit(1)  # false - experiment doesn't exist, should run
+
+    status = exp.get('status')
+
+    # If successful, always skip
+    if status == 'success':
+        sys.exit(0)  # true - skip
+
+    # If failed, skip only if retry is disabled
+    if status == 'failed':
+        if retry_failed == 'false':
+            sys.exit(0)  # true - skip (don't retry)
+        else:
+            sys.exit(1)  # false - retry
+
+    # Otherwise (in_progress or missing status), don't skip
+    sys.exit(1)  # false - don't skip, should run
 except Exception as e:
     sys.exit(1)  # false - error reading file
 "
@@ -214,21 +232,28 @@ run_single_experiment() {
     mechanism_name=$(basename "$mechanism" .yaml)
     experiment_name="${mechanism_name}_${game_name}"
 
-    # Skip if already completed (resume support)
+    experiment_dir="${BATCH_DIR}/${experiment_name}"
+
+    # Check if experiment should be skipped (already completed successfully or failed with retry disabled)
     if is_experiment_completed "$experiment_name"; then
         echo "[$current/$total_experiments] SKIPPING (already completed): $experiment_name"
         echo ""
         return 0
     fi
 
-    # Check for orphaned/crashed experiment directory
-    experiment_dir="${BATCH_DIR}/${experiment_name}"
+    # If we get here, the experiment needs to run (either new, in_progress, or failed with retry enabled)
+    # Check if directory exists from a previous failed run
     if [ -d "$experiment_dir" ]; then
-        # Directory exists but experiment not marked as completed
-        # This means it crashed - delete and retry
-        echo "[$current/$total_experiments] RETRYING (crashed previously): $experiment_name"
-        echo "  Removing crashed experiment directory..."
-        rm -rf "$experiment_dir"
+        # Directory exists - either crashed or failed with retry enabled
+        if [ "$RETRY_FAILED_EXPERIMENTS" = true ]; then
+            echo "[$current/$total_experiments] RETRYING (failed previously): $experiment_name"
+            echo "  Removing previous experiment directory..."
+            rm -rf "$experiment_dir"
+        else
+            echo "[$current/$total_experiments] SKIPPING (failed previously, retry disabled): $experiment_name"
+            echo ""
+            return 0
+        fi
     else
         echo "[$current/$total_experiments] Running: $experiment_name"
     fi
@@ -355,6 +380,7 @@ export BATCH_CONFIGS_DIR
 export AGENTS_CONFIG
 export EVALUATION_CONFIG
 export EXPERIMENT_WORKERS
+export RETRY_FAILED_EXPERIMENTS
 export PROJECT_ROOT
 export total_experiments
 

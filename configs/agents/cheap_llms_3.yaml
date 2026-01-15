@@ -16,6 +16,7 @@
 - llm:
     provider: OpenRouter
     model: z-ai/glm-4.5-air
+    # model: qwen/qwen3-235b-a22b-2507
     kwargs:
       temperature: 1
   type: CoTAgent

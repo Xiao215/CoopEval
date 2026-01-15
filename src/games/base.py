@@ -64,11 +64,16 @@ class Move:
 
     def serialize(self) -> dict[str, Any]:
         """Convert the Move to a dictionary, mostly for logging and record purpose."""
-        d = asdict(self)
-        d["action"] = str(self.action)
-        d["player"] = self.player.name
-        if not self.mediated:
-            d.pop("mediated")
+        # Build dict manually to avoid deepcopy issues with Agent's HTTP clients
+        d = {
+            "player": self.player.name,
+            "action": str(self.action),
+            "points": self.points,
+            "response": self.response,
+            "trace_id": self.trace_id,
+        }
+        if self.mediated:
+            d["mediated"] = True
         return d
 
     @classmethod
