@@ -641,22 +641,31 @@ def generate_aggregate_table(
     lines.append(r"\label{tab:aggregate_results}")
 
     # Table header with vertical bars
+    # "All Models" column excludes deviation ranking (only mean and rd)
+    all_models_metrics = [m for m in metrics if m != "dr"]
     num_models = len(models)
     num_metrics = len(metrics)
-    col_spec = "l|" + "|".join(["r" * num_metrics] * num_models)
+    num_all_models_metrics = len(all_models_metrics)
+
+    col_spec = "l|" + "r" * num_all_models_metrics + "|" + "|".join(["r" * num_metrics] * num_models)
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
-    # First header row: Model names with multicolumn
+    # First header row: "All Models" + individual model names with multicolumn
     header_parts = ["\\textbf{Mechanism}"]
+    header_parts.append(f"\\multicolumn{{{num_all_models_metrics}}}{{c}}{{\\textbf{{All Models}}}}")
     for model in models:
         header_parts.append(f"\\multicolumn{{{num_metrics}}}{{c}}{{\\textbf{{{model}}}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
     # Second header row: Sub-column labels
     subheader_parts = [""]
+    # Add labels for "All Models" column (no DR)
+    all_models_metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in all_models_metrics])
+    subheader_parts.append(all_models_metric_cols)
+    # Add labels for each model column (includes all metrics)
+    metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in metrics])
     for _ in models:
-        metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in metrics])
         subheader_parts.append(metric_cols)
     lines.append(" & ".join(subheader_parts) + " \\\\")
 
@@ -665,6 +674,45 @@ def generate_aggregate_table(
     # Data rows
     for mech in mechanisms:
         row_parts = [mech]
+
+        # Compute "All Models" aggregate statistics
+        is_reputation = mech.lower() == "reputation"
+
+        # Collect mean values across all models
+        all_models_mean_values = [aggregate_payoffs[mech][model][0] for model in models]
+        agg_mean = sum(all_models_mean_values) / len(all_models_mean_values)
+        if len(all_models_mean_values) > 1:
+            variance = sum((x - agg_mean) ** 2 for x in all_models_mean_values) / (len(all_models_mean_values) - 1)
+            agg_mean_std = math.sqrt(variance)
+        else:
+            agg_mean_std = 0.0
+
+        # Collect RD values across all models (only for non-reputation)
+        if not is_reputation:
+            all_models_rd_values = [aggregate_rd[mech][model][0] for model in models]
+            agg_rd = sum(all_models_rd_values) / len(all_models_rd_values)
+            if len(all_models_rd_values) > 1:
+                variance = sum((x - agg_rd) ** 2 for x in all_models_rd_values) / (len(all_models_rd_values) - 1)
+                agg_rd_std = math.sqrt(variance)
+            else:
+                agg_rd_std = 0.0
+
+        # Format "All Models" column (only mean and rd, no dr)
+        if show_stderr:
+            all_models_metric_data = {
+                "mean": f"{agg_mean:.{precision}f} $\\pm$ {agg_mean_std:.{precision}f}",
+                "rd": f"{agg_rd:.{precision}f} $\\pm$ {agg_rd_std:.{precision}f}" if not is_reputation else "N/A",
+            }
+        else:
+            all_models_metric_data = {
+                "mean": f"{agg_mean:.{precision}f}",
+                "rd": f"{agg_rd:.{precision}f}" if not is_reputation else "N/A",
+            }
+
+        all_models_values = [all_models_metric_data[m] for m in all_models_metrics]
+        row_parts.append(" & ".join(all_models_values))
+
+        # Add individual model columns
         for model in models:
             payoff_result = aggregate_payoffs[mech][model]
             rd_result = aggregate_rd[mech][model]
@@ -678,7 +726,7 @@ def generate_aggregate_table(
                 }
             else:
                 metric_data = {
-                    "mean": format_score(payoff_result[0], precision) if payoff_result is not None else "N/A",
+                    "mean": format_score(payoff_result[0], precision),
                     "rd": format_score(rd_result[0], precision) if rd_result is not None else "N/A",
                     "dr": dr_val if dr_val is not None else "N/A",
                 }
