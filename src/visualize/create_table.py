@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from src.utils.score_normalization import NormalizeScore
+
 
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {
@@ -191,54 +193,6 @@ def parse_batch_folder(batch_path: Path) -> List[ExperimentData]:
         raise ValueError(f"No valid experiments found in {batch_path}")
 
     return experiments
-
-
-def normalize_score(
-    game: str, score: float, game_config: dict
-) -> float:
-    """
-    Normalize score from NE payoff to cooperative payoff for social dilemmas.
-
-    Args:
-        game: Game name
-        score: Raw score from the game
-        game_config: Game configuration dict
-
-    Returns:
-        Normalized score scaled to [0, 1] where 0 = NE, 1 = cooperative
-    """
-
-    if game == "PrisonersDilemma":
-        payoff_matrix = game_config["kwargs"]["payoff_matrix"]
-        ne_payoff = payoff_matrix["DD"][0]  # NE: both defect
-        coop_payoff = payoff_matrix["CC"][1]  # Cooperative: both cooperate
-        normalized = (score - ne_payoff) / (coop_payoff - ne_payoff)
-        return normalized
-
-    elif game == "PublicGoods":
-        coop_payoff = game_config["kwargs"]["multiplier"]
-        ne_payoff = 1  # NE: no one contributes
-        normalized = (score - ne_payoff) / (coop_payoff - ne_payoff)
-        return normalized
-
-    elif game == "TravellersDilemma":
-        ne_payoff = game_config["kwargs"]["min_claim"]
-        spacing = game_config["kwargs"]["claim_spacing"]
-        num_actions = game_config["kwargs"]["num_actions"]
-        coop_payoff = ne_payoff + spacing * (num_actions - 1)
-        normalized = (score - ne_payoff) / (coop_payoff - ne_payoff)
-        return normalized
-
-    elif game == "TrustGame":
-        payoff_matrix = game_config["kwargs"]["payoff_matrix"]
-        ne_payoff = payoff_matrix["KK"][0]  # NE: both keep
-        coop_payoff = payoff_matrix["GG"][0]  # Cooperative: both give
-        normalized = (score - ne_payoff) / (coop_payoff - ne_payoff)
-        return normalized
-
-    else:
-        # For other games, return score as-is
-        return score
 
 
 def build_data_structure(
@@ -541,21 +495,27 @@ def compute_aggregate_metric(
         "TrustGame",
     }
 
+    # Precompute normalizers for each game (efficient for repeated calls)
+    normalizers = {}
+    if metric_type == "numeric":
+        for game in data:
+            if game in social_dilemmas:
+                normalizers[game] = NormalizeScore(game, game_configs[game])
+
     values = []
     for game in data:
         if game not in social_dilemmas:
             continue
 
         value = data[game][mechanism][model]
-        
+
         # Skip None values (RD/DR for reputation mechanism)
         if value is None:
             continue
 
         if metric_type == "numeric":
-            # Apply normalization for numeric metrics
-            game_config = game_configs[game]
-            normalized_value = normalize_score(game, value, game_config)
+            # Apply normalization using precomputed normalizer
+            normalized_value = normalizers[game].normalize(value)
             values.append(normalized_value)
         else:
             assert metric_type == "rank"

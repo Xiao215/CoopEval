@@ -12,7 +12,7 @@
     kwargs:
       temperature: 1
       reasoning:
-        effort: none
+        effort: medium
   type: CoTAgent
 
 - llm:
@@ -50,7 +50,7 @@
       temperature: 1
       reasoning:
         effort: none
-  type: CoTAgent
+  type: IOAgent
 
 # Open-weight flagship model
 - llm:
