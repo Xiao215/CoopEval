@@ -13,8 +13,8 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-# AGENTS_CONFIG="agents/test_agents_3.yaml"
-AGENTS_CONFIG="agents/cheap_llms_3.yaml"
+AGENTS_CONFIG="agents/test_agents_5.yaml"
+# AGENTS_CONFIG="agents/cheap_llms_3.yaml"
 
 # Evaluation configuration (relative to configs/)
 EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
@@ -27,8 +27,8 @@ EXPERIMENT_WORKERS=2    # Number of parallel workers within each experiment (for
 RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead of retrying them
 
 # Batch directory - set to existing path to resume, or leave empty for new batch with timestamp
-RESUME_BATCH_DIR="outputs/2026/01/12/01:57"
-# RESUME_BATCH_DIR=""
+# RESUME_BATCH_DIR="outputs/2026/01/12/01:57"
+RESUME_BATCH_DIR=""
 
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
