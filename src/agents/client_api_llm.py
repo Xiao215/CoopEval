@@ -46,6 +46,11 @@ class ClientAPILLM(LLM):
 
     def invoke(self, prompt: str, **kwargs: Any) -> str:
         """Call the remote chat completion endpoint with basic retry/backoff."""
+        # Extract OpenRouter-specific parameters that need to go in extra_body
+        extra_body = {}
+        if "reasoning" in kwargs:
+            extra_body["reasoning"] = kwargs.pop("reasoning")
+
         # Simple retry/backoff around the API call
         delays = [1, 2, 4, 8]
         for attempt, delay in enumerate([0] + delays):
@@ -55,6 +60,7 @@ class ClientAPILLM(LLM):
                 completion = self.client.chat.completions.create(
                     model=self.model_name,
                     messages=[{"role": "user", "content": prompt}],
+                    extra_body=extra_body if extra_body else None,
                     **kwargs,
                 )
                 return completion.choices[0].message.content

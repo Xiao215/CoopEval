@@ -36,8 +36,8 @@ class MatchupPayoffs(PayoffsBase):
         """
         super().__init__(discount=discount)
 
-        # Storage: Map sorted UIDs to a list of match arrays.
-        # Structure: { (1, 2): [ ndarray(Point1, Points2, ...), ... ] }
+        # Storage: Map player tuples (in seat order) to a list of match arrays.
+        # Structure: { (player_seat0, player_seat1): [ ndarray(payoff_seat0, payoff_seat1, ...), ... ] }
         self._profiles: dict[ProfileKey, list[np.ndarray]] = defaultdict(list)
 
         # Cached payoff tensor (populated by build_payoff_tensor)
@@ -70,7 +70,8 @@ class MatchupPayoffs(PayoffsBase):
 
         for round_moves in moves_over_rounds:
             round_data = {m.player: float(m.points) for m in round_moves}
-            key = tuple(sorted(round_data.keys()))
+            # Preserve seat order - critical for building symmetric payoff tensor
+            key = tuple(round_data.keys())
             ordered_points = [round_data[uid] for uid in key]
             match_accumulator[key].append(ordered_points)
 
@@ -147,8 +148,8 @@ class MatchupPayoffs(PayoffsBase):
 
                 # Record each seat's observation
                 for model, score in zip(current_models, discounted_scores):
-                    # Use sorted tuple as canonical composition key
-                    composition_key = tuple(sorted(current_models))
+                    # Use tuple as composition key
+                    composition_key = tuple(current_models)
                     composition_observations[(composition_key, model)].append(score)
 
         # Second pass: Sum all observations and track counts for averaging

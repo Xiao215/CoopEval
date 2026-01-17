@@ -51,6 +51,42 @@ class DiscreteReplicatorDynamics:
         next_pop = weights / np.sum(weights)
         return next_pop
 
+    def _log_final_fitness(
+        self,
+        population: np.ndarray,
+        model_types: list[str],
+        matchup_payoffs: MatchupPayoffs,
+    ) -> None:
+        """
+        Compute and log final fitness values and population shares.
+
+        Args:
+            population: Final population distribution
+            model_types: List of model type names
+            matchup_payoffs: MatchupPayoffs instance for computing fitness
+        """
+        # Compute final fitness values using final population
+        final_population_dict = {
+            model: float(prob)
+            for model, prob in zip(model_types, population)
+        }
+        final_fitness_dict = matchup_payoffs.fitness(final_population_dict)
+
+        # Create combined record with both fitness and population for human readability
+        rd_fitness_record = {
+            model: {
+                "fitness": final_fitness_dict[model],
+                "final_population": final_population_dict[model]
+            }
+            for model in model_types
+        }
+
+        # Log fitness values and population to new file
+        LOGGER.log_record(
+            record=rd_fitness_record,
+            file_name="replicator_dynamics_fitness.json"
+        )
+
     def run_dynamics(
         self,
         initial_population: np.ndarray | str = "uniform",
@@ -131,6 +167,7 @@ class DiscreteReplicatorDynamics:
 
             if np.max(np.abs(fitness - ave_population_fitness)) < tol:
                 print("Converged: approximate equilibrium reached")
+                self._log_final_fitness(population, model_types, matchup_payoffs)
                 return population_history
 
             population = self.population_update(
@@ -146,4 +183,6 @@ class DiscreteReplicatorDynamics:
                 }
             )
 
+        # Log final fitness values after reaching max steps
+        self._log_final_fitness(population, model_types, matchup_payoffs)
         return population_history

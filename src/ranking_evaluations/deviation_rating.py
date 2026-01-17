@@ -166,6 +166,15 @@ class DeviationRating:
             # Compute M @ sigma
             M_sigma = M @ sigma
 
+            # Add symmetry constraints: for each strategy s, all players must have same deviation gain
+            # This enforces that M[p*S + s, :] @ sigma == M[0*S + s, :] @ sigma for all p, s
+            for s in range(S):
+                for p in range(1, N):
+                    model.addConstr(
+                        M_sigma[p * S + s] == M_sigma[0 * S + s],
+                        name=f"symmetry_p{p}_s{s}",
+                    )
+
             # Constraints for rated strategies (equality) and unrated strategies (inequality)
             for i in range(N * S):
                 if is_rated[i]:

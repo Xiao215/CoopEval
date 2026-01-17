@@ -97,7 +97,7 @@ class TravellersDilemma(Game):
         - Choose a probability distribution over ALL actions each round.
         - Output must contain a valid JSON object at the end.
         - Keys must be the action names exactly as given.
-        - Values must be integers between 0 and 100.
+        - Values must be percentage points given in integers.
         - All values must sum to exactly 100.
 
         Format requirement:

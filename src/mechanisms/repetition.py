@@ -37,10 +37,11 @@ class Repetition(RepetitiveMechanism):
         round_idx: int,
     ) -> list[str]:
         """Build perspective-specific history prompts for each player."""
+        rounds_played = round_idx - 1  # Number of completed rounds
         if not self.history:
             return [
                 REPETITION_MECHANISM_PROMPT.format(
-                    round_idx=round_idx,
+                    round_idx=rounds_played,
                     discount=int(self.discount * 100),
                     history_context=REPETITION_NO_HISTORY_DESCRIPTION,
                 )
@@ -48,7 +49,7 @@ class Repetition(RepetitiveMechanism):
             ]
         return [
             REPETITION_MECHANISM_PROMPT.format(
-                round_idx=round_idx,
+                round_idx=rounds_played,
                 discount=int(self.discount * 100),
                 history_context=self._format_history(players, focus),
             )

@@ -24,20 +24,34 @@ class Logger:
             custom_dir: If provided, use this exact directory instead of creating
                        a timestamped subdirectory. This is useful for batch operations.
         """
-        if custom_dir is not None:
-            self.log_dir = Path(custom_dir)
-        else:
-            # Original timestamping logic
-            now = datetime.now()
-            self.log_dir = (
-                base_dir
-                / f"{now.year}"
-                / f"{now.month:02}"
-                / f"{now.day:02}"
-                / f"{now.hour:02}:{now.minute:02}"
-            )
-        os.makedirs(self.log_dir, exist_ok=True)
+        self._base_dir = base_dir
+        self._log_dir = None  # Will be created lazily
+        self._custom_dir = custom_dir
         self._lock = threading.Lock()
+
+    @property
+    def log_dir(self) -> Path:
+        """
+        Get the log directory, creating it lazily on first access.
+        """
+        if self._log_dir is None:
+            with self._lock:
+                # Double-check after acquiring lock
+                if self._log_dir is None:
+                    if self._custom_dir is not None:
+                        self._log_dir = Path(self._custom_dir)
+                    else:
+                        # Original timestamping logic
+                        now = datetime.now()
+                        self._log_dir = (
+                            self._base_dir
+                            / f"{now.year}"
+                            / f"{now.month:02}"
+                            / f"{now.day:02}"
+                            / f"{now.hour:02}:{now.minute:02}"
+                        )
+                    os.makedirs(self._log_dir, exist_ok=True)
+        return self._log_dir
 
     def set_log_dir(self, log_dir: Path) -> None:
         """
@@ -51,8 +65,8 @@ class Logger:
             log_dir: The new directory path for logging
         """
         with self._lock:
-            self.log_dir = Path(log_dir)
-            os.makedirs(self.log_dir, exist_ok=True)
+            self._log_dir = Path(log_dir)
+            os.makedirs(self._log_dir, exist_ok=True)
 
     def log_record(self, record: dict | list, file_name: str) -> None:
         """
@@ -106,8 +120,8 @@ class Logger:
             while new_path.exists():
                 counter += 1
                 new_path = parent / f"{base_name}_{slug}-{counter}"
-            os.rename(self.log_dir, new_path)
-            self.log_dir = new_path
+            os.rename(self._log_dir, new_path)
+            self._log_dir = new_path
 
 
 LOGGER = Logger()

@@ -64,11 +64,16 @@ class Move:
 
     def serialize(self) -> dict[str, Any]:
         """Convert the Move to a dictionary, mostly for logging and record purpose."""
-        d = asdict(self)
-        d["action"] = str(self.action)
-        d["player"] = self.player.name
-        if not self.mediated:
-            d.pop("mediated")
+        # Build dict manually to avoid deepcopy issues with Agent's HTTP clients
+        d = {
+            "player": self.player.name,
+            "action": str(self.action),
+            "points": self.points,
+            "response": self.response,
+            "trace_id": self.trace_id,
+        }
+        if self.mediated:
+            d["mediated"] = True
         return d
 
     @classmethod
@@ -117,7 +122,7 @@ class Game(ABC):
         - Choose a probability distribution over the provided actions each round.
         - Output must contain a valid JSON object at the end.
         - Keys must be the action names exactly as given.
-        - Values must be integers between 0 and 100.
+        - Values must be percentage points given in integers.
         - The values must sum to exactly 100.
 
         Format requirement:
