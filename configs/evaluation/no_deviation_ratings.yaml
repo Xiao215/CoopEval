@@ -1,0 +1,7 @@
+methods:
+  - type: evolutionary_dynamics
+    kwargs:
+      initial_population: uniform
+      steps: 1000
+      lr_method: constant
+      lr_nu: 0.1

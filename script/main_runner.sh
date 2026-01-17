@@ -18,7 +18,8 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 AGENTS_CONFIG="agents/sota_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
-EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
+# EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
+EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
 
 # Parallel execution settings
 PARALLEL_EXPERIMENTS=4  # Number of experiments to run simultaneously
@@ -36,19 +37,19 @@ RESUME_BATCH_DIR=""
 GAME_CONFIGS=(
     # "games/matching_pennies.yaml"
     "games/prisoners_dilemma.yaml"
-    # "games/public_goods.yaml"
+    "games/public_goods.yaml"
     # "games/stag_hunt.yaml"
-    # "games/travellers_dilemma.yaml"
-    # "games/trust_game.yaml"
+    "games/travellers_dilemma.yaml"
+    "games/trust_game.yaml"
 )
 
 # List of mechanism config paths (relative to configs/)
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
     "mechanisms/no_mechanism.yaml"
-    # "mechanisms/contracting.yaml"
+    "mechanisms/contracting.yaml"
     # "mechanisms/disarmament.yaml"
-    # "mechanisms/mediation.yaml"
+    "mechanisms/mediation.yaml"
     # "mechanisms/repetition.yaml"
     # "mechanisms/reputation.yaml"
 )
