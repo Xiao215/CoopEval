@@ -15,22 +15,26 @@ class FakeAction(Action):
 class FakeAgent(Agent):
     """Minimal stand-in for ``Agent`` with attributes needed for payoff tracking."""
 
-    def __init__(self, llm_config: dict | None = None) -> None:
+    def __init__(self, player_id, llm_config: dict | None = None) -> None:
         if llm_config is None:
             llm_config = {}
         if "model" not in llm_config:
             llm_config["model"] = "fake-agent"
         if "provider" not in llm_config:
             llm_config["provider"] = "TestInstance"
-        agent_config = {"llm": llm_config, "type": "IOAgent"}
+        agent_config = {"llm": llm_config, "type": "IOAgent", "player_id": player_id}
+
+        # Assign a unique ID using the class instance counter
+        self.uid = next(type(self)._instance_counter)
 
         super().__init__(agent_config)
+
     def chat(self, messages: Any) -> str:
         return f"fake response to {messages}"
 
     @property
     def name(self) -> str:
-        return f"fake-agent-{self.uid}"
+        return f"{self.model_type}#P{self.player_id}"
 
     def __lt__(self, other: "FakeAgent") -> bool:
         return self.uid < other.uid
