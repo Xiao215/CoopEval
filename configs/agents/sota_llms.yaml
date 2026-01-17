@@ -1,4 +1,50 @@
-# Flagship models around the same costs
+# Smaller flagship model
+- llm:
+    provider: OpenRouter
+    model: google/gemini-3-flash-preview
+    kwargs:
+      temperature: 1
+      reasoning:
+        effort: medium
+  type: CoTAgent
+
+# Older flagship model
+- llm:
+    provider: OpenRouter
+    model: openai/gpt-4o-2024-05-13
+    kwargs:
+      temperature: 1
+  type: CoTAgent
+
+# Open-weight flagship model
+- llm:
+    provider: OpenRouter
+    model: deepseek/deepseek-v3.2
+    kwargs:
+      temperature: 1
+      reasoning:
+        effort: medium
+  type: CoTAgent
+
+# Flagship model without reasoning
+- llm:
+    provider: OpenRouter
+    model: anthropic/claude-sonnet-4.5
+    kwargs:
+      temperature: 1
+      reasoning:
+        effort: none
+  type: IOAgent
+
+# Open-weight flagship small model
+- llm:
+    provider: OpenRouter
+    model: qwen/qwen3-30b-a3b-instruct-2507
+    kwargs:
+      temperature: 1
+  type: CoTAgent
+  
+  # Flagship models around the same costs
 - llm:
     provider: OpenRouter
     model: google/gemini-3-pro-preview
@@ -22,50 +68,4 @@
       temperature: 1
       reasoning:
         effort: medium
-  type: CoTAgent
-
-# Smaller flagship model
-- llm:
-    provider: OpenRouter
-    model: google/gemini-3-flash-preview
-    kwargs:
-      temperature: 1
-      reasoning:
-        effort: medium
-  type: CoTAgent
-
-# Older flagship model
-- llm:
-    provider: OpenRouter
-    model: openai/gpt-4o-2024-05-13
-    kwargs:
-      temperature: 1
-  type: CoTAgent
-
-# Flagship model without reasoning
-- llm:
-    provider: OpenRouter
-    model: anthropic/claude-sonnet-4.5
-    kwargs:
-      temperature: 1
-      reasoning:
-        effort: none
-  type: IOAgent
-
-# Open-weight flagship model
-- llm:
-    provider: OpenRouter
-    model: deepseek/deepseek-v3.2
-    kwargs:
-      temperature: 1
-      reasoning:
-        effort: medium
-  type: CoTAgent
-
-# Open-weight flagship small model
-- llm:
-    provider: OpenRouter
-    model: qwen/qwen3-30b-a3b-instruct-2507
-    kwargs:
-      temperature: 1
   type: CoTAgent
