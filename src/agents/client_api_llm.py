@@ -52,7 +52,7 @@ class ClientAPILLM(LLM):
             extra_body["reasoning"] = kwargs.pop("reasoning")
 
         # Simple retry/backoff around the API call
-        delays = [1, 2, 4, 8]
+        delays = [2**i for i in range(1,8)]
         for attempt, delay in enumerate([0] + delays):
             if delay:
                 time.sleep(delay)
