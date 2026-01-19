@@ -15,6 +15,7 @@ from src.mechanisms.prompts import (
     REPUTATION_NO_HISTORY_DESCRIPTION, REPUTATION_PLAYERS_HEADER)
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
+from src.utils.concurrency import run_tasks
 from src.utils.match_scheduler_reputation import RandomMatcher
 
 
@@ -32,8 +33,11 @@ class Reputation(RepetitiveMechanism, ABC):
         lookup_depth: int = 5,
         max_recursion_depth: int | None = None,
         include_prior_distributions: bool = True,
+        tournament_workers: int = 1,
     ) -> None:
-        super().__init__(base_game, num_rounds, discount)
+        super().__init__(
+            base_game, num_rounds, discount, tournament_workers=tournament_workers
+        )
         self.reputation_depth = lookup_depth
         self.include_prior_distributions = include_prior_distributions
         self.player_to_uid = {}
@@ -376,6 +380,16 @@ class Reputation(RepetitiveMechanism, ABC):
         """
         all_tournament_moves = []
         matcher = RandomMatcher(players)
+
+        # Helper function to process a single matchup
+        def process_matchup(match_up: tuple[Agent, ...]) -> list[Move]:
+            reputation_information = self._build_history_prompts(match_up)
+            moves = self.base_game.play(
+                additional_info=reputation_information,
+                players=match_up,
+            )
+            return moves
+
         with tqdm(
             total=self.num_rounds,
             desc="Reputation rounds",
@@ -385,15 +399,18 @@ class Reputation(RepetitiveMechanism, ABC):
             for round_idx, matches_group in enumerate(matcher, 1):
                 if round_idx > self.num_rounds:
                     break
-                for match_up in matches_group:
-                    reputation_information = self._build_history_prompts(
-                        match_up
-                    )
-                    moves = self.base_game.play(
-                        additional_info=reputation_information,
-                        players=match_up,
-                    )
+
+                # Run matchups in parallel within this round
+                round_moves = run_tasks(
+                    matches_group,
+                    process_matchup,
+                    max_workers=self.tournament_workers
+                )
+
+                # Update history and accumulate results
+                for moves in round_moves:
                     self.history.append(moves, round_number=round_idx)
                     all_tournament_moves.append(moves)
+
                 pbar.update(1)
         return all_tournament_moves

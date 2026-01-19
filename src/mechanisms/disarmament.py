@@ -114,7 +114,7 @@ class Disarmament(RepetitiveMechanism):
         )
 
         def parse_func(resp: str) -> tuple[str, Caps]:
-            return self._parse_disarm_caps(resp, player)
+            return self._parse_disarm_caps(resp, player, caps)
         _, trace_id, (choice, new_caps) = player.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=parse_func,
@@ -125,6 +125,7 @@ class Disarmament(RepetitiveMechanism):
         self,
         response: str,
         player: Agent,
+        caps: CapsByPlayer,
     ) -> tuple[str, Caps]:
         """Parse the choice and disarmament caps from the agent's response.
 
@@ -176,10 +177,10 @@ class Disarmament(RepetitiveMechanism):
                     f"When choice is '{choice_lower}', only the 'choice' field should be included. "
                     f"Found extra keys: {sorted(extra_keys)}"
                 )
-            return choice_lower, self.current_disarm_caps[player]
+            return choice_lower, caps[player]
 
         # For "disarm", check if player has room to disarm
-        if sum(self.current_disarm_caps[player]) <= 100.0:
+        if sum(caps[player]) <= 100.0:
             raise ValueError(
                 'You chose "disarm" but your upper bounds already sum to 100, so you have no room to disarm further. '
                 'You may only choose "pass" or "end".'
@@ -196,7 +197,7 @@ class Disarmament(RepetitiveMechanism):
             raise ValueError(f"Action key mismatch. Missing: {sorted(missing)}")
 
         new_caps: Caps = [0.0] * n
-        old_caps = self.current_disarm_caps[player]
+        old_caps = caps[player]
         for act_str, cap in json_obj.items():
             if act_str == "choice":
                 continue
