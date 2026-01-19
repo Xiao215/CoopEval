@@ -15,7 +15,6 @@ from src.mechanisms.prompts import (CONTRACT_APPROVAL_VOTE_PROMPT,
                                     CONTRACT_MECHANISM_PROMPT,
                                     CONTRACT_REJECTION_PROMPT)
 from src.ranking_evaluations.payoffs_base import PayoffsBase
-from src.registry.agent_registry import create_players_with_player_id
 from src.utils.concurrency import run_tasks
 
 
@@ -27,7 +26,7 @@ class Contracting(Mechanism):
         base_game: Game,
     ) -> None:
         super().__init__(base_game)
-        # keyed by (model_type, player_id)
+        # keyed by (agent_type, player_id)
         self.contracts: dict[tuple[str, int], list[int]] = {}
         self.contracts_design_prompt = CONTRACT_DESIGN_PROMPT
         self.contract_confirmation_prompt = CONTRACT_CONFIRMATION_PROMPT
@@ -60,7 +59,7 @@ class Contracting(Mechanism):
         Ask the LLM to confirm agreement to the contract with automatic retries.
         """
         game_prompt = self.base_game.get_player_prompt(player.player_id)
-        key = (designer.model_type, designer.player_id)
+        key = (designer.agent_type, designer.player_id)
         base_prompt = (
             game_prompt
             + "\n"
@@ -162,7 +161,7 @@ class Contracting(Mechanism):
         """Format all contracts for the voting prompt."""
         lines = []
         for player in players:
-            key = (player.model_type, player.player_id)
+            key = (player.agent_type, player.player_id)
             contract = self.contracts[key]
             lines.append(f"Contract proposed by Player {player.player_id}:")
             lines.append(self._contract_description(contract))
@@ -252,26 +251,22 @@ class Contracting(Mechanism):
         return winning_idx, winning_agent
 
     @override
-    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
-        agents = create_players_with_player_id(
-            agent_cfgs, self.base_game.num_players
-        )
-
+    def run_tournament(self, players: list[Agent]) -> PayoffsBase:
         # Cache agents so base class reuses them
-        self._cached_agents = agents
+        self._cached_agents = players
 
-        def design_fn(agent: Agent) -> tuple[Agent, str, str, list[int]]:
-            response, trace_id, contract = self._design_contract(agent)
-            return agent, response, trace_id, contract
+        def design_fn(player: Agent) -> tuple[Agent, str, str, list[int]]:
+            response, trace_id, contract = self._design_contract(player)
+            return player, response, trace_id, contract
 
-        design_results = run_tasks(agents, design_fn)
+        design_results = run_tasks(players, design_fn)
 
         self.contracts.clear()
         contract_design = {}
-        for agent, response, trace_id, contract in design_results:
-            key = (agent.model_type, agent.player_id)
+        for player, response, trace_id, contract in design_results:
+            key = (player.agent_type, player.player_id)
             self.contracts[key] = contract
-            contract_design[agent.name] = {
+            contract_design[player.name] = {
                 "response": response,
                 "contract": contract,
                 "trace_id": trace_id,
@@ -281,7 +276,7 @@ class Contracting(Mechanism):
         )
 
         # Now call base class - it will use our cached agents
-        result = super().run_tournament(agent_cfgs)
+        result = super().run_tournament(players)
 
         # Clear cache for next run
         self._cached_agents = None
@@ -320,7 +315,7 @@ class Contracting(Mechanism):
 
         # Step 3: Select winning contract
         winning_idx, winning_agent = self._select_contract(players, all_votes)
-        key = (winning_agent.model_type, winning_agent.player_id)
+        key = (winning_agent.agent_type, winning_agent.player_id)
         winning_contract = self.contracts[key]
 
         # Step 4: Collect signatures for the winning contract

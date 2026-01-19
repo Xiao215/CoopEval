@@ -15,9 +15,9 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-# AGENTS_CONFIG="agents/test_agents_5.yaml"
+# AGENTS_CONFIG="agents/test_agents_6.yaml"
 # AGENTS_CONFIG="agents/cheap_llms_3.yaml"
-# AGENTS_CONFIG="agents/sota_llms.yaml"
+# # AGENTS_CONFIG="agents/sota_llms.yaml"
 AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
@@ -39,11 +39,11 @@ RESUME_BATCH_DIR=""
 # Based on games in src/games/
 GAME_CONFIGS=(
     # "games/matching_pennies.yaml"
-    "games/prisoners_dilemma.yaml"
+    # "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
     # "games/stag_hunt.yaml"
-    "games/travellers_dilemma.yaml"
-    "games/trust_game.yaml"
+    # "games/travellers_dilemma.yaml"
+    # "games/trust_game.yaml"
 )
 
 # List of mechanism config paths (relative to configs/)
@@ -53,8 +53,8 @@ MECHANISM_CONFIGS=(
     # "mechanisms/contracting.yaml"
     # "mechanisms/disarmament.yaml"
     # "mechanisms/mediation.yaml"
-    # "mechanisms/repetition.yaml"
-    "mechanisms/reputation.yaml"
+    "mechanisms/repetition.yaml"
+    # "mechanisms/reputation.yaml"
 )
 
 # GAME_CONFIGS=("games/matching_pennies.yaml" "games/prisoners_dilemma.yaml")
