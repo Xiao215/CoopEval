@@ -1,4 +1,4 @@
 type: PublicGoods
 kwargs:
-  num_players: 4
+  num_players: 3
   multiplier: 1.5
