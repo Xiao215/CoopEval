@@ -24,7 +24,6 @@ from typing import Dict, List, Optional, Tuple
 
 from src.utils.score_normalization import NormalizeScore
 
-
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {
     "mean": "Mean",

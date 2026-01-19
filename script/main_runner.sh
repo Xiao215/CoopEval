@@ -2,6 +2,8 @@
 # Main runner script to execute run_experiment.py for all combinations of games and mechanisms
 # Usage: ./main_runner.sh
 
+export PYTHONPATH=.
+
 # Don't exit on error - we want to continue even if individual experiments fail
 set +e
 
@@ -15,7 +17,8 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # Agents configuration (relative to configs/)
 # AGENTS_CONFIG="agents/test_agents_5.yaml"
 # AGENTS_CONFIG="agents/cheap_llms_3.yaml"
-AGENTS_CONFIG="agents/sota_llms.yaml"
+# AGENTS_CONFIG="agents/sota_llms.yaml"
+AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
 # EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
@@ -46,12 +49,12 @@ GAME_CONFIGS=(
 # List of mechanism config paths (relative to configs/)
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
-    "mechanisms/no_mechanism.yaml"
-    "mechanisms/contracting.yaml"
+    # "mechanisms/no_mechanism.yaml"
+    # "mechanisms/contracting.yaml"
     # "mechanisms/disarmament.yaml"
-    "mechanisms/mediation.yaml"
+    # "mechanisms/mediation.yaml"
     # "mechanisms/repetition.yaml"
-    # "mechanisms/reputation.yaml"
+    "mechanisms/reputation.yaml"
 )
 
 # GAME_CONFIGS=("games/matching_pennies.yaml" "games/prisoners_dilemma.yaml")

@@ -231,7 +231,9 @@ class MatchupPayoffs(PayoffsBase):
             population: dict mapping model type to its probability.
         """
         if not math.isclose(sum(population.values()), 1.0):
-            raise ValueError("Population probabilities must sum to 1.0")
+            raise ValueError(
+                f"Population probabilities must sum to 1.0, but got {sum(population.values())}"
+            )
 
         # Ensure tensor has been built
         assert self._payoff_tensor is not None and self._tensor_model_types is not None, \
