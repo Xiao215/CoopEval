@@ -27,7 +27,6 @@ class Mechanism(ABC):
     def run_tournament(self, players: list[Agent]) -> PayoffsBase:
         """Run the mechanism over the base game across all players."""
         payoffs = self._build_payoffs()
-
         k = self.base_game.num_players
 
         players_by_id = [

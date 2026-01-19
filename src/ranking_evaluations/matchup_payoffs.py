@@ -75,7 +75,6 @@ class MatchupPayoffs(PayoffsBase):
             ordered_points = [round_data[uid] for uid in key]
             match_accumulator[key].append(ordered_points)
 
-        # Final Commit: Convert accumulated lists to arrays and store
         for key, history_list in match_accumulator.items():
             match_array = np.array(history_list, dtype=float)
             self._profiles[key].append(match_array)
