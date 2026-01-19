@@ -138,9 +138,14 @@ class Agent(ABC):
 
     @property
     @abstractmethod
+    def agent_type(self) -> str:
+        """Return the model type and prompt strategy."""
+        raise NotImplementedError
+
+    @property
     def name(self) -> str:
         """Return the name of the agent."""
-        raise NotImplementedError
+        return f"{self.agent_type}#P{self.player_id}"
 
     def serialize(self) -> dict:
         """Return the LLM configuration dictionary for this agent."""
@@ -178,9 +183,9 @@ class IOAgent(Agent):
         return self.invoke(messages)
 
     @property
-    def name(self) -> str:
-        """Return the name of the agent."""
-        return f"{self.model_type}(IO)#P{self.player_id}"
+    def agent_type(self) -> str:
+        """Return the model type and prompt strategy."""
+        return f"{self.model_type}(IO)"
 
 
 class CoTAgent(Agent):
@@ -204,6 +209,6 @@ class CoTAgent(Agent):
         return self.invoke(messages)
 
     @property
-    def name(self) -> str:
-        """Return the name of the agent."""
-        return f"{self.model_type}(CoT)#P{self.player_id}"
+    def agent_type(self) -> str:
+        """Return the model type and prompt strategy."""
+        return f"{self.model_type}(CoT)"

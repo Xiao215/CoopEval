@@ -12,7 +12,6 @@ from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.ranking_evaluations.payoffs_base import PayoffsBase
-from src.registry.agent_registry import create_players_with_player_id
 
 
 class Mechanism(ABC):
@@ -25,11 +24,8 @@ class Mechanism(ABC):
     def _build_payoffs(self) -> PayoffsBase:
         return MatchupPayoffs()
 
-    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
+    def run_tournament(self, players: list[Agent]) -> PayoffsBase:
         """Run the mechanism over the base game across all players."""
-        players = create_players_with_player_id(
-            agent_cfgs, self.base_game.num_players
-        )
         payoffs = self._build_payoffs()
 
         k = self.base_game.num_players

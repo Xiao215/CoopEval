@@ -15,7 +15,6 @@ from src.mechanisms.prompts import (
     REPUTATION_NO_HISTORY_DESCRIPTION, REPUTATION_PLAYERS_HEADER)
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
-from src.registry.agent_registry import create_players_with_player_id
 from src.utils.match_scheduler_reputation import RandomMatcher
 
 
@@ -354,12 +353,9 @@ class Reputation(RepetitiveMechanism, ABC):
         return lines
 
     @override
-    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
+    def run_tournament(self, players: list[Agent]) -> PayoffsBase:
         """Run reputation tournament with proper player ID seating."""
         self.history.clear()
-        players = create_players_with_player_id(
-            agent_cfgs, self.base_game.num_players
-        )
         self.player_to_uid = {
             player: idx + 1 for idx, player in enumerate(players)
         }

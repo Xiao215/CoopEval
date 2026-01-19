@@ -1,6 +1,5 @@
 """Utilities for running discrete-time replicator dynamics tournaments."""
 
-from collections import defaultdict
 from typing import Literal
 
 import numpy as np
@@ -8,6 +7,7 @@ from tqdm import tqdm
 
 from src.logger_manager import LOGGER
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
+from src.agents.agent_manager import Agent
 
 
 class DiscreteReplicatorDynamics:
@@ -23,12 +23,13 @@ class DiscreteReplicatorDynamics:
 
     def __init__(
         self,
-        agent_cfgs: list[dict],
+        players: list[Agent],
         *,
-        matchup_payoffs: MatchupPayoffs | None = None,
+        matchup_payoffs: MatchupPayoffs,
     ) -> None:
         """Bind a population of ``agents`` to the tournament payoffs."""
-        self.agent_cfgs = agent_cfgs
+        self.players = players
+        self.agent_types = {player.agent_type for player in players}
         self.matchup_payoffs = matchup_payoffs
 
     def population_update(
@@ -55,7 +56,6 @@ class DiscreteReplicatorDynamics:
     def _log_final_fitness(
         self,
         population: np.ndarray,
-        model_types: list[str],
         matchup_payoffs: MatchupPayoffs,
     ) -> None:
         """
@@ -63,29 +63,28 @@ class DiscreteReplicatorDynamics:
 
         Args:
             population: Final population distribution
-            model_types: List of model type names
             matchup_payoffs: MatchupPayoffs instance for computing fitness
         """
         # Compute final fitness values using final population
         final_population_dict = {
-            model: float(prob)
-            for model, prob in zip(model_types, population)
+            agent: float(prob)
+            for agent, prob in zip(self.agent_types, population)
         }
         final_fitness_dict = matchup_payoffs.fitness(final_population_dict)
 
         # Create combined record with both fitness and population for human readability
         rd_fitness_record = {
-            model: {
-                "fitness": final_fitness_dict[model],
-                "final_population": final_population_dict[model]
+            agent_type: {
+                "fitness": final_fitness_dict[agent_type],
+                "final_population": final_population_dict[agent_type],
             }
-            for model in model_types
+            for agent_type in self.agent_types
         }
 
         # Log fitness values and population to new file
         LOGGER.log_record(
             record=rd_fitness_record,
-            file_name="replicator_dynamics_fitness.json"
+            file_name="replicator_dynamics_fitness.json",
         )
 
     def run_dynamics(
@@ -96,7 +95,6 @@ class DiscreteReplicatorDynamics:
         *,
         lr_method: Literal["constant", "sqrt"] = "constant",
         lr_nu: float = 0.1,
-        matchup_payoffs: MatchupPayoffs | None = None,
     ) -> list[dict[str, float]]:
         """
         Run the multiplicative weights dynamics for a specified number of steps.
@@ -111,46 +109,21 @@ class DiscreteReplicatorDynamics:
                 "learning_rate method must be 'constant' or 'sqrt'"
             )
 
-        matchup_payoffs = matchup_payoffs or self.matchup_payoffs
-        if matchup_payoffs is None:
-            raise ValueError(
-                "Matchup payoffs must be provided before running dynamics."
-            )
-
-        if matchup_payoffs._payoff_tensor is None:
-            matchup_payoffs.build_payoff_tensor()
-        model_types = matchup_payoffs._tensor_model_types
-        assert model_types is not None, "Payoff tensor model types were not set."
-
-        # Initialize population distribution (aligned to payoff tensor model order)
+        # Initialize population distribution
         if isinstance(initial_population, np.ndarray):
-            if len(initial_population) == len(model_types):
-                population = initial_population.astype(float, copy=True)
-            elif len(initial_population) == len(self.agent_cfgs):
-                pop_by_model = defaultdict(float)
-                for agent_cfg, prob in zip(
-                    self.agent_cfgs, initial_population
-                ):
-                    model = str(agent_cfg["llm"]["model"])
-                    pop_by_model[model] += float(prob)
-                population = np.array(
-                    [pop_by_model[model] for model in model_types],
-                    dtype=float,
-                )
-            else:
-                raise ValueError(
-                    "Initial population must match the number of models "
-                    "in the payoff tensor or the number of agent configs."
-                )
+            assert len(initial_population) == len(
+                self.agent_types
+            ), "Initial population distribution must match number of agent types"
             assert np.all(
-                population > 0
+                initial_population > 0
             ), "Initial population distribution must be positive everywhere; zero probabilities stay zero in Replicator Dynamics!"
+            population = initial_population
         elif initial_population == "random":
             population = np.random.exponential(
-                scale=1.0, size=len(model_types)
+                scale=1.0, size=len(self.agent_types)
             )
         elif initial_population == "uniform":
-            population = np.ones(len(model_types))
+            population = np.ones(len(self.agent_types))
         else:
             raise ValueError(
                 "initial_population must be a numpy array or 'uniform'"
@@ -158,30 +131,44 @@ class DiscreteReplicatorDynamics:
 
         # Normalize to ensure it is a probability distribution
         population /= population.sum()
+
         population_history = [
-            {model: float(prob) for model, prob in zip(model_types, population)}
+            {
+                agent_type: float(prob)
+                for agent_type, prob in zip(self.agent_types, population)
+            }
         ]
 
-        model_average_payoff = matchup_payoffs.model_average_payoff()
+        matchup_payoffs = self.matchup_payoffs
+        if matchup_payoffs is None:
+            raise ValueError(
+                "Matchup payoffs must be provided before running dynamics."
+            )
+
+        if matchup_payoffs._payoff_tensor is None:
+            matchup_payoffs.build_payoff_tensor()
+        agent_average_payoff = matchup_payoffs.agent_average_payoff()
 
         LOGGER.log_record(
-            record=model_average_payoff, file_name="model_average_payoff.json"
+            record=agent_average_payoff, file_name="agent_average_payoff.json"
         )
 
         for step in tqdm(range(1, steps + 1), desc="Evolution Steps"):
             population_dict = {
-                model: float(prob)
-                for model, prob in zip(model_types, population)
+                agent_type: float(prob)
+                for agent_type, prob in zip(self.agent_types, population)
             }
             fitness_dict = matchup_payoffs.fitness(population_dict)
             if step % 10 == 0 or step == 1:
                 print(f"Step {step}: Population fitness is {fitness_dict}")
-            fitness = np.array([fitness_dict[model] for model in model_types])
+            fitness = np.array(
+                [fitness_dict[agent_type] for agent_type in self.agent_types]
+            )
             ave_population_fitness = float(np.dot(population, fitness))
 
             if np.max(np.abs(fitness - ave_population_fitness)) < tol:
                 print("Converged: approximate equilibrium reached")
-                self._log_final_fitness(population, model_types, matchup_payoffs)
+                self._log_final_fitness(population, matchup_payoffs)
                 return population_history
 
             population = self.population_update(
@@ -192,11 +179,11 @@ class DiscreteReplicatorDynamics:
             )
             population_history.append(
                 {
-                    model: float(prob)
-                    for model, prob in zip(model_types, population)
+                    agent_type: float(prob)
+                    for agent_type, prob in zip(self.agent_types, population)
                 }
             )
 
         # Log final fitness values after reaching max steps
-        self._log_final_fitness(population, model_types, matchup_payoffs)
+        self._log_final_fitness(population, matchup_payoffs)
         return population_history
