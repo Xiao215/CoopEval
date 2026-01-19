@@ -26,7 +26,7 @@ EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
 
 # Parallel execution settings
 PARALLEL_EXPERIMENTS=4  # Number of experiments to run simultaneously
-EXPERIMENT_WORKERS=2    # Number of parallel workers within each experiment (for LLM queries)
+EXPERIMENT_WORKERS=1    # Number of parallel workers within each experiment (for LLM queries)
 TOURNAMENT_WORKERS=1    # Number of parallel matchups within each tournament (1=sequential)
 
 # Retry settings
@@ -39,10 +39,10 @@ RESUME_BATCH_DIR=""
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    "games/matching_pennies.yaml"
+    # "games/matching_pennies.yaml"
     "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    "games/stag_hunt.yaml"
+    # "games/stag_hunt.yaml"
     "games/travellers_dilemma.yaml"
     "games/trust_game.yaml"
 )
@@ -50,12 +50,12 @@ GAME_CONFIGS=(
 # List of mechanism config paths (relative to configs/)
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
-    "mechanisms/no_mechanism.yaml"
-    "mechanisms/contracting.yaml"
+    # "mechanisms/no_mechanism.yaml"
+    # "mechanisms/contracting.yaml"
     "mechanisms/disarmament.yaml"
-    "mechanisms/mediation.yaml"
+    # "mechanisms/mediation.yaml"
     "mechanisms/repetition.yaml"
-    "mechanisms/reputation.yaml"
+    # "mechanisms/reputation.yaml"
 )
 
 # GAME_CONFIGS=("games/matching_pennies.yaml" "games/prisoners_dilemma.yaml")

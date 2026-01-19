@@ -97,12 +97,13 @@ def compute_deviation_ranks(ratings: Dict[str, float]) -> Dict[str, str]:
     return ranks
 
 
-def parse_batch_folder(batch_path: Path) -> List[ExperimentData]:
+def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentData]:
     """
     Parse batch folder and extract experiment data.
 
     Args:
         batch_path: Path to batch experiment folder
+        metrics: List of metrics to load (subset of ["mean", "rd", "dr"])
 
     Returns:
         List of ExperimentData objects
@@ -123,7 +124,7 @@ def parse_batch_folder(batch_path: Path) -> List[ExperimentData]:
     for subdir in subdirs:
         # Check for required files
         config_path = subdir / "config.json"
-        payoff_path = subdir / "model_average_payoff.json"
+        payoff_path = subdir / "agent_average_payoff.json"
 
         if not config_path.exists() or not payoff_path.exists():
             raise FileNotFoundError(
@@ -141,39 +142,42 @@ def parse_batch_folder(batch_path: Path) -> List[ExperimentData]:
         game = config["game"]["type"]
         game_config = config["game"]
 
-        # Load metrics (REQUIRED for non-reputation mechanisms)
+        # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
         if mechanism.lower() == "reputation":
             # Reputation mechanism: explicitly use None (will display N/A)
             rd_fitness = None
             deviation_ranks = None
         else:
-            # All other mechanisms: REQUIRE these files to exist
-            rd_fitness_path = subdir / "replicator_dynamics_fitness.json"
-            if not rd_fitness_path.exists():
-                raise FileNotFoundError(
-                    f"Missing replicator_dynamics_fitness.json in {subdir} for mechanism {mechanism}"
-                )
+            # All other mechanisms: Load only requested metric files
+            rd_fitness = None
+            deviation_ranks = None
+            
+            # Load RD fitness if requested
+            if "rd" in metrics:
+                rd_fitness_path = subdir / "replicator_dynamics_fitness.json"
+                if not rd_fitness_path.exists():
+                    raise FileNotFoundError(
+                        f"Missing replicator_dynamics_fitness.json in {subdir} for mechanism {mechanism}"
+                    )
+                rd_fitness_data = load_json(rd_fitness_path)
+                if rd_fitness_data is None:
+                    raise ValueError(f"Failed to parse replicator_dynamics_fitness.json in {subdir}")
+                rd_fitness = {
+                    model: data["fitness"]
+                    for model, data in rd_fitness_data.items()
+                }
 
-            deviation_ratings_path = subdir / "deviation_ratings.json"
-            if not deviation_ratings_path.exists():
-                raise FileNotFoundError(
-                    f"Missing deviation_ratings.json in {subdir} for mechanism {mechanism}"
-                )
-
-            # Load RD fitness file and extract fitness values
-            rd_fitness_data = load_json(rd_fitness_path)
-            if rd_fitness_data is None:
-                raise ValueError(f"Failed to parse replicator_dynamics_fitness.json in {subdir}")
-            rd_fitness = {
-                model: data["fitness"]
-                for model, data in rd_fitness_data.items()
-            }
-
-            # Load deviation ratings and convert to ranks
-            deviation_ratings_data = load_json(deviation_ratings_path)
-            if deviation_ratings_data is None:
-                raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
-            deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
+            # Load deviation ratings if requested
+            if "dr" in metrics:
+                deviation_ratings_path = subdir / "deviation_ratings.json"
+                if not deviation_ratings_path.exists():
+                    raise FileNotFoundError(
+                        f"Missing deviation_ratings.json in {subdir} for mechanism {mechanism}"
+                    )
+                deviation_ratings_data = load_json(deviation_ratings_path)
+                if deviation_ratings_data is None:
+                    raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
+                deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
 
         # Create experiment data with new fields
         experiments.append(
@@ -236,16 +240,9 @@ def build_data_structure(
         payoffs[exp.game][exp.mechanism].update(exp.model_scores)
 
         # Update rd_fitness and deviation_ranks
-        # Reputation mechanism doesn't have RD/DR metrics
-        if exp.mechanism.lower() == "reputation":
-            for model in exp.model_scores.keys():
-                rd_fitness[exp.game][exp.mechanism][model] = None
-                deviation_ranks[exp.game][exp.mechanism][model] = None
-        else:
-            # Non-reputation mechanisms: values must exist for all models
-            for model in exp.model_scores.keys():
-                rd_fitness[exp.game][exp.mechanism][model] = exp.rd_fitness[model]
-                deviation_ranks[exp.game][exp.mechanism][model] = exp.deviation_ranks[model]
+        for model in exp.model_scores.keys():
+            rd_fitness[exp.game][exp.mechanism][model] = exp.rd_fitness[model] if exp.rd_fitness else None
+            deviation_ranks[exp.game][exp.mechanism][model] = exp.deviation_ranks[model] if exp.deviation_ranks else None
 
     return payoffs, rd_fitness, deviation_ranks, game_configs
 
@@ -571,7 +568,7 @@ def generate_aggregate_table(
     Returns:
         Complete LaTeX table as string
     """
-    # Compute all aggregate metrics in one pass
+    # Compute only requested aggregate metrics
     aggregate_payoffs = {}
     aggregate_rd = {}
     aggregate_dr = {}
@@ -580,15 +577,18 @@ def generate_aggregate_table(
         aggregate_rd[mech] = {}
         aggregate_dr[mech] = {}
         for model in models:
-            aggregate_payoffs[mech][model] = compute_aggregate_metric(
-                payoffs, game_configs, mech, model, metric_type="numeric"
-            )
-            aggregate_rd[mech][model] = compute_aggregate_metric(
-                rd_fitness, game_configs, mech, model, metric_type="numeric"
-            )
-            aggregate_dr[mech][model] = compute_aggregate_metric(
-                deviation_ranks, game_configs, mech, model, metric_type="rank"
-            )
+            if "mean" in metrics:
+                aggregate_payoffs[mech][model] = compute_aggregate_metric(
+                    payoffs, game_configs, mech, model, metric_type="numeric"
+                )
+            if "rd" in metrics:
+                aggregate_rd[mech][model] = compute_aggregate_metric(
+                    rd_fitness, game_configs, mech, model, metric_type="numeric"
+                )
+            if "dr" in metrics:
+                aggregate_dr[mech][model] = compute_aggregate_metric(
+                    deviation_ranks, game_configs, mech, model, metric_type="rank"
+                )
 
     # Start building table
     lines = []
@@ -633,62 +633,80 @@ def generate_aggregate_table(
     # Data rows
     for mech in mechanisms:
         row_parts = [mech]
-
-        # Compute "All Models" aggregate statistics
         is_reputation = mech.lower() == "reputation"
 
-        # Collect mean values across all models
-        all_models_mean_values = [aggregate_payoffs[mech][model][0] for model in models]
-        agg_mean = sum(all_models_mean_values) / len(all_models_mean_values)
-        if len(all_models_mean_values) > 1:
-            variance = sum((x - agg_mean) ** 2 for x in all_models_mean_values) / (len(all_models_mean_values) - 1)
-            agg_mean_std = math.sqrt(variance)
-        else:
-            agg_mean_std = 0.0
-
-        # Collect RD values across all models (only for non-reputation)
-        if not is_reputation:
-            all_models_rd_values = [aggregate_rd[mech][model][0] for model in models]
-            agg_rd = sum(all_models_rd_values) / len(all_models_rd_values)
-            if len(all_models_rd_values) > 1:
-                variance = sum((x - agg_rd) ** 2 for x in all_models_rd_values) / (len(all_models_rd_values) - 1)
-                agg_rd_std = math.sqrt(variance)
+        # Compute "All Models" aggregate statistics
+        all_models_metric_data = {}
+        
+        # Compute mean if requested
+        if "mean" in all_models_metrics:
+            all_models_mean_values = [aggregate_payoffs[mech][model][0] for model in models]
+            agg_mean = sum(all_models_mean_values) / len(all_models_mean_values)
+            if len(all_models_mean_values) > 1:
+                variance = sum((x - agg_mean) ** 2 for x in all_models_mean_values) / (len(all_models_mean_values) - 1)
+                agg_mean_std = math.sqrt(variance)
             else:
-                agg_rd_std = 0.0
-
-        # Format "All Models" column (only mean and rd, no dr)
-        if show_stderr:
-            all_models_metric_data = {
-                "mean": f"{agg_mean:.{precision}f} $\\pm$ {agg_mean_std:.{precision}f}",
-                "rd": f"{agg_rd:.{precision}f} $\\pm$ {agg_rd_std:.{precision}f}" if not is_reputation else "N/A",
-            }
-        else:
-            all_models_metric_data = {
-                "mean": f"{agg_mean:.{precision}f}",
-                "rd": f"{agg_rd:.{precision}f}" if not is_reputation else "N/A",
-            }
+                agg_mean_std = 0.0
+            
+            if show_stderr:
+                all_models_metric_data["mean"] = f"{agg_mean:.{precision}f} $\\pm$ {agg_mean_std:.{precision}f}"
+            else:
+                all_models_metric_data["mean"] = f"{agg_mean:.{precision}f}"
+        
+        # Compute RD if requested (but not for reputation)
+        if "rd" in all_models_metrics:
+            if is_reputation:
+                all_models_metric_data["rd"] = "N/A"
+            else:
+                all_models_rd_values = [aggregate_rd[mech][model][0] for model in models if aggregate_rd[mech][model] is not None]
+                if all_models_rd_values:
+                    agg_rd = sum(all_models_rd_values) / len(all_models_rd_values)
+                    if len(all_models_rd_values) > 1:
+                        variance = sum((x - agg_rd) ** 2 for x in all_models_rd_values) / (len(all_models_rd_values) - 1)
+                        agg_rd_std = math.sqrt(variance)
+                    else:
+                        agg_rd_std = 0.0
+                    
+                    if show_stderr:
+                        all_models_metric_data["rd"] = f"{agg_rd:.{precision}f} $\\pm$ {agg_rd_std:.{precision}f}"
+                    else:
+                        all_models_metric_data["rd"] = f"{agg_rd:.{precision}f}"
+                else:
+                    all_models_metric_data["rd"] = "N/A"
 
         all_models_values = [all_models_metric_data[m] for m in all_models_metrics]
         row_parts.append(" & ".join(all_models_values))
 
         # Add individual model columns
         for model in models:
-            payoff_result = aggregate_payoffs[mech][model]
-            rd_result = aggregate_rd[mech][model]
-            dr_val = aggregate_dr[mech][model]
-
-            if show_stderr:
-                metric_data = {
-                    "mean": format_score_with_stderr(payoff_result, precision),
-                    "rd": format_score_with_stderr(rd_result, precision) if rd_result is not None else "N/A",
-                    "dr": dr_val if dr_val is not None else "N/A",
-                }
-            else:
-                metric_data = {
-                    "mean": format_score(payoff_result[0], precision),
-                    "rd": format_score(rd_result[0], precision) if rd_result is not None else "N/A",
-                    "dr": dr_val if dr_val is not None else "N/A",
-                }
+            metric_data = {}
+            
+            if "mean" in metrics:
+                payoff_result = aggregate_payoffs[mech][model]
+                if show_stderr:
+                    metric_data["mean"] = format_score_with_stderr(payoff_result, precision)
+                else:
+                    metric_data["mean"] = format_score(payoff_result[0], precision)
+            
+            if "rd" in metrics:
+                if is_reputation:
+                    metric_data["rd"] = "N/A"
+                else:
+                    rd_result = aggregate_rd[mech][model]
+                    if rd_result is not None:
+                        if show_stderr:
+                            metric_data["rd"] = format_score_with_stderr(rd_result, precision)
+                        else:
+                            metric_data["rd"] = format_score(rd_result[0], precision)
+                    else:
+                        metric_data["rd"] = "N/A"
+            
+            if "dr" in metrics:
+                if is_reputation:
+                    metric_data["dr"] = "N/A"
+                else:
+                    dr_val = aggregate_dr[mech][model]
+                    metric_data["dr"] = dr_val if dr_val is not None else "N/A"
 
             # Extract only selected metrics
             metric_values = [metric_data[m] for m in metrics]
@@ -782,7 +800,7 @@ Examples:
 
     # Parse batch folder
     try:
-        experiments = parse_batch_folder(args.batch_path)
+        experiments = parse_batch_folder(args.batch_path, args.metrics)
     except (FileNotFoundError, NotADirectoryError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
