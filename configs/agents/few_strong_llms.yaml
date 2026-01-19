@@ -1,4 +1,4 @@
-# Smaller flagship model
+# new strong model with proper reasoning
 - llm:
     provider: OpenRouter
     model: google/gemini-3-flash-preview
@@ -8,6 +8,7 @@
         effort: medium
   type: CoTAgent
 
+# new strong model without reasoning
 - llm:
     provider: OpenRouter
     model: google/gemini-3-flash-preview
@@ -15,9 +16,19 @@
       temperature: 1
       reasoning:
         effort: none
+  type: IOAgent
+
+# new strong model
+- llm:
+    provider: OpenRouter
+    model: openai/gpt-5.2
+    kwargs:
+      temperature: 1
+      reasoning:
+        effort: low
   type: CoTAgent
 
-# Older flagship model
+# Old strong model
 - llm:
     provider: OpenRouter
     model: openai/gpt-4o-2024-05-13
@@ -25,6 +36,7 @@
       temperature: 1
   type: CoTAgent
 
+# "Safe" strong model
 - llm:
     provider: OpenRouter
     model: anthropic/claude-sonnet-4.5
@@ -32,7 +44,7 @@
       temperature: 1
       reasoning:
         effort: low
-  type: IOAgent
+  type: CoTAgent
 
 # Open-weight flagship small model
 - llm:
@@ -42,11 +54,3 @@
       temperature: 1
   type: CoTAgent
 
-- llm:
-    provider: OpenRouter
-    model: openai/gpt-5.2
-    kwargs:
-      temperature: 1
-      reasoning:
-        effort: low
-  type: CoTAgent
