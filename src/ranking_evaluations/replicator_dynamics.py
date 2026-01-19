@@ -29,8 +29,18 @@ class DiscreteReplicatorDynamics:
     ) -> None:
         """Bind a population of ``agents`` to the tournament payoffs."""
         self.players = players
-        self.agent_types = {player.agent_type for player in players}
         self.matchup_payoffs = matchup_payoffs
+        
+        # Ensure payoff tensor is built
+        if matchup_payoffs._payoff_tensor is None:
+            matchup_payoffs.build_payoff_tensor()
+        
+        # Use agent types from payoff tensor
+        self.agent_types = matchup_payoffs._tensor_agent_types
+        if self.agent_types is None:
+            raise ValueError(
+                "MatchupPayoffs must have _tensor_agent_types populated"
+            )
 
     def population_update(
         self,
@@ -145,8 +155,6 @@ class DiscreteReplicatorDynamics:
                 "Matchup payoffs must be provided before running dynamics."
             )
 
-        if matchup_payoffs._payoff_tensor is None:
-            matchup_payoffs.build_payoff_tensor()
         agent_average_payoff = matchup_payoffs.agent_average_payoff()
 
         LOGGER.log_record(
