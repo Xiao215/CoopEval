@@ -26,8 +26,8 @@ EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
 
 # Parallel execution settings
 PARALLEL_EXPERIMENTS=4  # Number of experiments to run simultaneously
-EXPERIMENT_WORKERS=1    # Number of parallel workers within each experiment (for LLM queries)
-TOURNAMENT_WORKERS=1    # Number of parallel matchups within each tournament (1=sequential)
+EXPERIMENT_WORKERS=3    # Number of parallel workers within each experiment (for LLM queries)
+TOURNAMENT_WORKERS=3    # Number of parallel matchups within each tournament (1=sequential)
 
 # Retry settings
 RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead of retrying them
