@@ -254,7 +254,7 @@ REPUTATION_NO_ACTION_DISTRIBUTION_DESCRIPTION = (
     "{indent} → For context, up until round {window_start_minus_one}, {name_plus_have} not played any actions yet."
 )
 REPUTATION_PLAYERS_HEADER = (
-    "You are playing with {num_opponents} other agent(s): {opponent_ids}."
+    "You are playing with {num_opponents} other agent(s): {opponent_uids}."
 )
 REPUTATION_ACTION_DISTRIBUTION = (
     "{indent} → For context, up until round {window_start_minus_one}, {name_plus_have} played actions as often as follows: {stats_str}"

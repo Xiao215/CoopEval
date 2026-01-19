@@ -79,6 +79,7 @@ class Agent(ABC):
             "prompt:\n"
             f"{prompt}\n"
             f"===== Response [ID: {trace_id}] =====\n"
+            f"agent: {self.name}\n"
             "response:\n"
             f"{response}\n\n"
         )

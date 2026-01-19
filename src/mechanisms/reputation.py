@@ -99,14 +99,14 @@ class Reputation(RepetitiveMechanism, ABC):
         window_end = current_round - 1
 
         # Header: Generate IDs relative to the focus player's perspective
-        opponent_ids = [
+        opponent_uids = [
             self._get_display_name(opp, observer) for opp in direct_opponents
         ]
 
         lines = [
             REPUTATION_PLAYERS_HEADER.format(
                 num_opponents=len(direct_opponents),
-                opponent_ids=", ".join(opponent_ids),
+                opponent_uids=", ".join(opponent_uids),
             ),
             "",
         ]

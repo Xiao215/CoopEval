@@ -2,6 +2,8 @@
 # Main runner script to execute run_experiment.py for all combinations of games and mechanisms
 # Usage: ./main_runner.sh
 
+export PYTHONPATH=.
+
 # Don't exit on error - we want to continue even if individual experiments fail
 set +e
 
