@@ -1,5 +1,6 @@
 """Utilities for running discrete-time replicator dynamics tournaments."""
 
+from collections import defaultdict
 from typing import Literal
 
 import numpy as np
@@ -110,36 +111,6 @@ class DiscreteReplicatorDynamics:
                 "learning_rate method must be 'constant' or 'sqrt'"
             )
 
-        # Initialize population distribution
-        if isinstance(initial_population, np.ndarray):
-            assert len(initial_population) == len(
-                self.agent_cfgs
-            ), "Initial population distribution must match number of agent types"
-            assert np.all(
-                initial_population > 0
-            ), "Initial population distribution must be positive everywhere; zero probabilities stay zero in Replicator Dynamics!"
-            population = initial_population
-        elif initial_population == "random":
-            population = np.random.exponential(
-                scale=1.0, size=len(self.agent_cfgs)
-            )
-        elif initial_population == "uniform":
-            population = np.ones(len(self.agent_cfgs))
-        else:
-            raise ValueError(
-                "initial_population must be a numpy array or 'uniform'"
-            )
-
-        # Normalize to ensure it is a probability distribution
-        population /= population.sum()
-        model_types = [
-            str(agent_config["llm"]["model"])
-            for agent_config in self.agent_cfgs
-        ]
-        population_history = [
-            {model: float(prob) for model, prob in zip(model_types, population)}
-        ]
-
         matchup_payoffs = matchup_payoffs or self.matchup_payoffs
         if matchup_payoffs is None:
             raise ValueError(
@@ -148,6 +119,49 @@ class DiscreteReplicatorDynamics:
 
         if matchup_payoffs._payoff_tensor is None:
             matchup_payoffs.build_payoff_tensor()
+        model_types = matchup_payoffs._tensor_model_types
+        assert model_types is not None, "Payoff tensor model types were not set."
+
+        # Initialize population distribution (aligned to payoff tensor model order)
+        if isinstance(initial_population, np.ndarray):
+            if len(initial_population) == len(model_types):
+                population = initial_population.astype(float, copy=True)
+            elif len(initial_population) == len(self.agent_cfgs):
+                pop_by_model = defaultdict(float)
+                for agent_cfg, prob in zip(
+                    self.agent_cfgs, initial_population
+                ):
+                    model = str(agent_cfg["llm"]["model"])
+                    pop_by_model[model] += float(prob)
+                population = np.array(
+                    [pop_by_model[model] for model in model_types],
+                    dtype=float,
+                )
+            else:
+                raise ValueError(
+                    "Initial population must match the number of models "
+                    "in the payoff tensor or the number of agent configs."
+                )
+            assert np.all(
+                population > 0
+            ), "Initial population distribution must be positive everywhere; zero probabilities stay zero in Replicator Dynamics!"
+        elif initial_population == "random":
+            population = np.random.exponential(
+                scale=1.0, size=len(model_types)
+            )
+        elif initial_population == "uniform":
+            population = np.ones(len(model_types))
+        else:
+            raise ValueError(
+                "initial_population must be a numpy array or 'uniform'"
+            )
+
+        # Normalize to ensure it is a probability distribution
+        population /= population.sum()
+        population_history = [
+            {model: float(prob) for model, prob in zip(model_types, population)}
+        ]
+
         model_average_payoff = matchup_payoffs.model_average_payoff()
 
         LOGGER.log_record(
