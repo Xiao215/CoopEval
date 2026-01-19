@@ -1,6 +1,7 @@
 """Store and aggregate matchup-based tournament payoffs for evolutionary dynamics."""
 
 import math
+import threading
 from collections import defaultdict
 from itertools import permutations, product
 from typing import Any, Sequence, TypeAlias, override
@@ -40,6 +41,9 @@ class MatchupPayoffs(PayoffsBase):
         # Structure: { (player_seat0, player_seat1): [ ndarray(payoff_seat0, payoff_seat1, ...), ... ] }
         self._profiles: dict[ProfileKey, list[np.ndarray]] = defaultdict(list)
 
+        # Thread safety for concurrent matchup execution
+        self._lock = threading.Lock()
+
         # Cached payoff tensor (populated by build_payoff_tensor)
         self._payoff_tensor: np.ndarray | None = None
         self._tensor_agent_types: list[str] | None = None
@@ -77,7 +81,8 @@ class MatchupPayoffs(PayoffsBase):
 
         for key, history_list in match_accumulator.items():
             match_array = np.array(history_list, dtype=float)
-            self._profiles[key].append(match_array)
+            with self._lock:
+                self._profiles[key].append(match_array)
 
     @override
     def agent_average_payoff(self) -> dict[str, float | None]:

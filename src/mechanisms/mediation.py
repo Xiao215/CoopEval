@@ -22,8 +22,10 @@ class Mediation(Mechanism):
     def __init__(
         self,
         base_game: Game,
+        *,
+        tournament_workers: int = 1,
     ) -> None:
-        super().__init__(base_game)
+        super().__init__(base_game, tournament_workers=tournament_workers)
         # keyed by (agent_type, player_id)
         self.mediators: dict[tuple[str, int], dict[int, Action]] = {}
         self.mediator_design_prompt = MEDIATOR_DESIGN_PROMPT

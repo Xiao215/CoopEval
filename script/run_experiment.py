@@ -72,6 +72,12 @@ def setup_game_and_mechanism(config: dict):
 
     game = game_class(**config["game"].get("kwargs", {}))
     mech_kwargs = (config["mechanism"].get("kwargs", {}) or {}).copy()
+
+    # Add tournament_workers from concurrency config
+    concurrency_cfg = config.get("concurrency", {}) or {}
+    if "tournament_workers" in concurrency_cfg:
+        mech_kwargs["tournament_workers"] = concurrency_cfg["tournament_workers"]
+
     mechanism = mechanism_class(base_game=game, **mech_kwargs)
 
     print(
@@ -314,6 +320,8 @@ def main():
     # 2. Setup game, agents and mechanism
     game, mechanism = setup_game_and_mechanism(config)
     players = create_players_with_player_id(config["agents"], game.num_players)
+
+    # Log effective configuration including concurrency settings
     LOGGER.log_record(config, "config.json")
 
     # 3. Run mechanism (tournament)

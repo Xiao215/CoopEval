@@ -1,5 +1,6 @@
 """Track payoffs for reputation-based mechanisms where matchups are history-dependent."""
 
+import threading
 from collections import defaultdict
 from typing import Any, Sequence, override
 
@@ -34,6 +35,9 @@ class ReputationPayoffs(PayoffsBase):
         # Structure: {player: list of points over all rounds}
         self._profiles: dict[Agent, list[float]] = defaultdict(list)
 
+        # Thread safety for concurrent matchup execution
+        self._lock = threading.Lock()
+
     @override
     def reset(self) -> None:
         """Clear all recorded payoff outcomes."""
@@ -51,7 +55,8 @@ class ReputationPayoffs(PayoffsBase):
         """
         for round_moves in moves_over_rounds:
             for move in round_moves:
-                self._profiles[move.player].append(move.points)
+                with self._lock:
+                    self._profiles[move.player].append(move.points)
 
     def agent_average_payoff(self) -> dict[str, float | None]:
         """

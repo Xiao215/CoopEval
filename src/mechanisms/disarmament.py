@@ -32,15 +32,17 @@ class Disarmament(RepetitiveMechanism):
         *,
         num_rounds: int,
         discount: float,
+        tournament_workers: int = 1,
     ) -> None:
-        super().__init__(base_game, num_rounds, discount)
-        self.current_disarm_caps: CapsByPlayer = {}
-
+        super().__init__(
+            base_game, num_rounds, discount, tournament_workers=tournament_workers
+        )
         self.disarmament_mechanism_prompt = DISARMAMENT_MECHANISM_PROMPT
 
     def _format_prompt(
         self,
         player: Agent,
+        caps: CapsByPlayer,
     ) -> str:
         """
         Build the filled prompt:
@@ -49,25 +51,25 @@ class Disarmament(RepetitiveMechanism):
         - discount: continuation probability (integer percent)
         """
 
-        if player not in self.current_disarm_caps:
+        if player not in caps:
             raise KeyError(
                 f"Upper bounds have not been initialized for player {player.player_id}"
             )
 
         self_caps_description = self._caps_description(
-            self.current_disarm_caps[player]
+            caps[player]
         )
 
         other_player_labels = {
             other_player: f"Player {other_player.player_id}"
-            for other_player in self.current_disarm_caps.keys()
+            for other_player in caps.keys()
             if other_player != player
         }
 
         opp_lines = []
         for other_player, other_player_label in other_player_labels.items():
             other_player_caps = self._caps_description(
-                self.current_disarm_caps[other_player]
+                caps[other_player]
             )
             opp_lines.append(f"{other_player_label}: {other_player_caps}")
         other_players_caps_block = "\n".join(opp_lines)
@@ -80,7 +82,7 @@ class Disarmament(RepetitiveMechanism):
         )
 
         # Append appropriate format requirement based on whether player can disarm
-        can_disarm = sum(self.current_disarm_caps[player]) > 100.0
+        can_disarm = sum(caps[player]) > 100.0
         if can_disarm:
             return base_prompt + DISARM_FORMAT_CAN_DISARM
         else:
@@ -98,6 +100,7 @@ class Disarmament(RepetitiveMechanism):
     def _negotiate_disarm_caps(
         self,
         player: Agent,
+        caps: CapsByPlayer,
     ) -> tuple[str, str, Caps]:
         """Request updated caps for player and return parsed response.
 
@@ -107,7 +110,7 @@ class Disarmament(RepetitiveMechanism):
         base_prompt = (
             self.base_game.get_player_prompt(player.player_id)
             + "\n"
-            + self._format_prompt(player)
+            + self._format_prompt(player, caps)
         )
 
         def parse_func(resp: str) -> tuple[str, Caps]:
@@ -231,10 +234,14 @@ class Disarmament(RepetitiveMechanism):
     def _run_negotiations(
         self,
         players: Sequence[Agent],
+        caps: CapsByPlayer,
     ) -> dict[Agent, tuple[str, str, Caps]]:
         """Prompt all players for their disarmament choices and return results."""
 
-        results = run_tasks(players, self._negotiate_disarm_caps)
+        def negotiate_with_caps(player: Agent) -> tuple[str, str, Caps]:
+            return self._negotiate_disarm_caps(player, caps)
+
+        results = run_tasks(players, negotiate_with_caps)
         return {
             player: result
             for player, result in zip(players, results, strict=True)
@@ -248,17 +255,15 @@ class Disarmament(RepetitiveMechanism):
         Returns:
             A list of move sequences (one sequence per round played).
         """
-        # Ensure we start with fresh caps for this specific match
-        self.current_disarm_caps = {
+        # Create per-matchup state to avoid shared state across parallel matchups
+        current_disarm_caps = {
             player: [100.0 for _ in range(self.base_game.num_actions)]
             for player in players
         }
+        matchup_history = self.History(self.base_game.action_class)
 
         disarmament_records: list[list[dict[str, Any]]] = []
         matchup_moves = []
-
-        # Note: If self.history persists across matches, ensure it is cleared here
-        # or managed externally. For safety, we just track local moves for the return.
 
         for _ in tqdm(
             range(1, self.num_rounds + 1),
@@ -266,7 +271,7 @@ class Disarmament(RepetitiveMechanism):
         ):
 
             # Prompt ALL players (including those with no room to disarm)
-            negotiation_results = self._run_negotiations(players)
+            negotiation_results = self._run_negotiations(players, current_disarm_caps)
 
             proposed_caps: CapsByPlayer = {}
             player_choices = {}
@@ -293,7 +298,7 @@ class Disarmament(RepetitiveMechanism):
 
             # Determine which caps to use (veto discards all proposed changes)
             if veto:
-                caps_to_use = self.current_disarm_caps.copy()
+                caps_to_use = current_disarm_caps.copy()
             else:
                 caps_to_use = proposed_caps
 
@@ -317,7 +322,7 @@ class Disarmament(RepetitiveMechanism):
                     # No veto, but negotiation stopped
                     # Check if anyone has room to disarm
                     any_room_to_disarm = any(
-                        sum(self.current_disarm_caps[player]) > 100.0
+                        sum(current_disarm_caps[player]) > 100.0
                         for player in players
                     )
                     if not any_room_to_disarm:
@@ -366,7 +371,7 @@ class Disarmament(RepetitiveMechanism):
                 players=players, additional_info=disarmament_mechanisms
             )
 
-            self.current_disarm_caps = caps_to_use
+            current_disarm_caps = caps_to_use
 
             # Update round_records with the actual caps used and termination reason
             for disarm_info in disarming_phase_records:
@@ -382,7 +387,7 @@ class Disarmament(RepetitiveMechanism):
                 ]
             )
 
-            self.history.append(moves)
+            matchup_history.append(moves)
             matchup_moves.append(moves)
 
             if not negotiation_continue:
@@ -391,8 +396,5 @@ class Disarmament(RepetitiveMechanism):
         LOGGER.log_record(
             record=disarmament_records, file_name=self.record_file
         )
-
-        # Clear matchup-specific state to catch any accidental reuse
-        self.current_disarm_caps = {}
 
         return matchup_moves
