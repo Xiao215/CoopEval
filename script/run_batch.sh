@@ -1,7 +1,8 @@
 #!/bin/bash
 # Main batch runner script - orchestrates experiment execution
 # Usage: ./script/run_batch.sh [--local|--slurm] [--batch-name NAME] [--resume BATCH_DIR]
-
+# An example of resuming could be
+# ./script/run_batch.sh --slurm --resume outputs/test_resume_20260120_024307
 export PYTHONPATH=.
 
 # Don't exit on error - we want to continue even if individual experiments fail
@@ -323,12 +324,13 @@ elif [ "$MODE" == "slurm" ]; then
     echo "SLURM script generated: $SLURM_SCRIPT"
     echo ""
 
-    # Submit job array
+    # Submit job array with logs in job-specific subdirectory
+    # %A will be replaced by SLURM with the job array ID
     echo "Submitting SLURM job array..."
     JOB_ID=$(sbatch --parsable \
         --array=0-$((num_experiments - 1)) \
-        --output="${BATCH_DIR}/slurm/slurm-%A_%a.out" \
-        --error="${BATCH_DIR}/slurm/slurm-%A_%a.err" \
+        --output="${BATCH_DIR}/slurm/%A/slurm-%A_%a.out" \
+        --error="${BATCH_DIR}/slurm/%A/slurm-%A_%a.err" \
         "$SLURM_SCRIPT")
 
     if [ $? -eq 0 ]; then
@@ -338,6 +340,7 @@ elif [ "$MODE" == "slurm" ]; then
         echo "Job ID: $JOB_ID"
         echo "Array size: $num_experiments"
         echo "Batch directory: $BATCH_DIR"
+        echo "Logs directory: ${BATCH_DIR}/slurm/${JOB_ID}/"
         echo ""
         echo "Monitor job status:"
         echo "  squeue -j $JOB_ID"
@@ -347,7 +350,7 @@ elif [ "$MODE" == "slurm" ]; then
         echo "  watch -n 5 'python -c \"import json; d=json.load(open(\\\"${BATCH_DIR}/batch_summary.json\\\")); print(f\\\"Completed: {d.get(\\\\\\\"completed_experiments\\\\\\\", 0)}/{d.get(\\\\\\\"total_experiments\\\\\\\", 0)}\\\")\"'"
         echo ""
         echo "View logs:"
-        echo "  tail -f ${BATCH_DIR}/slurm/slurm-${JOB_ID}_*.out"
+        echo "  tail -f ${BATCH_DIR}/slurm/${JOB_ID}/slurm-${JOB_ID}_*.out"
         echo "=================================================="
     else
         echo "ERROR: Failed to submit SLURM job array"

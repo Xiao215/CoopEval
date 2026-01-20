@@ -96,11 +96,12 @@ CONFIG_PATH="${BATCH_DIR}/configs/${EXP_NAME}.yaml"
 # =============================================================================
 
 # Create descriptive symlinks for SLURM logs: <mechanism>_<game>_<jobid>_slurm.{out,err}
+# Logs are organized by job ID: slurm/<job_id>/
 if [ -n "$SLURM_ARRAY_JOB_ID" ] && [ -n "$SLURM_ARRAY_TASK_ID" ]; then
-    SLURM_DIR="${BATCH_DIR}/slurm"
+    SLURM_DIR="${BATCH_DIR}/slurm/${SLURM_ARRAY_JOB_ID}"
     SLURM_BASE="slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 
-    # Create symlinks with descriptive names
+    # Create symlinks with descriptive names in the same job-specific directory
     ln -sf "${SLURM_BASE}.out" "${SLURM_DIR}/${EXP_NAME}_${SLURM_ARRAY_JOB_ID}_slurm.out"
     ln -sf "${SLURM_BASE}.err" "${SLURM_DIR}/${EXP_NAME}_${SLURM_ARRAY_JOB_ID}_slurm.err"
 fi
