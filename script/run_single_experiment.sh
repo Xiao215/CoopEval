@@ -88,6 +88,20 @@ fi
 EXPERIMENT_DIR="${BATCH_DIR}/${EXP_NAME}"
 
 # =============================================================================
+# SLURM LOG SYMLINKS (if running in SLURM)
+# =============================================================================
+
+# Create descriptive symlinks for SLURM logs: <mechanism>_<game>_<jobid>_slurm.{out,err}
+if [ -n "$SLURM_ARRAY_JOB_ID" ] && [ -n "$SLURM_ARRAY_TASK_ID" ]; then
+    SLURM_DIR="${BATCH_DIR}/slurm"
+    SLURM_BASE="slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+
+    # Create symlinks with descriptive names
+    ln -sf "${SLURM_BASE}.out" "${SLURM_DIR}/${EXP_NAME}_${SLURM_ARRAY_JOB_ID}_slurm.out"
+    ln -sf "${SLURM_BASE}.err" "${SLURM_DIR}/${EXP_NAME}_${SLURM_ARRAY_JOB_ID}_slurm.err"
+fi
+
+# =============================================================================
 # PRE-EXECUTION CHECKS
 # =============================================================================
 
