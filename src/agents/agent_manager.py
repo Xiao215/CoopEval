@@ -1,4 +1,5 @@
 """Agent abstractions and shared LLM caching utilities."""
+from datetime import datetime
 
 import itertools
 import textwrap
@@ -73,12 +74,13 @@ class Agent(ABC):
 
     def _log_inference(self, prompt: str, response: str, trace_id: str) -> None:
         """Log the inference to the game log."""
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         entry = (
-            f"===== Prompt [ID: {trace_id}] =====\n"
+            f"===== Prompt [ID: {trace_id}] [{timestamp}] =====\n"
             f"agent: {self.name}\n"
             "prompt:\n"
             f"{prompt}\n"
-            f"===== Response [ID: {trace_id}] =====\n"
+            f"===== Response [ID: {trace_id}] [{timestamp}] =====\n"
             f"agent: {self.name}\n"
             "response:\n"
             f"{response}\n\n"
