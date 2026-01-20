@@ -47,28 +47,43 @@ fi
 # EXTRACT EXPERIMENT METADATA
 # =============================================================================
 
-# Use jq to extract experiment details from manifest
-if ! command -v jq &> /dev/null; then
-    echo "ERROR: jq is not installed. Please install jq to use this script."
+# Use Python to extract experiment details from manifest (no jq dependency)
+# Export variables using eval to set them in the current shell
+eval "$($PYTHON_BIN << EOF
+import json
+import sys
+
+try:
+    with open('${MANIFEST_FILE}', 'r') as f:
+        experiments = json.load(f)
+
+    if ${EXPERIMENT_INDEX} >= len(experiments):
+        print("ERROR: Experiment index ${EXPERIMENT_INDEX} not found in manifest", file=sys.stderr)
+        sys.exit(1)
+
+    exp = experiments[${EXPERIMENT_INDEX}]
+
+    # Print shell variable assignments
+    print(f"GAME='{exp['game']}'")
+    print(f"MECHANISM='{exp['mechanism']}'")
+    print(f"EXP_NAME='{exp['experiment_name']}'")
+    print(f"CONFIG_PATH='{exp['config_path']}'")
+    print(f"AGENTS_CONFIG='{exp['agents_config']}'")
+    print(f"EVALUATION_CONFIG='{exp['evaluation_config']}'")
+    print(f"EXPERIMENT_WORKERS={exp['experiment_workers']}")
+    print(f"TOURNAMENT_WORKERS={exp['tournament_workers']}")
+    print(f"RETRY_FAILED={str(exp['retry_failed_experiments']).lower()}")
+
+except Exception as e:
+    print(f"ERROR: Failed to parse manifest: {e}", file=sys.stderr)
+    sys.exit(1)
+EOF
+)"
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to extract experiment metadata from manifest"
     exit 1
 fi
-
-EXPERIMENT=$(jq ".[$EXPERIMENT_INDEX]" "$MANIFEST_FILE")
-
-if [ "$EXPERIMENT" == "null" ]; then
-    echo "ERROR: Experiment index $EXPERIMENT_INDEX not found in manifest"
-    exit 1
-fi
-
-GAME=$(echo "$EXPERIMENT" | jq -r '.game')
-MECHANISM=$(echo "$EXPERIMENT" | jq -r '.mechanism')
-EXP_NAME=$(echo "$EXPERIMENT" | jq -r '.experiment_name')
-CONFIG_PATH=$(echo "$EXPERIMENT" | jq -r '.config_path')
-AGENTS_CONFIG=$(echo "$EXPERIMENT" | jq -r '.agents_config')
-EVALUATION_CONFIG=$(echo "$EXPERIMENT" | jq -r '.evaluation_config')
-EXPERIMENT_WORKERS=$(echo "$EXPERIMENT" | jq -r '.experiment_workers')
-TOURNAMENT_WORKERS=$(echo "$EXPERIMENT" | jq -r '.tournament_workers')
-RETRY_FAILED=$(echo "$EXPERIMENT" | jq -r '.retry_failed_experiments')
 
 EXPERIMENT_DIR="${BATCH_DIR}/${EXP_NAME}"
 

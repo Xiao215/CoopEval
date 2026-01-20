@@ -273,8 +273,8 @@ else
     echo "Using existing manifest: $MANIFEST_FILE"
 fi
 
-# Read number of experiments from manifest
-num_experiments=$(jq 'length' "$MANIFEST_FILE")
+# Read number of experiments from manifest (using Python instead of jq)
+num_experiments=$($PYTHON_BIN -c "import json; print(len(json.load(open('${MANIFEST_FILE}'))))")
 echo "Total experiments in manifest: $num_experiments"
 echo ""
 
@@ -343,7 +343,7 @@ elif [ "$MODE" == "slurm" ]; then
         echo "  squeue -u \$USER"
         echo ""
         echo "Check batch progress:"
-        echo "  watch -n 5 'jq \".completed_experiments, .statistics\" ${BATCH_DIR}/batch_summary.json'"
+        echo "  watch -n 5 'python -c \"import json; d=json.load(open(\\\"${BATCH_DIR}/batch_summary.json\\\")); print(f\\\"Completed: {d.get(\\\\\\\"completed_experiments\\\\\\\", 0)}/{d.get(\\\\\\\"total_experiments\\\\\\\", 0)}\\\")\"'"
         echo ""
         echo "View logs:"
         echo "  tail -f ${BATCH_DIR}/slurm/slurm-${JOB_ID}_*.out"
