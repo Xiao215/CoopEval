@@ -37,10 +37,11 @@ custom_cmap = LinearSegmentedColormap.from_list("custom", PALETTE_BASE)
 # Helper functions
 def load_and_build_tensor(folder_path: Path) -> tuple[np.ndarray, list[str], int]:
     """
-    Load matchup payoffs and build tensor.
+    Load matchup payoffs and build full payoff tensor for all players.
 
     Returns:
-        Tuple of (tensor, agent_labels, num_players)
+        Tuple of (full_tensor, agent_labels, num_players)
+        where full_tensor has shape (num_players, n_strategies^num_players)
     """
     json_data = load_json(folder_path / "matchup_payoffs.json")
 
@@ -49,7 +50,10 @@ def load_and_build_tensor(folder_path: Path) -> tuple[np.ndarray, list[str], int
 
     num_players = get_num_players_from_matchup(json_data)
 
-    return payoffs._payoff_tensor, payoffs._tensor_agent_types, num_players
+    # Build full payoff tensor for all players using existing symmetry method
+    full_tensor = payoffs.build_full_payoff_tensor()
+
+    return full_tensor, payoffs._tensor_agent_types, num_players
 
 
 def to_snake_case(text: str) -> str:
@@ -73,28 +77,34 @@ def get_output_path(output_dir: Path, mechanism: str, game: str) -> Path:
 
 # Visualization functions
 def plot_2player_payoff_tensor(
-    tensor: np.ndarray,
+    full_tensor: np.ndarray,
     agent_labels: list[str],
     game_name: str,
     mechanism_name: str,
     output_path: Path,
 ) -> None:
-    """Create heatmap for 2-player game payoff tensor."""
-    # Extract both players' payoffs
-    p1_payoffs = tensor
-    p2_payoffs = tensor.T
+    """Create heatmap for 2-player game payoff tensor.
 
-    # Create annotation matrix with both payoffs
+    Args:
+        full_tensor: Shape (2, n^2) from build_full_payoff_tensor()
+    """
     n = len(agent_labels)
+
+    # Reshape full_tensor to get payoff matrices for each player
+    # Joint strategies are ordered as (i,j) -> i*n + j
+    p1_payoffs = full_tensor[0, :].reshape(n, n)
+    p2_payoffs = full_tensor[1, :].reshape(n, n)
+
+    # Create annotation matrix with both players' payoffs
     annotations = np.empty((n, n), dtype=object)
     for i in range(n):
         for j in range(n):
-            annotations[i, j] = f"{p1_payoffs[i, j]:.2f} / {p2_payoffs[i, j]:.2f}"
+            annotations[i, j] = f"{p1_payoffs[i, j]:.1f}/{p2_payoffs[i, j]:.1f}"
 
     # Clean labels for display
     cleaned_labels = [clean_model_name(label) for label in agent_labels]
 
-    # Create heatmap
+    # Create heatmap - color by player 1's payoff, annotate with all payoffs
     fig, ax = plt.subplots(figsize=(10, 8))
 
     sns.heatmap(
@@ -121,13 +131,17 @@ def plot_2player_payoff_tensor(
 
 
 def plot_3player_payoff_tensor(
-    tensor: np.ndarray,
+    full_tensor: np.ndarray,
     agent_labels: list[str],
     game_name: str,
     mechanism_name: str,
     output_path: Path,
 ) -> None:
-    """Create multiple heatmaps for 3-player game, one per player 3's choice."""
+    """Create multiple heatmaps for 3-player game, one per player 3's choice.
+
+    Args:
+        full_tensor: Shape (3, n^3) from build_full_payoff_tensor()
+    """
     n = len(agent_labels)
 
     # Create 2x3 subplot grid for 6 agents
@@ -137,32 +151,34 @@ def plot_3player_payoff_tensor(
     # Clean labels for display
     cleaned_labels = [clean_model_name(label) for label in agent_labels]
 
-    # Find global min/max for consistent colorbar
-    vmin = tensor.min()
-    vmax = tensor.max()
+    # Find global min/max for consistent colorbar across all subplots
+    vmin = full_tensor[0, :].min()
+    vmax = full_tensor[0, :].max()
 
     # Create a heatmap for each player 3 choice
     for k in range(n):
         ax = axes[k]
 
-        # Extract payoffs for all players when player 3 chooses agent k
-        # P1 payoffs: tensor[i, j, k]
-        # P2 payoffs: tensor[j, i, k] (swap positions 0 and 1)
-        # P3 payoffs: tensor[k, j, i] (swap positions 0 and 2)
-
-        # Create annotation matrix with all three payoffs
-        annotations = np.empty((n, n), dtype=object)
+        # Extract all players' payoffs when player 3 chooses strategy k
+        # Joint strategies are ordered as (i,j,k) -> i*n*n + j*n + k
         p1_payoffs = np.zeros((n, n))
-
+        p2_payoffs = np.zeros((n, n))
+        p3_payoffs = np.zeros((n, n))
+        annotations = np.empty((n, n), dtype=object)
+        
         for i in range(n):
             for j in range(n):
-                p1 = tensor[i, j, k]
-                p2 = tensor[j, i, k]
-                p3 = tensor[k, j, i]
+                joint_idx = i * n * n + j * n + k
+                p1 = full_tensor[0, joint_idx]
+                p2 = full_tensor[1, joint_idx]
+                p3 = full_tensor[2, joint_idx]
+                
                 p1_payoffs[i, j] = p1
-                annotations[i, j] = f"{p1:.2f}/{p2:.2f}/{p3:.2f}"
+                p2_payoffs[i, j] = p2
+                p3_payoffs[i, j] = p3
+                annotations[i, j] = f"{p1:.1f}/{p2:.1f}/{p3:.1f}"
 
-        # Create heatmap
+        # Create heatmap - color by player 1's payoff, annotate with all three payoffs
         sns.heatmap(
             data=p1_payoffs,
             annot=annotations,
@@ -177,7 +193,6 @@ def plot_3player_payoff_tensor(
             vmin=vmin,
             vmax=vmax,
             ax=ax,
-            annot_kws={'fontsize': 8},
         )
 
         ax.set_xlabel("Player 2 Model", fontsize=10)
@@ -205,51 +220,54 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
 
     # Collect all experiment folders from all input directories
     all_folders = []
-    seen_combinations = set()
+    seen_outputs = {}  # Track which output files we've created
 
     for experiment_dir in experiment_dirs:
         experiment_dir = Path(experiment_dir)
         folders = discover_experiment_subfolders(experiment_dir)
 
         for folder in folders:
-            # Load config to check for duplicates
+            # Load config
             config = load_json(folder / "config.json")
             game_type = config["game"]["type"]
             mechanism_type = config["mechanism"]["type"]
-            combo = (mechanism_type, game_type)
 
-            if combo in seen_combinations:
-                print(f"Skipping duplicate {mechanism_type}_{game_type} from {folder}")
+            # Skip reputation mechanisms
+            if mechanism_type.lower() == "reputation":
+                print(f"Skipping reputation mechanism: {mechanism_type}_{game_type}")
                 continue
 
-            seen_combinations.add(combo)
-            all_folders.append(folder)
+            all_folders.append((folder, game_type, mechanism_type))
 
         print(f"Discovered {len(folders)} experiment folders from {experiment_dir}")
 
-    print(f"\nProcessing {len(all_folders)} unique game-mechanism combinations\n")
+    print(f"\nProcessing {len(all_folders)} game-mechanism combinations\n")
 
-    # Process all unique folders
-    for folder in all_folders:
-        # Load config to get game type and mechanism
-        config = load_json(folder / "config.json")
-        game_type = config["game"]["type"]
-        mechanism_type = config["mechanism"]["type"]
-
-        # Load and build payoff tensor, get num_players from matchup data
-        tensor, agent_labels, num_players = load_and_build_tensor(folder)
-
+    # Process all folders
+    for folder, game_type, mechanism_type in all_folders:
         # Get output path
         output_path = get_output_path(output_dir, mechanism_type, game_type)
+
+        # Check if we're overwriting a previously created plot
+        if output_path in seen_outputs:
+            print(f"WARNING: Duplicate found for {mechanism_type}_{game_type}")
+            print(f"  Previous: {seen_outputs[output_path]}")
+            print(f"  Current:  {folder}")
+            print(f"  Replacing plot at {output_path}")
+
+        seen_outputs[output_path] = folder
+
+        # Load and build payoff tensor, get num_players from matchup data
+        full_tensor, agent_labels, num_players = load_and_build_tensor(folder)
 
         # Create appropriate visualization
         if num_players == 2:
             plot_2player_payoff_tensor(
-                tensor, agent_labels, game_type, mechanism_type, output_path
+                full_tensor, agent_labels, game_type, mechanism_type, output_path
             )
         else:  # num_players == 3
             plot_3player_payoff_tensor(
-                tensor, agent_labels, game_type, mechanism_type, output_path
+                full_tensor, agent_labels, game_type, mechanism_type, output_path
             )
 
         print(f"Created: {output_path}")
