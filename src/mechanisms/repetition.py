@@ -1,7 +1,5 @@
 from typing import Sequence, override
 
-from tqdm import tqdm
-
 from src.agents.agent_manager import Agent
 from src.games.base import Move
 from src.logger_manager import LOGGER
@@ -191,10 +189,7 @@ class Repetition(RepetitiveMechanism):
         # Create per-matchup history to avoid shared state across parallel matchups
         matchup_history = self.History(self.base_game.action_class)
 
-        for round_idx in tqdm(
-            range(1, self.num_rounds + 1),
-            desc=f"Running {self.__class__.__name__} repetitive rounds",
-        ):
+        for round_idx in range(1, self.num_rounds + 1):
             repetition_information = self._build_history_prompts(
                 players, round_idx, matchup_history
             )

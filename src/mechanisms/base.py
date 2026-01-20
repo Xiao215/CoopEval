@@ -4,6 +4,7 @@ import itertools
 import time
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
+from datetime import datetime
 from typing import Iterator, Sequence, override
 
 from tqdm import tqdm
@@ -94,13 +95,16 @@ class Mechanism(ABC):
                         batch, self._play_matchup, max_workers=self.tournament_workers
                     )
                     results.extend(batch_results)
+                    current_time = datetime.now().strftime('%H:%M:%S')
+                    pbar.set_postfix_str(f"Time: {current_time}", refresh=True)
                     pbar.update(len(batch))
             else:
                 # Sequential execution: process one at a time with detailed progress
                 for seat_players, matchup_label in zip(
                     combo_iter, matchup_labels, strict=True
                 ):
-                    pbar.set_postfix_str(matchup_label, refresh=False)
+                    current_time = datetime.now().strftime('%H:%M:%S')
+                    pbar.set_postfix_str(f"{matchup_label} | Time: {current_time}", refresh=False)
                     t0 = time.perf_counter()
 
                     match_moves = self._play_matchup(seat_players)

@@ -1,6 +1,7 @@
 """Mechanisms that expose behavioural reputation across repeated rounds."""
 
 from abc import ABC
+from datetime import datetime
 from typing import Sequence, override
 
 from tqdm import tqdm
@@ -395,6 +396,7 @@ class Reputation(RepetitiveMechanism, ABC):
             desc="Reputation rounds",
             leave=True,
             dynamic_ncols=True,
+            bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix} [{desc} @ {percentage:3.0f}%]',
         ) as pbar:
             for round_idx, matches_group in enumerate(matcher, 1):
                 if round_idx > self.num_rounds:
@@ -412,5 +414,7 @@ class Reputation(RepetitiveMechanism, ABC):
                     self.history.append(moves, round_number=round_idx)
                     all_tournament_moves.append(moves)
 
+                current_time = datetime.now().strftime('%H:%M:%S')
+                pbar.set_postfix_str(f"Time: {current_time}", refresh=True)
                 pbar.update(1)
         return all_tournament_moves

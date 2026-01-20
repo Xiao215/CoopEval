@@ -4,8 +4,6 @@ import json
 import re
 from typing import Any, Sequence, override
 
-from tqdm import tqdm
-
 from src.agents.agent_manager import Agent
 from src.games.base import Game, Move
 from src.logger_manager import LOGGER
@@ -266,11 +264,7 @@ class Disarmament(RepetitiveMechanism):
         disarmament_records: list[list[dict[str, Any]]] = []
         matchup_moves = []
 
-        for _ in tqdm(
-            range(1, self.num_rounds + 1),
-            desc=f"Running {self.__class__.__name__} disarmament rounds",
-        ):
-
+        for _ in range(1, self.num_rounds + 1):
             # Prompt ALL players (including those with no room to disarm)
             negotiation_results = self._run_negotiations(players, current_disarm_caps)
 
