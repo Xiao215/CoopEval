@@ -3,18 +3,19 @@
 # SLURM CONFIGURATION - Edit these values for your cluster
 # =============================================================================
 #SBATCH --job-name=LLM_tournament
-#SBATCH --account=aip-rgrosse
-#SBATCH --time=3:00:00
-#SBATCH --cpus-per-task=32
-#SBATCH --mem=60G
-
-# Uncomment and edit if GPUs are needed:
-# #SBATCH --gres=gpu:l40s:2
-# #SBATCH --gres=gpu:h100:1
+#SBATCH --partition=cpu_opteron6272
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
+#SBATCH --time=10:00:00
+#SBATCH --exclude=marvel-0-[15-29],marvel-1-[7,13]
 
 # Uncomment to enable email notifications:
 # #SBATCH --mail-user=your.email@example.com
 # #SBATCH --mail-type=END,FAIL
+
+# Note: No GPUs needed - experiments are I/O bound (LLM API calls)
+# The parallelism (EXPERIMENT_WORKERS, TOURNAMENT_WORKERS) uses threads
+# for concurrent API calls, which don't require multiple CPU cores
 
 # =============================================================================
 # END SLURM CONFIGURATION
