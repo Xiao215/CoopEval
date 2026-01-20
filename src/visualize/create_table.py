@@ -120,7 +120,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
     experiments = []
 
     # Scan for subdirectories (skip configs and other non-experiment folders)
-    subdirs = [d for d in batch_path.iterdir() if d.is_dir() and d.name != "configs"]
+    subdirs = [d for d in batch_path.iterdir() if d.is_dir() and d.name not in {"configs", "slurm"}]
 
     for subdir in subdirs:
         # Check for required files
@@ -459,8 +459,8 @@ def generate_game_table(
 
     Args:
         game: Game name
-        mechanisms: List of mechanism names (rows)
-        models: List of model names (columns)
+        mechanisms: List of mechanism names (columns)
+        models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
         deviation_ranks: Nested dictionary with deviation ranks
@@ -476,59 +476,120 @@ def generate_game_table(
 
     # Start building table
     lines = []
-    
+
     # Add source folder comments if provided
     if source_folders:
         lines.append("% Source folders:")
         for folder in source_folders:
             lines.append(f"%   {folder}")
-    
+
     lines.append(r"\begin{table}[t]")
     lines.append(r"\centering")
     lines.append(f"\\caption{{Results for {game}}}")
     game_slug = game.lower().replace(" ", "_")
     lines.append(f"\\label{{tab:{game_slug}}}")
 
+    # Determine which metrics each mechanism supports
+    mech_metrics = {}
+    for mech in mechanisms:
+        is_reputation = mech.lower() == "reputation"
+        if is_reputation:
+            # Reputation only supports mean
+            mech_metrics[mech] = ["mean"] if "mean" in metrics else []
+        else:
+            # All other mechanisms support all requested metrics
+            mech_metrics[mech] = metrics
+
     # Table header with vertical bars
-    # Each model has len(metrics) sub-columns
-    num_models = len(models)
-    num_metrics = len(metrics)
-    col_spec = "l|" + "|".join(["r" * num_metrics] * num_models)
+    # Each mechanism has different number of sub-columns based on supported metrics
+    col_spec_parts = ["l"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 0:
+            col_spec_parts.append("r" * num_cols)
+    col_spec = "|".join(col_spec_parts)
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
-    # First header row: Model names with multicolumn
-    header_parts = ["\\textbf{Mechanism}"]
-    for model in models:
-        header_parts.append(f"\\multicolumn{{{num_metrics}}}{{c}}{{\\textbf{{{model}}}}}")
+    # First header row: Mechanism names with multicolumn
+    header_parts = ["\\textbf{Model}"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 1:
+            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
+        elif num_cols == 1:
+            header_parts.append(f"\\textbf{{{mech}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
-    # Second header row: Sub-column labels
-    subheader_parts = [""]  # Empty for mechanism column
-    for _ in models:
-        metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in metrics])
-        subheader_parts.append(metric_cols)
-    lines.append(" & ".join(subheader_parts) + " \\\\")
+    # Second header row: Sub-column labels (only if needed)
+    show_subheaders = any(len(mech_metrics[mech]) > 1 for mech in mechanisms)
+    if show_subheaders:
+        subheader_parts = [""]  # Empty for model column
+        for mech in mechanisms:
+            mech_metric_list = mech_metrics[mech]
+            if len(mech_metric_list) > 1:
+                metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in mech_metric_list])
+                subheader_parts.append(metric_cols)
+            elif len(mech_metric_list) == 1:
+                # Single column - show the metric label
+                subheader_parts.append(f"\\textbf{{{METRIC_LABELS[mech_metric_list[0]]}}}")
+        lines.append(" & ".join(subheader_parts) + " \\\\")
 
     lines.append(r"\midrule")
 
-    # Data rows
+    # Summary row (average across all models)
+    row_parts = ["\\textbf{Average}"]
     for mech in mechanisms:
-        row_parts = [mech]
-        for model in models:
+        metric_averages = {}
+        mech_metric_list = mech_metrics[mech]
+
+        # Calculate average for each metric this mechanism supports
+        for metric in mech_metric_list:
+            if metric == "mean":
+                values = [payoffs[game][mech][model] for model in models]
+                avg = sum(values) / len(values)
+                metric_averages[metric] = format_score(avg, precision)
+            elif metric == "rd":
+                values = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    metric_averages[metric] = format_score(avg, precision)
+                else:
+                    metric_averages[metric] = "N/A"
+            elif metric == "dr":
+                values = [float(deviation_ranks[game][mech][model]) for model in models if deviation_ranks[game][mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    metric_averages[metric] = f"{avg:.1f}"
+                else:
+                    metric_averages[metric] = "N/A"
+
+        metric_values = [metric_averages[m] for m in mech_metric_list]
+        if metric_values:
+            row_parts.append(" & ".join(metric_values))
+
+    lines.append(" & ".join(row_parts) + " \\\\")
+    lines.append(r"\midrule")
+
+    # Data rows (one per model)
+    for model in models:
+        row_parts = [model]
+        for mech in mechanisms:
+            mech_metric_list = mech_metrics[mech]
             payoff_score = payoffs[game][mech][model]
             rd_val = rd_fitness[game][mech][model]
             dr_val = deviation_ranks[game][mech][model]
-            
+
             metric_data = {
                 "mean": format_score(payoff_score, precision),
                 "rd": format_score(rd_val, precision) if rd_val is not None else "N/A",
                 "dr": dr_val if dr_val is not None else "N/A",
             }
 
-            # Extract only selected metrics
-            metric_values = [metric_data[m] for m in metrics]
-            row_parts.append(" & ".join(metric_values))
+            # Extract only metrics this mechanism supports
+            metric_values = [metric_data[m] for m in mech_metric_list]
+            if metric_values:
+                row_parts.append(" & ".join(metric_values))
 
         lines.append(" & ".join(row_parts) + " \\\\")
 
@@ -637,8 +698,8 @@ def generate_aggregate_table(
     Generate aggregated LaTeX table across social dilemma games with selected metrics.
 
     Args:
-        mechanisms: List of mechanism names (rows)
-        models: List of model names (columns)
+        mechanisms: List of mechanism names (columns)
+        models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
         deviation_ranks: Nested dictionary with deviation ranks
@@ -675,13 +736,13 @@ def generate_aggregate_table(
 
     # Start building table
     lines = []
-    
+
     # Add source folder comments if provided
     if source_folders:
         lines.append("% Source folders:")
         for folder in source_folders:
             lines.append(f"%   {folder}")
-    
+
     lines.append(r"\begin{table}[t]")
     lines.append(r"\centering")
     lines.append(
@@ -689,99 +750,126 @@ def generate_aggregate_table(
     )
     lines.append(r"\label{tab:aggregate_results}")
 
-    # Table header with vertical bars
-    # "All Models" column excludes deviation ranking (only mean and rd)
-    all_models_metrics = [m for m in metrics if m != "dr"]
-    num_models = len(models)
-    num_metrics = len(metrics)
-    num_all_models_metrics = len(all_models_metrics)
+    # Determine which metrics each mechanism supports
+    mech_metrics = {}
+    for mech in mechanisms:
+        is_reputation = mech.lower() == "reputation"
+        if is_reputation:
+            # Reputation only supports mean
+            mech_metrics[mech] = ["mean"] if "mean" in metrics else []
+        else:
+            # All other mechanisms support all requested metrics
+            mech_metrics[mech] = metrics
 
-    col_spec = "l|" + "r" * num_all_models_metrics + "|" + "|".join(["r" * num_metrics] * num_models)
+    # Table header with vertical bars
+    # Each mechanism has different number of sub-columns based on supported metrics
+    col_spec_parts = ["l"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 0:
+            col_spec_parts.append("r" * num_cols)
+    col_spec = "|".join(col_spec_parts)
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
-    # First header row: "All Models" + individual model names with multicolumn
-    header_parts = ["\\textbf{Mechanism}"]
-    header_parts.append(f"\\multicolumn{{{num_all_models_metrics}}}{{c}}{{\\textbf{{All Models}}}}")
-    for model in models:
-        header_parts.append(f"\\multicolumn{{{num_metrics}}}{{c}}{{\\textbf{{{model}}}}}")
+    # First header row: Mechanism names with multicolumn
+    header_parts = ["\\textbf{Model}"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 1:
+            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
+        elif num_cols == 1:
+            header_parts.append(f"\\textbf{{{mech}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
-    # Second header row: Sub-column labels
-    subheader_parts = [""]
-    # Add labels for "All Models" column (no DR)
-    all_models_metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in all_models_metrics])
-    subheader_parts.append(all_models_metric_cols)
-    # Add labels for each model column (includes all metrics)
-    metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in metrics])
-    for _ in models:
-        subheader_parts.append(metric_cols)
-    lines.append(" & ".join(subheader_parts) + " \\\\")
+    # Second header row: Sub-column labels (only if needed)
+    show_subheaders = any(len(mech_metrics[mech]) > 1 for mech in mechanisms)
+    if show_subheaders:
+        subheader_parts = [""]  # Empty for model column
+        for mech in mechanisms:
+            mech_metric_list = mech_metrics[mech]
+            if len(mech_metric_list) > 1:
+                metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in mech_metric_list])
+                subheader_parts.append(metric_cols)
+            elif len(mech_metric_list) == 1:
+                # Single column - show the metric label
+                subheader_parts.append(f"\\textbf{{{METRIC_LABELS[mech_metric_list[0]]}}}")
+        lines.append(" & ".join(subheader_parts) + " \\\\")
 
     lines.append(r"\midrule")
 
-    # Data rows
+    # Summary row (average across all models)
+    row_parts = ["\\textbf{Average}"]
     for mech in mechanisms:
-        row_parts = [mech]
         is_reputation = mech.lower() == "reputation"
+        mech_metric_list = mech_metrics[mech]
+        metric_averages = {}
 
-        # Compute "All Models" aggregate statistics
-        all_models_metric_data = {}
-        
-        # Compute mean if requested
-        if "mean" in all_models_metrics:
-            all_models_mean_values = [aggregate_payoffs[mech][model][0] for model in models]
-            agg_mean = sum(all_models_mean_values) / len(all_models_mean_values)
-            if len(all_models_mean_values) > 1:
-                variance = sum((x - agg_mean) ** 2 for x in all_models_mean_values) / (len(all_models_mean_values) - 1)
-                agg_mean_std = math.sqrt(variance)
-            else:
-                agg_mean_std = 0.0
-            
-            if show_stderr:
-                all_models_metric_data["mean"] = f"{agg_mean:.{precision}f} $\\pm$ {agg_mean_std:.{precision}f}"
-            else:
-                all_models_metric_data["mean"] = f"{agg_mean:.{precision}f}"
-        
-        # Compute RD if requested (but not for reputation)
-        if "rd" in all_models_metrics:
-            if is_reputation:
-                all_models_metric_data["rd"] = "N/A"
-            else:
-                all_models_rd_values = [aggregate_rd[mech][model][0] for model in models if aggregate_rd[mech][model] is not None]
-                if all_models_rd_values:
-                    agg_rd = sum(all_models_rd_values) / len(all_models_rd_values)
-                    if len(all_models_rd_values) > 1:
-                        variance = sum((x - agg_rd) ** 2 for x in all_models_rd_values) / (len(all_models_rd_values) - 1)
-                        agg_rd_std = math.sqrt(variance)
-                    else:
-                        agg_rd_std = 0.0
-                    
-                    if show_stderr:
-                        all_models_metric_data["rd"] = f"{agg_rd:.{precision}f} $\\pm$ {agg_rd_std:.{precision}f}"
-                    else:
-                        all_models_metric_data["rd"] = f"{agg_rd:.{precision}f}"
+        # Calculate average for each metric this mechanism supports
+        for metric in mech_metric_list:
+            if metric == "mean":
+                values = [aggregate_payoffs[mech][model][0] for model in models]
+                avg = sum(values) / len(values)
+                if len(values) > 1:
+                    variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
+                    std = math.sqrt(variance)
                 else:
-                    all_models_metric_data["rd"] = "N/A"
+                    std = 0.0
 
-        all_models_values = [all_models_metric_data[m] for m in all_models_metrics]
-        row_parts.append(" & ".join(all_models_values))
-
-        # Add individual model columns
-        for model in models:
-            metric_data = {}
-            
-            if "mean" in metrics:
-                payoff_result = aggregate_payoffs[mech][model]
                 if show_stderr:
-                    metric_data["mean"] = format_score_with_stderr(payoff_result, precision)
+                    metric_averages["mean"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
                 else:
-                    metric_data["mean"] = format_score(payoff_result[0], precision)
-            
-            if "rd" in metrics:
-                if is_reputation:
-                    metric_data["rd"] = "N/A"
+                    metric_averages["mean"] = f"{avg:.{precision}f}"
+
+            elif metric == "rd":
+                values = [aggregate_rd[mech][model][0] for model in models if aggregate_rd[mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    if len(values) > 1:
+                        variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
+                        std = math.sqrt(variance)
+                    else:
+                        std = 0.0
+
+                    if show_stderr:
+                        metric_averages["rd"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
+                    else:
+                        metric_averages["rd"] = f"{avg:.{precision}f}"
                 else:
+                    metric_averages["rd"] = "N/A"
+
+            elif metric == "dr":
+                values = [float(aggregate_dr[mech][model]) for model in models if aggregate_dr[mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    metric_averages["dr"] = f"{avg:.1f}"
+                else:
+                    metric_averages["dr"] = "N/A"
+
+        metric_values = [metric_averages[m] for m in mech_metric_list]
+        if metric_values:
+            row_parts.append(" & ".join(metric_values))
+
+    lines.append(" & ".join(row_parts) + " \\\\")
+    lines.append(r"\midrule")
+
+    # Data rows (one per model)
+    for model in models:
+        row_parts = [model]
+        for mech in mechanisms:
+            is_reputation = mech.lower() == "reputation"
+            mech_metric_list = mech_metrics[mech]
+            metric_data = {}
+
+            for metric in mech_metric_list:
+                if metric == "mean":
+                    payoff_result = aggregate_payoffs[mech][model]
+                    if show_stderr:
+                        metric_data["mean"] = format_score_with_stderr(payoff_result, precision)
+                    else:
+                        metric_data["mean"] = format_score(payoff_result[0], precision)
+
+                elif metric == "rd":
                     rd_result = aggregate_rd[mech][model]
                     if rd_result is not None:
                         if show_stderr:
@@ -790,17 +878,15 @@ def generate_aggregate_table(
                             metric_data["rd"] = format_score(rd_result[0], precision)
                     else:
                         metric_data["rd"] = "N/A"
-            
-            if "dr" in metrics:
-                if is_reputation:
-                    metric_data["dr"] = "N/A"
-                else:
+
+                elif metric == "dr":
                     dr_val = aggregate_dr[mech][model]
                     metric_data["dr"] = dr_val if dr_val is not None else "N/A"
 
-            # Extract only selected metrics
-            metric_values = [metric_data[m] for m in metrics]
-            row_parts.append(" & ".join(metric_values))
+            # Extract only metrics this mechanism supports
+            metric_values = [metric_data[m] for m in mech_metric_list]
+            if metric_values:
+                row_parts.append(" & ".join(metric_values))
 
         lines.append(" & ".join(row_parts) + " \\\\")
 
@@ -924,6 +1010,9 @@ Examples:
     else:
         output_dir = args.batch_paths[0].parent
 
+    # Store all table LaTeX for combined file
+    all_tables = []
+
     # Generate and save per-game tables
     for game in games:
         table_latex = generate_game_table(
@@ -938,20 +1027,32 @@ Examples:
 
         print(f"Saved: {output_path}")
 
+        # Add to combined list
+        all_tables.append(table_latex)
+
     # Generate and save aggregate table (social dilemmas only)
-    table_latex = generate_aggregate_table(
+    aggregate_table_latex = generate_aggregate_table(
         mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
     )
 
     output_path = output_dir / "table_aggregate.tex"
-    save_table(table_latex, output_path)
+    save_table(aggregate_table_latex, output_path)
 
     if not args.quiet:
-        print_table(table_latex, "Aggregate Table")
+        print_table(aggregate_table_latex, "Aggregate Table")
 
     print(f"Saved: {output_path}")
 
-    print(f"\nTotal tables generated: {len(games) + 1}")
+    # Add aggregate table to combined list
+    all_tables.append(aggregate_table_latex)
+
+    # Generate and save combined table file
+    combined_latex = "\n\n".join(all_tables)
+    combined_output_path = output_dir / "table_all_combined.tex"
+    save_table(combined_latex, combined_output_path)
+    print(f"Saved combined table: {combined_output_path}")
+
+    print(f"\nTotal tables generated: {len(games) + 1} (plus 1 combined file)")
 
 
 if __name__ == "__main__":
