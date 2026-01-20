@@ -324,13 +324,12 @@ elif [ "$MODE" == "slurm" ]; then
     echo "SLURM script generated: $SLURM_SCRIPT"
     echo ""
 
-    # Submit job array with logs in job-specific subdirectory
-    # %A will be replaced by SLURM with the job array ID
+    # Submit job array (logs in flat slurm/ directory)
     echo "Submitting SLURM job array..."
     JOB_ID=$(sbatch --parsable \
         --array=0-$((num_experiments - 1)) \
-        --output="${BATCH_DIR}/slurm/%A/slurm-%A_%a.out" \
-        --error="${BATCH_DIR}/slurm/%A/slurm-%A_%a.err" \
+        --output="${BATCH_DIR}/slurm/slurm-%A_%a.out" \
+        --error="${BATCH_DIR}/slurm/slurm-%A_%a.err" \
         "$SLURM_SCRIPT")
 
     if [ $? -eq 0 ]; then
@@ -340,7 +339,7 @@ elif [ "$MODE" == "slurm" ]; then
         echo "Job ID: $JOB_ID"
         echo "Array size: $num_experiments"
         echo "Batch directory: $BATCH_DIR"
-        echo "Logs directory: ${BATCH_DIR}/slurm/${JOB_ID}/"
+        echo "Logs directory: ${BATCH_DIR}/slurm/"
         echo ""
         echo "Monitor job status:"
         echo "  squeue -j $JOB_ID"
@@ -349,8 +348,8 @@ elif [ "$MODE" == "slurm" ]; then
         echo "Check batch progress:"
         echo "  watch -n 5 'python -c \"import json; d=json.load(open(\\\"${BATCH_DIR}/batch_summary.json\\\")); print(f\\\"Completed: {d.get(\\\\\\\"completed_experiments\\\\\\\", 0)}/{d.get(\\\\\\\"total_experiments\\\\\\\", 0)}\\\")\"'"
         echo ""
-        echo "View logs:"
-        echo "  tail -f ${BATCH_DIR}/slurm/${JOB_ID}/slurm-${JOB_ID}_*.out"
+        echo "View logs (by job ID):"
+        echo "  tail -f ${BATCH_DIR}/slurm/${JOB_ID}_*.out"
         echo "=================================================="
     else
         echo "ERROR: Failed to submit SLURM job array"
