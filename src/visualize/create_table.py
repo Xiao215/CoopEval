@@ -15,7 +15,6 @@ Required LaTeX packages:
 """
 
 import argparse
-import json
 import math
 import sys
 from dataclasses import dataclass
@@ -23,6 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from src.utils.score_normalization import NormalizeScore
+from src.visualize.analysis_utils import discover_experiment_subfolders, load_json as load_json_file
 
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {
@@ -49,8 +49,7 @@ class ExperimentData:
 
 def load_json(path: Path) -> dict:
     """Load JSON file with error handling."""
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_json_file(path)
 
 
 def compute_deviation_ranks(ratings: Dict[str, float]) -> Dict[str, str]:
@@ -120,7 +119,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
     experiments = []
 
     # Scan for subdirectories (skip configs and other non-experiment folders)
-    subdirs = [d for d in batch_path.iterdir() if d.is_dir() and d.name not in {"configs", "slurm"}]
+    subdirs = discover_experiment_subfolders(batch_path)
 
     for subdir in subdirs:
         # Check for required files

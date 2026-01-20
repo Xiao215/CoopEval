@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +10,12 @@ import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
+from src.visualize.analysis_utils import (
+    clean_model_name,
+    discover_experiment_subfolders,
+    get_num_players_from_matchup,
+    load_json,
+)
 
 # Styling constants
 PALETTE_BASE = ["#355070", "#6D597A", "#B56576", "#E56B6F", "#EAAC8B", "#5C7AEA"]
@@ -31,39 +35,21 @@ custom_cmap = LinearSegmentedColormap.from_list("custom", PALETTE_BASE)
 
 
 # Helper functions
-def load_config(folder_path: Path) -> dict[str, Any]:
-    """Load config.json from experiment folder."""
-    with open(folder_path / "config.json") as f:
-        return json.load(f)
+def load_and_build_tensor(folder_path: Path) -> tuple[np.ndarray, list[str], int]:
+    """
+    Load matchup payoffs and build tensor.
 
-
-def load_and_build_tensor(folder_path: Path) -> tuple[np.ndarray, list[str]]:
-    """Load matchup payoffs and build tensor."""
-    with open(folder_path / "matchup_payoffs.json") as f:
-        json_data = json.load(f)
+    Returns:
+        Tuple of (tensor, agent_labels, num_players)
+    """
+    json_data = load_json(folder_path / "matchup_payoffs.json")
 
     payoffs = MatchupPayoffs.from_json(json_data)
     payoffs.build_payoff_tensor()
 
-    return payoffs._payoff_tensor, payoffs._tensor_agent_types
+    num_players = get_num_players_from_matchup(json_data)
 
-
-def get_num_players(game_type: str) -> int:
-    """Return 3 for PublicGoods, 2 for all others."""
-    return 3 if game_type == "PublicGoods" else 2
-
-
-def clean_agent_label(label: str) -> str:
-    """Shorten agent label for plotting."""
-    # Remove provider prefix and shorten
-    parts = label.split("/")
-    if len(parts) > 1:
-        model_and_type = parts[-1]
-        # Shorten model name if too long
-        if len(model_and_type) > 25:
-            model_and_type = model_and_type[:22] + "..."
-        return model_and_type
-    return label
+    return payoffs._payoff_tensor, payoffs._tensor_agent_types, num_players
 
 
 def to_snake_case(text: str) -> str:
@@ -83,9 +69,6 @@ def get_output_path(output_dir: Path, mechanism: str, game: str) -> Path:
     return mechanism_folder / game_filename
 
 
-def discover_experiment_folders(experiment_dir: Path) -> list[Path]:
-    """Find all subdirectories in experiment folder."""
-    return [d for d in experiment_dir.iterdir() if d.is_dir()]
 
 
 # Visualization functions
@@ -109,7 +92,7 @@ def plot_2player_payoff_tensor(
             annotations[i, j] = f"{p1_payoffs[i, j]:.2f} / {p2_payoffs[i, j]:.2f}"
 
     # Clean labels for display
-    cleaned_labels = [clean_agent_label(label) for label in agent_labels]
+    cleaned_labels = [clean_model_name(label) for label in agent_labels]
 
     # Create heatmap
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -152,7 +135,7 @@ def plot_3player_payoff_tensor(
     axes = axes.flatten()
 
     # Clean labels for display
-    cleaned_labels = [clean_agent_label(label) for label in agent_labels]
+    cleaned_labels = [clean_model_name(label) for label in agent_labels]
 
     # Find global min/max for consistent colorbar
     vmin = tensor.min()
@@ -216,25 +199,45 @@ def plot_3player_payoff_tensor(
 
 
 # Main function
-def plot_payoff_tensors(experiment_dir: str | Path, output_dir: str | Path) -> None:
-    """Generate payoff tensor visualizations for all game-mechanism combinations."""
-    experiment_dir = Path(experiment_dir)
+def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Path) -> None:
+    """Generate payoff tensor visualizations for all game-mechanism combinations from multiple experiment folders."""
     output_dir = Path(output_dir)
 
-    # Discover all experiment folders
-    folders = discover_experiment_folders(experiment_dir)
+    # Collect all experiment folders from all input directories
+    all_folders = []
+    seen_combinations = set()
 
-    for folder in folders:
+    for experiment_dir in experiment_dirs:
+        experiment_dir = Path(experiment_dir)
+        folders = discover_experiment_subfolders(experiment_dir)
+
+        for folder in folders:
+            # Load config to check for duplicates
+            config = load_json(folder / "config.json")
+            game_type = config["game"]["type"]
+            mechanism_type = config["mechanism"]["type"]
+            combo = (mechanism_type, game_type)
+
+            if combo in seen_combinations:
+                print(f"Skipping duplicate {mechanism_type}_{game_type} from {folder}")
+                continue
+
+            seen_combinations.add(combo)
+            all_folders.append(folder)
+
+        print(f"Discovered {len(folders)} experiment folders from {experiment_dir}")
+
+    print(f"\nProcessing {len(all_folders)} unique game-mechanism combinations\n")
+
+    # Process all unique folders
+    for folder in all_folders:
         # Load config to get game type and mechanism
-        config = load_config(folder)
+        config = load_json(folder / "config.json")
         game_type = config["game"]["type"]
         mechanism_type = config["mechanism"]["type"]
 
-        # Load and build payoff tensor
-        tensor, agent_labels = load_and_build_tensor(folder)
-
-        # Determine number of players
-        num_players = get_num_players(game_type)
+        # Load and build payoff tensor, get num_players from matchup data
+        tensor, agent_labels, num_players = load_and_build_tensor(folder)
 
         # Get output path
         output_path = get_output_path(output_dir, mechanism_type, game_type)
@@ -259,9 +262,10 @@ if __name__ == "__main__":
         description="Generate payoff tensor visualizations from experiment results"
     )
     parser.add_argument(
-        "experiment_dir",
+        "experiment_dirs",
         type=str,
-        help="Path to experiment folder containing game-mechanism subfolders",
+        nargs="+",
+        help="Path(s) to experiment folder(s) containing game-mechanism subfolders",
     )
     parser.add_argument(
         "output_dir",
@@ -270,4 +274,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    plot_payoff_tensors(args.experiment_dir, args.output_dir)
+    plot_payoff_tensors(args.experiment_dirs, args.output_dir)
