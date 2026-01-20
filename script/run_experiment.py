@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import yaml
 
 from config import DATA_DIR
 from src.config_loader import ConfigLoader
@@ -13,10 +12,12 @@ from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
 from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
 from src.ranking_evaluations.deviation_rating import DeviationRating
+from src.registry.agent_registry import create_players_with_player_id
 from src.registry.game_registry import GAME_REGISTRY
 from src.registry.mechanism_registry import MECHANISM_REGISTRY
 from src.logger_manager import LOGGER
 from src.utils.concurrency import set_default_max_workers
+from src.agents.agent_manager import Agent
 
 
 # =============================================================================
@@ -71,6 +72,12 @@ def setup_game_and_mechanism(config: dict):
 
     game = game_class(**config["game"].get("kwargs", {}))
     mech_kwargs = (config["mechanism"].get("kwargs", {}) or {}).copy()
+
+    # Add tournament_workers from concurrency config
+    concurrency_cfg = config.get("concurrency", {}) or {}
+    if "tournament_workers" in concurrency_cfg:
+        mech_kwargs["tournament_workers"] = concurrency_cfg["tournament_workers"]
+
     mechanism = mechanism_class(base_game=game, **mech_kwargs)
 
     print(
@@ -91,14 +98,14 @@ def _load_matchup_payoffs_from_file(path: Path) -> MatchupPayoffs:
 
 
 def run_mechanism(
-    mechanism, config: dict, args
+    mechanism, players: list[Agent], args
 ) -> MatchupPayoffs | ReputationPayoffs:
     """
     Run the mechanism tournament or load pre-computed payoffs.
 
     Args:
         mechanism: Mechanism instance
-        config: Configuration dictionary
+        players: List of Agent instances
         args: Command-line arguments
 
     Returns:
@@ -110,7 +117,7 @@ def run_mechanism(
         )
     else:
         print("No precomputed matchup payoff provided; running tournament...")
-        payoffs = mechanism.run_tournament(agent_cfgs=config["agents"])
+        payoffs = mechanism.run_tournament(players)
         LOGGER.log_record(
             record=payoffs.to_json(),
             file_name="matchup_payoffs.json",
@@ -132,28 +139,27 @@ def report_model_averages(payoffs: MatchupPayoffs | ReputationPayoffs) -> None:
     print("MODEL AVERAGE PAYOFFS")
     print("="*60)
 
-    model_avg = payoffs.model_average_payoff()
+    agent_avg = payoffs.agent_average_payoff()
 
     # Pretty print the results
-    for model, avg_payoff in sorted(model_avg.items()):
+    for agent, avg_payoff in sorted(agent_avg.items()):
         if avg_payoff is None:
-            print(f"  {model}: Never played")
+            print(f"  {agent}: Never played")
         else:
-            print(f"  {model}: {avg_payoff:.4f}")
-
-    LOGGER.log_record(model_avg, "model_average_payoff.json")
+            print(f"  {agent}: {avg_payoff:.4f}")
+    LOGGER.log_record(agent_avg, "agent_average_payoff.json")
     print("="*60 + "\n")
 
 
 def run_evolutionary_dynamics(
-    payoffs: MatchupPayoffs, agent_cfgs: list[dict], eval_kwargs: dict
+    payoffs: MatchupPayoffs, players: list[Agent], eval_kwargs: dict
 ) -> None:
     """
     Run evolutionary dynamics evaluation.
 
     Args:
         payoffs: MatchupPayoffs instance
-        agent_cfgs: Agent configurations from config
+        players: List of Agent instances
         eval_kwargs: Evaluation-specific kwargs from config
     """
     print("\n" + "="*60)
@@ -161,7 +167,7 @@ def run_evolutionary_dynamics(
     print("="*60 + "\n")
 
     replicator_dynamics = DiscreteReplicatorDynamics(
-        agent_cfgs=agent_cfgs,
+        players=players,
         matchup_payoffs=payoffs,
     )
 
@@ -215,6 +221,7 @@ def run_deviation_rating(payoffs: MatchupPayoffs, eval_kwargs: dict) -> None:
 
 def run_evaluations(
     payoffs: MatchupPayoffs | ReputationPayoffs,
+    players: list[Agent],
     config: dict,
 ) -> None:
     """
@@ -222,6 +229,7 @@ def run_evaluations(
 
     Args:
         payoffs: MatchupPayoffs instance
+        players: List of Agent instances
         config: Configuration dictionary
     """
     # Always report model averages first
@@ -250,7 +258,7 @@ def run_evaluations(
         eval_kwargs = eval_method.get("kwargs", {})
 
         if eval_type == "evolutionary_dynamics":
-            run_evolutionary_dynamics(payoffs, config["agents"], eval_kwargs)
+            run_evolutionary_dynamics(payoffs, players, eval_kwargs)
         elif eval_type == "deviation_rating":
             run_deviation_rating(payoffs, eval_kwargs)
         else:
@@ -309,17 +317,18 @@ def main():
     concurrency_cfg = config.get("concurrency", {}) or {}
     set_default_max_workers(concurrency_cfg.get("max_workers"))
 
-    # 2. Setup game and mechanism
+    # 2. Setup game, agents and mechanism
     game, mechanism = setup_game_and_mechanism(config)
+    players = create_players_with_player_id(config["agents"], game.num_players)
 
-    # Log config
+    # Log effective configuration including concurrency settings
     LOGGER.log_record(config, "config.json")
 
     # 3. Run mechanism (tournament)
-    payoffs = run_mechanism(mechanism, config, args)
+    payoffs = run_mechanism(mechanism, players, args)
 
     # 5. Run evaluations
-    run_evaluations(payoffs, config)
+    run_evaluations(payoffs, players, config)
 
 
 if __name__ == "__main__":

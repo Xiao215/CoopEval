@@ -4,6 +4,7 @@ import itertools
 import time
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
+from datetime import datetime
 from typing import Iterator, Sequence, override
 
 from tqdm import tqdm
@@ -12,26 +13,22 @@ from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.ranking_evaluations.payoffs_base import PayoffsBase
-from src.registry.agent_registry import create_players_with_player_id
 
 
 class Mechanism(ABC):
     """Base class for tournament mechanisms that wrap a single game."""
 
-    def __init__(self, base_game: Game):
+    def __init__(self, base_game: Game, *, tournament_workers: int = 1):
         self.base_game = base_game
         self.record_file = "records.jsonl"
+        self.tournament_workers = tournament_workers
 
     def _build_payoffs(self) -> PayoffsBase:
         return MatchupPayoffs()
 
-    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
+    def run_tournament(self, players: list[Agent]) -> PayoffsBase:
         """Run the mechanism over the base game across all players."""
-        players = create_players_with_player_id(
-            agent_cfgs, self.base_game.num_players
-        )
         payoffs = self._build_payoffs()
-
         k = self.base_game.num_players
 
         players_by_id = [
@@ -46,32 +43,84 @@ class Mechanism(ABC):
             for matchup in combo_iter
         ]
 
+        # Run matchups with optional parallelization
+        results = self._run_matchups(combo_iter, matchup_labels)
+
+        # Add all results to payoffs
+        for match_moves in results:
+            payoffs.add_profile(match_moves)
+
+        return payoffs
+
+    def _run_matchups(
+        self,
+        combo_iter: list[tuple[Agent, ...]],
+        matchup_labels: list[str],
+    ) -> list[list[list[Move]]]:
+        """Run matchups sequentially or in parallel based on tournament_workers.
+
+        Args:
+            combo_iter: List of player tuples for each matchup
+            matchup_labels: Human-readable labels for progress display
+
+        Returns:
+            List of match results, where each result is a list of rounds
+        """
+        is_parallel = self.tournament_workers > 1
+
+        if is_parallel:
+            from src.utils.concurrency import run_tasks
+            print(
+                f"[Parallel] Running {len(combo_iter)} matchups with "
+                f"{self.tournament_workers} workers"
+            )
+
+        results = []
         first_duration = None
+        desc = "Tournaments (parallel)" if is_parallel else "Tournaments"
+
         with tqdm(
             total=len(combo_iter),
-            desc="Tournaments",
+            desc=desc,
             leave=True,
             dynamic_ncols=True,
         ) as pbar:
-            for seat_players, matchup_label in zip(
-                combo_iter, matchup_labels, strict=True
-            ):
-                pbar.set_postfix_str(matchup_label, refresh=False)
-                t0 = time.perf_counter()
+            if is_parallel:
+                # Parallel execution: process in batches
+                batch_size = max(1, self.tournament_workers * 2)
 
-                match_moves = self._play_matchup(seat_players)
-                payoffs.add_profile(match_moves)
-
-                dt = time.perf_counter() - t0
-                if first_duration is None:
-                    first_duration = dt
-                    est_total = dt * len(combo_iter)
-                    print(
-                        f"[ETA] ~{est_total/60:.1f} min for "
-                        f"{len(combo_iter)} matchups (sequential)."
+                for i in range(0, len(combo_iter), batch_size):
+                    batch = combo_iter[i : i + batch_size]
+                    batch_results = run_tasks(
+                        batch, self._play_matchup, max_workers=self.tournament_workers
                     )
-                pbar.update(1)
-        return payoffs
+                    results.extend(batch_results)
+                    current_time = datetime.now().strftime('%H:%M:%S')
+                    pbar.set_postfix_str(f"Time: {current_time}", refresh=True)
+                    pbar.update(len(batch))
+            else:
+                # Sequential execution: process one at a time with detailed progress
+                for seat_players, matchup_label in zip(
+                    combo_iter, matchup_labels, strict=True
+                ):
+                    current_time = datetime.now().strftime('%H:%M:%S')
+                    pbar.set_postfix_str(f"{matchup_label} | Time: {current_time}", refresh=False)
+                    t0 = time.perf_counter()
+
+                    match_moves = self._play_matchup(seat_players)
+                    results.append(match_moves)
+
+                    dt = time.perf_counter() - t0
+                    if first_duration is None:
+                        first_duration = dt
+                        est_total = dt * len(combo_iter)
+                        print(
+                            f"[ETA] ~{est_total/60:.1f} min for "
+                            f"{len(combo_iter)} matchups (sequential)."
+                        )
+                    pbar.update(1)
+
+        return results
 
     @abstractmethod
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
@@ -224,9 +273,14 @@ class RepetitiveMechanism(Mechanism):
             self.player_cumulative_actions.clear()
 
     def __init__(
-        self, base_game: Game, num_rounds: int, discount: float
+        self,
+        base_game: Game,
+        num_rounds: int,
+        discount: float,
+        *,
+        tournament_workers: int = 1,
     ) -> None:
-        super().__init__(base_game)
+        super().__init__(base_game, tournament_workers=tournament_workers)
         self.num_rounds = num_rounds
         self.discount = discount
         self.history = self.History(self.base_game.action_class)

@@ -11,8 +11,8 @@ from config import CONFIG_DIR
 class ConfigLoader:
     """Handles loading and merging modular configuration files."""
 
-    def __init__(self, config_dir: Path = CONFIG_DIR):
-        self.config_dir = Path(config_dir)
+    def __init__(self):
+        self.config_dir = Path(CONFIG_DIR)
 
     def load_main_config(self, main_config_path: str) -> dict:
         """

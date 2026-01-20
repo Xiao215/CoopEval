@@ -1,5 +1,5 @@
 type: Disarmament
 kwargs:
-  num_rounds: 10
-  discount: 0.95
+  num_rounds: 15
+  discount: 0.8
   dont_run_this: true

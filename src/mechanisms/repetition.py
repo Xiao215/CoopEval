@@ -1,7 +1,5 @@
 from typing import Sequence, override
 
-from tqdm import tqdm
-
 from src.agents.agent_manager import Agent
 from src.games.base import Move
 from src.logger_manager import LOGGER
@@ -26,8 +24,11 @@ class Repetition(RepetitiveMechanism):
         discount: float,
         lookup_depth: int = 5,
         include_prior_distributions: bool = True,
+        tournament_workers: int = 1,
     ) -> None:
-        super().__init__(base_game, num_rounds, discount)
+        super().__init__(
+            base_game, num_rounds, discount, tournament_workers=tournament_workers
+        )
         self.lookup_depth = lookup_depth
         self.include_prior_distributions = include_prior_distributions
 
@@ -35,10 +36,11 @@ class Repetition(RepetitiveMechanism):
         self,
         players: Sequence[Agent],
         round_idx: int,
+        history: RepetitiveMechanism.History,
     ) -> list[str]:
         """Build perspective-specific history prompts for each player."""
         rounds_played = round_idx - 1  # Number of completed rounds
-        if not self.history:
+        if not history:
             return [
                 REPETITION_MECHANISM_PROMPT.format(
                     round_idx=rounds_played,
@@ -51,7 +53,7 @@ class Repetition(RepetitiveMechanism):
             REPETITION_MECHANISM_PROMPT.format(
                 round_idx=rounds_played,
                 discount=int(self.discount * 100),
-                history_context=self._format_history(players, focus),
+                history_context=self._format_history(players, focus, history),
             )
             for focus in players
         ]
@@ -86,6 +88,7 @@ class Repetition(RepetitiveMechanism):
         focus: Agent,
         history_size: int,
         start_idx: int,
+        history: RepetitiveMechanism.History,
     ) -> list[str]:
         """Generates the summary string for prior action distributions."""
         if not self.include_prior_distributions:
@@ -110,7 +113,7 @@ class Repetition(RepetitiveMechanism):
             )
 
         # 1. Process Focus Player
-        focus_dist = self.history.get_prior_action_distribution(
+        focus_dist = history.get_prior_action_distribution(
             focus, lookback_rounds=history_size
         )
         if focus_dist:
@@ -123,7 +126,7 @@ class Repetition(RepetitiveMechanism):
             if player == focus:
                 continue
 
-            other_dist = self.history.get_prior_action_distribution(
+            other_dist = history.get_prior_action_distribution(
                 player, lookback_rounds=history_size
             )
 
@@ -144,18 +147,18 @@ class Repetition(RepetitiveMechanism):
 
         return summaries
 
-    def _format_history(self, players: Sequence[Agent], focus: Agent) -> str:
+    def _format_history(self, players: Sequence[Agent], focus: Agent, history: RepetitiveMechanism.History) -> str:
         """Format prompt with a limited window of history and action distributions."""
         if self.lookup_depth < 0:
             raise ValueError("lookup_depth must be non-negative")
 
-        total_rounds = len(self.history.records)
+        total_rounds = len(history.records)
         start_idx = max(0, total_rounds - self.lookup_depth)
 
         # Build Recent History (Reverse Order)
         recent_history: list[str] = []
         for idx in range(total_rounds - 1, start_idx - 1, -1):
-            round_moves = self.history.records[idx]
+            round_moves = history.records[idx]
             actions_str = self._format_single_round(round_moves, focus)
 
             recent_history.append(
@@ -170,6 +173,7 @@ class Repetition(RepetitiveMechanism):
             focus,
             history_size=total_rounds - start_idx,
             start_idx=start_idx,
+            history=history,
         )
         recent_history.extend(priors)
 
@@ -182,23 +186,22 @@ class Repetition(RepetitiveMechanism):
             records: A list of lists, where each inner list contains the Moves
             for that specific round.
         """
-        self.history.clear()
-        for round_idx in tqdm(
-            range(1, self.num_rounds + 1),
-            desc=f"Running {self.__class__.__name__} repetitive rounds",
-        ):
+        # Create per-matchup history to avoid shared state across parallel matchups
+        matchup_history = self.History(self.base_game.action_class)
+
+        for round_idx in range(1, self.num_rounds + 1):
             repetition_information = self._build_history_prompts(
-                players, round_idx
+                players, round_idx, matchup_history
             )
             moves = self.base_game.play(
                 additional_info=repetition_information,
                 players=players,
             )
-            self.history.append(moves)
+            matchup_history.append(moves)
 
         LOGGER.log_record(
-            record=self.history.records,
+            record=matchup_history.records,
             file_name=self.record_file,
         )
 
-        return self.history.records
+        return matchup_history.records

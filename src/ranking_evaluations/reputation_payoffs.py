@@ -1,5 +1,6 @@
 """Track payoffs for reputation-based mechanisms where matchups are history-dependent."""
 
+import threading
 from collections import defaultdict
 from typing import Any, Sequence, override
 
@@ -34,6 +35,9 @@ class ReputationPayoffs(PayoffsBase):
         # Structure: {player: list of points over all rounds}
         self._profiles: dict[Agent, list[float]] = defaultdict(list)
 
+        # Thread safety for concurrent matchup execution
+        self._lock = threading.Lock()
+
     @override
     def reset(self) -> None:
         """Clear all recorded payoff outcomes."""
@@ -51,22 +55,22 @@ class ReputationPayoffs(PayoffsBase):
         """
         for round_moves in moves_over_rounds:
             for move in round_moves:
-                self._profiles[move.player].append(move.points)
+                with self._lock:
+                    self._profiles[move.player].append(move.points)
 
-    def model_average_payoff(self) -> dict[str, float | None]:
+    def agent_average_payoff(self) -> dict[str, float | None]:
         """
-        Compute the average discounted payoff of each model type across all rounds.
+        Compute the average discounted payoff of each agent type across all rounds.
 
         Returns:
-            Dictionary mapping model type to average discounted payoff, or None
-            for models that were never drawn.
+            Dictionary mapping agent type to average discounted payoff, or None
+            for agents that were never drawn.
         """
-        # Aggregate payoffs by model type
-        model_payoffs: dict[str, list[float]] = defaultdict(list)
+        # Aggregate payoffs by agent type
+        agent_payoffs: dict[str, list[float]] = defaultdict(list)
 
         for player, points_list in self._profiles.items():
-            model_type = player.model_type
-
+            agent_type = player.agent_type
             if not points_list:
                 continue
 
@@ -80,14 +84,18 @@ class ReputationPayoffs(PayoffsBase):
             discounted = self._compute_discounted_average(payoffs_2d)
 
             # Extract the single value
-            model_payoffs[model_type].append(float(discounted[0]))
+            agent_payoffs[agent_type].append(float(discounted[0]))
 
         # Average across all instances of each model
-        # Include all models from _uid_to_model, with None for those never drawn
-        all_models = set(player.model_type for player in self._profiles.keys())
+        # Include all agents from _uid_to_agent, with None for those never drawn
+        all_agents = set(player.agent_type for player in self._profiles.keys())
         return {
-            model_type: float(np.mean(model_payoffs[model_type])) if model_type in model_payoffs else None
-            for model_type in all_models
+            agent_type: (
+                float(np.mean(agent_payoffs[agent_type]))
+                if agent_type in agent_payoffs
+                else None
+            )
+            for agent_type in all_agents
         }
 
     @override

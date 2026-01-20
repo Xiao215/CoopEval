@@ -9,6 +9,7 @@ AGENT_REGISTRY = {
 
 
 def create_agent(agent_config: dict) -> Agent:
+    """Create an agent instance from config provided."""
     agent_class = AGENT_REGISTRY.get(agent_config["type"])
     if agent_class is None:
         raise ValueError(f"Unknown agent type: {agent_config['type']}")

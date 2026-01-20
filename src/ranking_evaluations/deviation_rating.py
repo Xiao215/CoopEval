@@ -36,21 +36,21 @@ class DeviationRating:
             raise ValueError(
                 "Must call build_payoff_tensor() before creating DeviationRating"
             )
-        if matchup_payoffs._tensor_model_types is None:
+        if matchup_payoffs._tensor_agent_types is None:
             raise ValueError(
-                "MatchupPayoffs must have _tensor_model_types populated"
+                "MatchupPayoffs must have _tensor_agent_types populated"
             )
 
         # Extract game parameters
         self.n_players = matchup_payoffs._payoff_tensor.ndim
         self.n_strategies = matchup_payoffs._payoff_tensor.shape[0]
-        self.model_types = matchup_payoffs._tensor_model_types
+        self.agent_types = matchup_payoffs._tensor_agent_types
 
-        if len(self.model_types) != self.n_strategies:
+        if len(self.agent_types) != self.n_strategies:
             raise ValueError(
-            "Number of model types must match number of strategies in payoff tensor; got "
-            f"{len(self.model_types)} model types and {self.n_strategies} strategies"
-        )
+                "Number of agent types must match number of strategies in payoff tensor; got "
+                f"{len(self.agent_types)} agent types and {self.n_strategies} strategies"
+            )
 
         # Build full payoff tensor for all players
         self.G = matchup_payoffs.build_full_payoff_tensor()
@@ -74,8 +74,8 @@ class DeviationRating:
             G: Full payoff tensor of shape (N, S^N).
 
         Returns:
-            Deviation matrix M of shape (N×S, S^N) where:
-            M[(p×S + s), a] = G_p(s, a_{-p}) - G_p(a)
+            Deviation matrix M of shape (NxS, S^N) where:
+            M[(pxS + s), a] = G_p(s, a_{-p}) - G_p(a)
         """
         N = self.n_players
         S = self.n_strategies
@@ -261,9 +261,7 @@ class DeviationRating:
         final_ratings = ratings_matrix[0, :]
 
         # Return as dictionary mapping model types to ratings
-        return {
-            self.model_types[s]: float(final_ratings[s]) for s in range(S)
-        }
+        return {self.agent_types[s]: float(final_ratings[s]) for s in range(S)}
 
     def compute_ratings(self) -> dict[str, float]:
         """

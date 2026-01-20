@@ -1,8 +1,10 @@
 """Hosted-model :class:`LLM` implementation backed by OpenAI-compatible APIs."""
 
+import json
 import time
 from typing import Any
 
+import httpx
 from openai import OpenAI, OpenAIError
 
 from config import settings
@@ -52,7 +54,7 @@ class ClientAPILLM(LLM):
             extra_body["reasoning"] = kwargs.pop("reasoning")
 
         # Simple retry/backoff around the API call
-        delays = [1, 2, 4, 8]
+        delays = [2**i for i in range(1,8)]
         for attempt, delay in enumerate([0] + delays):
             if delay:
                 time.sleep(delay)
@@ -64,9 +66,12 @@ class ClientAPILLM(LLM):
                     **kwargs,
                 )
                 return completion.choices[0].message.content
-            except OpenAIError as e:
-                # On last attempt, re-raise
+            except (OpenAIError, json.JSONDecodeError, httpx.HTTPError) as e:
+                # Catch API errors, malformed responses, and HTTP errors
+                # These are typically transient issues (rate limits, server errors, network issues)
                 if attempt == len(delays):
                     raise e
+                # Log the error for debugging
+                print(f"API call failed (attempt {attempt + 1}/{len(delays) + 1}): {type(e).__name__}: {e}")
                 continue
         raise RuntimeError("Unknown error invoking client API")

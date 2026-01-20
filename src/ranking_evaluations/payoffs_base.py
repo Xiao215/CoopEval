@@ -89,9 +89,9 @@ class PayoffsBase(ABC):
         return weighted_sums
 
     @abstractmethod
-    def model_average_payoff(self) -> dict[str, float | None]:
+    def agent_average_payoff(self) -> dict[str, float | None]:
         """
-        Compute the average payoff of each model type in the population.
+        Compute the average payoff of each agent type in the population.
         """
         raise NotImplementedError
 

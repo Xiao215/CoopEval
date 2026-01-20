@@ -13,7 +13,6 @@ from src.mechanisms.prompts import (MEDIATION_MECHANISM_PROMPT,
                                     MEDIATOR_APPROVAL_VOTE_PROMPT,
                                     MEDIATOR_DESIGN_PROMPT)
 from src.ranking_evaluations.payoffs_base import PayoffsBase
-from src.registry.agent_registry import create_players_with_player_id
 from src.utils.concurrency import run_tasks
 
 
@@ -23,9 +22,11 @@ class Mediation(Mechanism):
     def __init__(
         self,
         base_game: Game,
+        *,
+        tournament_workers: int = 1,
     ) -> None:
-        super().__init__(base_game)
-        # keyed by (model_type, player_id)
+        super().__init__(base_game, tournament_workers=tournament_workers)
+        # keyed by (agent_type, player_id)
         self.mediators: dict[tuple[str, int], dict[int, Action]] = {}
         self.mediator_design_prompt = MEDIATOR_DESIGN_PROMPT
         self.mediation_mechanism_prompt = MEDIATION_MECHANISM_PROMPT
@@ -37,7 +38,7 @@ class Mediation(Mechanism):
         designer: Agent,
     ) -> tuple[str, dict[int, Action]]:
         """
-        Design the mediator agent by the given LLM agent.
+        Design the mediator agent by the given LLM player.
         """
         game_prompt = self.base_game.get_player_prompt(designer.player_id)
         base_prompt = (
@@ -106,7 +107,7 @@ class Mediation(Mechanism):
         """Format all mediators for the voting prompt."""
         lines = []
         for player in players:
-            key = (player.model_type, player.player_id)
+            key = (player.agent_type, player.player_id)
             mediator = self.mediators[key]
             lines.append(f"Mediator proposed by Player {player.player_id}:")
             lines.append(self._mediator_description(mediator))
@@ -200,40 +201,34 @@ class Mediation(Mechanism):
         return winning_idx, winning_agent
 
     @override
-    def run_tournament(self, agent_cfgs: list[dict]) -> PayoffsBase:
-        # Create num_players agents per config using base class method
-        # This ensures each agent gets unique UID and designs their own mediator
-        agents = create_players_with_player_id(
-            agent_cfgs, self.base_game.num_players
-        )
-
+    def run_tournament(self, players: list[Agent]) -> PayoffsBase:
         # Cache agents so base class reuses them
-        self._cached_agents = agents
+        self._cached_agents = players
 
-        def design_fn(agent: Agent) -> tuple[Agent, str, dict[int, Action]]:
-            trace_id, mediator = self._design_mediator(agent)
-            return agent, trace_id, mediator
+        def design_fn(player: Agent) -> tuple[Agent, str, dict[int, Action]]:
+            trace_id, mediator = self._design_mediator(player)
+            return player, trace_id, mediator
 
-        results = run_tasks(agents, design_fn)
+        results = run_tasks(players, design_fn)
 
         self.mediators.clear()
         mediator_design = {}
-        for agent, trace_id, mediator in results:
-            key = (agent.model_type, agent.player_id)
+        for player, trace_id, mediator in results:
+            key = (player.agent_type, player.player_id)
             self.mediators[key] = mediator
-            mediator_design[agent.name] = {
+            mediator_design[player.name] = {
                 "trace_id": trace_id,
                 "mediator": [
                     (num_delegating, action.to_token())
                     for num_delegating, action in mediator.items()
-                ]
+                ],
             }
         LOGGER.log_record(
             record=mediator_design, file_name="mediator_design.json"
         )
 
         # Now call base class - it will use our cached agents
-        result = super().run_tournament(agent_cfgs)
+        result = super().run_tournament(players)
 
         # Clear cache for next run
         self._cached_agents = None
@@ -273,7 +268,7 @@ class Mediation(Mechanism):
 
         # Step 3: Select winning mediator
         winning_idx, winning_agent = self._select_mediator(players, all_votes)
-        key = (winning_agent.model_type, winning_agent.player_id)
+        key = (winning_agent.agent_type, winning_agent.player_id)
         winning_mediator = self.mediators[key]
 
         # Step 4: Play game once under selected mediator
@@ -322,11 +317,14 @@ class Mediation(Mechanism):
 
             recommended_action = mediator[num_delegating]
 
-            for player_id, val in players_decision.items():
-                action, response, trace_id, _ = val  # Clean unpacking
-
+            for player, (
+                action,
+                response,
+                trace_id,
+                _,
+            ) in players_decision.items():
                 if action.is_mediator:
-                    post_mapping_decision[player_id] = (
+                    post_mapping_decision[player] = (
                         recommended_action,
                         response,
                         trace_id,

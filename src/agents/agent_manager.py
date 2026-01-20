@@ -1,4 +1,5 @@
 """Agent abstractions and shared LLM caching utilities."""
+from datetime import datetime
 
 import itertools
 import textwrap
@@ -73,12 +74,13 @@ class Agent(ABC):
 
     def _log_inference(self, prompt: str, response: str, trace_id: str) -> None:
         """Log the inference to the game log."""
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         entry = (
-            f"===== Prompt [ID: {trace_id}] =====\n"
+            f"===== Prompt [ID: {trace_id}] [{timestamp}] =====\n"
             f"agent: {self.name}\n"
             "prompt:\n"
             f"{prompt}\n"
-            f"===== Response [ID: {trace_id}] =====\n"
+            f"===== Response [ID: {trace_id}] [{timestamp}] =====\n"
             f"agent: {self.name}\n"
             "response:\n"
             f"{response}\n\n"
@@ -138,9 +140,14 @@ class Agent(ABC):
 
     @property
     @abstractmethod
+    def agent_type(self) -> str:
+        """Return the model type and prompt strategy."""
+        raise NotImplementedError
+
+    @property
     def name(self) -> str:
         """Return the name of the agent."""
-        raise NotImplementedError
+        return f"{self.agent_type}#P{self.player_id}"
 
     def serialize(self) -> dict:
         """Return the LLM configuration dictionary for this agent."""
@@ -178,9 +185,9 @@ class IOAgent(Agent):
         return self.invoke(messages)
 
     @property
-    def name(self) -> str:
-        """Return the name of the agent."""
-        return f"{self.model_type}(IO)#P{self.player_id}"
+    def agent_type(self) -> str:
+        """Return the model type and prompt strategy."""
+        return f"{self.model_type}(IO)"
 
 
 class CoTAgent(Agent):
@@ -204,6 +211,6 @@ class CoTAgent(Agent):
         return self.invoke(messages)
 
     @property
-    def name(self) -> str:
-        """Return the name of the agent."""
-        return f"{self.model_type}(CoT)#P{self.player_id}"
+    def agent_type(self) -> str:
+        """Return the model type and prompt strategy."""
+        return f"{self.model_type}(CoT)"

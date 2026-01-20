@@ -15,10 +15,10 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-# AGENTS_CONFIG="agents/test_agents_5.yaml"
+AGENTS_CONFIG="agents/test_agents_6.yaml"
 # AGENTS_CONFIG="agents/cheap_llms_3.yaml"
-# AGENTS_CONFIG="agents/sota_llms.yaml"
-AGENTS_CONFIG="agents/few_strong_llms.yaml"
+# # AGENTS_CONFIG="agents/sota_llms.yaml"
+# AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
 # EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
@@ -26,7 +26,8 @@ EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
 
 # Parallel execution settings
 PARALLEL_EXPERIMENTS=4  # Number of experiments to run simultaneously
-EXPERIMENT_WORKERS=2    # Number of parallel workers within each experiment (for LLM queries)
+EXPERIMENT_WORKERS=3    # Number of parallel workers within each experiment (for LLM queries)
+TOURNAMENT_WORKERS=3    # Number of parallel matchups within each tournament (1=sequential)
 
 # Retry settings
 RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead of retrying them
@@ -51,10 +52,10 @@ GAME_CONFIGS=(
 MECHANISM_CONFIGS=(
     # "mechanisms/no_mechanism.yaml"
     # "mechanisms/contracting.yaml"
-    # "mechanisms/disarmament.yaml"
+    "mechanisms/disarmament.yaml"
     # "mechanisms/mediation.yaml"
-    # "mechanisms/repetition.yaml"
-    "mechanisms/reputation.yaml"
+    "mechanisms/repetition.yaml"
+    # "mechanisms/reputation.yaml"
 )
 
 # GAME_CONFIGS=("games/matching_pennies.yaml" "games/prisoners_dilemma.yaml")
@@ -159,6 +160,7 @@ EOF
   "evaluation_config": "$EVALUATION_CONFIG",
   "parallel_experiments": $PARALLEL_EXPERIMENTS,
   "experiment_workers": $EXPERIMENT_WORKERS,
+  "tournament_workers": $TOURNAMENT_WORKERS,
   "games": [$(printf '"%s",' "${GAME_CONFIGS[@]}" | sed 's/,$//')],
   "mechanisms": [$(printf '"%s",' "${MECHANISM_CONFIGS[@]}" | sed 's/,$//')],
   "total_experiments": $total_experiments
@@ -312,6 +314,7 @@ evaluation_config: $EVALUATION_CONFIG
 name: $experiment_name
 concurrency:
   max_workers: $EXPERIMENT_WORKERS
+  tournament_workers: $TOURNAMENT_WORKERS
 EOF
 
     # Run experiment with timing and output capture
@@ -385,6 +388,7 @@ export BATCH_CONFIGS_DIR
 export AGENTS_CONFIG
 export EVALUATION_CONFIG
 export EXPERIMENT_WORKERS
+export TOURNAMENT_WORKERS
 export RETRY_FAILED_EXPERIMENTS
 export PROJECT_ROOT
 export total_experiments
@@ -393,7 +397,7 @@ export total_experiments
 # MAIN EXPERIMENT LOOP (PARALLEL)
 # =============================================================================
 
-echo "Running experiments with parallel_experiments: $PARALLEL_EXPERIMENTS, experiment_workers: $EXPERIMENT_WORKERS"
+echo "Running experiments with parallel_experiments: $PARALLEL_EXPERIMENTS, experiment_workers: $EXPERIMENT_WORKERS, tournament_workers: $TOURNAMENT_WORKERS"
 echo ""
 
 # Array to hold background job PIDs

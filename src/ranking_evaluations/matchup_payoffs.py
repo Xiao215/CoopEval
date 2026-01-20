@@ -1,6 +1,7 @@
 """Store and aggregate matchup-based tournament payoffs for evolutionary dynamics."""
 
 import math
+import threading
 from collections import defaultdict
 from itertools import permutations, product
 from typing import Any, Sequence, TypeAlias, override
@@ -19,7 +20,7 @@ class MatchupPayoffs(PayoffsBase):
     """Manage payoff tables while tracking seat-level outcomes.
 
     Payoffs are stored by unique match profiles (sorted UIDs). Aggregation
-    by model type is performed lazily using the provided `players` list
+    by agent type is performed lazily using the provided `players` list
     as the source of truth for agent identities.
     """
 
@@ -31,7 +32,7 @@ class MatchupPayoffs(PayoffsBase):
         """
         Args:
             players: List of Agents involved in the tournament.
-                This is required to map UIDs to model types.
+                This is required to map UIDs to agent types.
             discount: Geometric discount factor in (0, 1].
         """
         super().__init__(discount=discount)
@@ -40,16 +41,19 @@ class MatchupPayoffs(PayoffsBase):
         # Structure: { (player_seat0, player_seat1): [ ndarray(payoff_seat0, payoff_seat1, ...), ... ] }
         self._profiles: dict[ProfileKey, list[np.ndarray]] = defaultdict(list)
 
+        # Thread safety for concurrent matchup execution
+        self._lock = threading.Lock()
+
         # Cached payoff tensor (populated by build_payoff_tensor)
         self._payoff_tensor: np.ndarray | None = None
-        self._tensor_model_types: list[str] | None = None
+        self._tensor_agent_types: list[str] | None = None
 
     @override
     def reset(self) -> None:
         """Clear all recorded matchup outcomes."""
         self._profiles.clear()
         self._payoff_tensor = None
-        self._tensor_model_types = None
+        self._tensor_agent_types = None
 
     @override
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
@@ -75,19 +79,19 @@ class MatchupPayoffs(PayoffsBase):
             ordered_points = [round_data[uid] for uid in key]
             match_accumulator[key].append(ordered_points)
 
-        # Final Commit: Convert accumulated lists to arrays and store
         for key, history_list in match_accumulator.items():
             match_array = np.array(history_list, dtype=float)
-            self._profiles[key].append(match_array)
+            with self._lock:
+                self._profiles[key].append(match_array)
 
     @override
-    def model_average_payoff(self) -> dict[str, float | None]:
+    def agent_average_payoff(self) -> dict[str, float | None]:
         """
-        Compute the average payoff of each model type in the population.
+        Compute the average payoff of each agent type in the population.
 
         Returns:
-            Dictionary mapping model type to average payoff. For matchup-based
-            mechanisms, all models typically have observations (returns float).
+            Dictionary mapping agent type to average payoff. For matchup-based
+            mechanisms, all agents typically have observations (returns float).
         """
 
         aggregated_payoffs: dict[str, list[float]] = defaultdict(list)
@@ -97,19 +101,19 @@ class MatchupPayoffs(PayoffsBase):
                     rounds_payoff
                 )
                 for i, player in enumerate(players):
-                    aggregated_payoffs[player.model_type].append(
+                    aggregated_payoffs[player.agent_type].append(
                         discounted_score[i]
                     )
         return {
-            model_type: float(np.mean(np.array(scores)))
-            for model_type, scores in aggregated_payoffs.items()
+            agent_type: float(np.mean(np.array(scores)))
+            for agent_type, scores in aggregated_payoffs.items()
         }
 
     def build_payoff_tensor(self) -> None:
         """
         Aggregate all recorded match histories into a canonical payoff tensor.
 
-        The resulting tensor represents the expected payoff for a 'focal' model
+        The resulting tensor represents the expected payoff for a 'focal' agent
         (index 0) when playing against a specific combination of other players.
         Symmetry is enforced by filling all permutations of observed profiles.
         """
@@ -118,46 +122,53 @@ class MatchupPayoffs(PayoffsBase):
                 "No matches recorded. Cannot compute payoff tensor."
             )
 
-        model_types = sorted(
+        agent_types = sorted(
             {
-                player.model_type
+                player.agent_type
                 for players in self._profiles.keys()
                 for player in players
             }
         )
-        model_to_idx = {m: i for i, m in enumerate(model_types)}
+        agent_type_to_idx = {m: i for i, m in enumerate(agent_types)}
 
-        k = len(model_types)
+        k = len(agent_types)
         # Determine N-players from the first available key
         n_players = len(next(iter(self._profiles.keys())))
 
         # Initialize Accumulators
-        # tensor[i, j, ...] stores sum of payoffs for Model_i vs Model_j ...
+        # tensor[i, j, ...] stores sum of payoffs for Agent_i vs Agent_j ...
         payoff_sums = np.zeros([k] * n_players, dtype=float)
         counts = np.zeros([k] * n_players, dtype=int)
 
-        # First pass: Collect ALL observations grouped by (composition, focal_model)
+        # First pass: Collect ALL observations grouped by (composition, focal_agent)
         composition_observations = defaultdict(list)
 
         for players, match_list in self._profiles.items():
-            current_models = [player.model_type for player in players]
+            current_agent_types = [player.agent_type for player in players]
 
             # Process each match separately to avoid nested averaging
             for match_arr in match_list:
                 discounted_scores = self._compute_discounted_average(match_arr)
 
                 # Record each seat's observation
-                for model, score in zip(current_models, discounted_scores):
+                for agent_type, score in zip(
+                    current_agent_types, discounted_scores
+                ):
                     # Use tuple as composition key
-                    composition_key = tuple(current_models)
-                    composition_observations[(composition_key, model)].append(score)
+                    composition_key = tuple(current_agent_types)
+                    composition_observations[
+                        (composition_key, agent_type)
+                    ].append(score)
 
         # Second pass: Sum all observations and track counts for averaging
-        for (comp_key, focal_model), scores in composition_observations.items():
-            # Fill all permutations where focal_model is in position 0
+        for (
+            comp_key,
+            focal_agent_type,
+        ), scores in composition_observations.items():
+            # Fill all permutations where focal_agent_type is in position 0
             for perm in set(permutations(comp_key)):
-                if perm[0] == focal_model:
-                    indices = tuple(model_to_idx[m] for m in perm)
+                if perm[0] == focal_agent_type:
+                    indices = tuple(agent_type_to_idx[m] for m in perm)
                     # Add each observation individually to let final division handle averaging
                     for score in scores:
                         payoff_sums[indices] += score
@@ -167,7 +178,7 @@ class MatchupPayoffs(PayoffsBase):
         tensor = payoff_sums / counts
 
         self._payoff_tensor = tensor
-        self._tensor_model_types = model_types
+        self._tensor_agent_types = agent_types
 
     def build_full_payoff_tensor(self) -> np.ndarray:
         """
@@ -221,14 +232,14 @@ class MatchupPayoffs(PayoffsBase):
 
     def fitness(self, population: dict[str, float]) -> dict[str, float]:
         """
-        Compute expected payoff for each model type against the current population.
+        Compute expected payoff for each agent type against the current population.
 
         Uses einsum to compute: fitness[i] = Σ_{j,k,...} tensor[i,j,k,...] x pop[j] x pop[k] x ...
-        This represents the expected payoff for a model i playing against
+        This represents the expected payoff for an agent i playing against
         other players randomly sampled from the population distribution.
 
         Args:
-            population: dict mapping model type to its probability.
+            population: dict mapping agent type to its probability.
         """
         if not math.isclose(sum(population.values()), 1.0):
             raise ValueError(
@@ -236,19 +247,22 @@ class MatchupPayoffs(PayoffsBase):
             )
 
         # Ensure tensor has been built
-        assert self._payoff_tensor is not None and self._tensor_model_types is not None, \
-            "Must call build_payoff_tensor() before fitness(). Tensor has not been built yet."
+        assert (
+            self._payoff_tensor is not None
+            and self._tensor_agent_types is not None
+        ), "Must call build_payoff_tensor() before fitness(). Tensor has not been built yet."
 
         tensor = self._payoff_tensor
-        model_types = self._tensor_model_types
+        agent_types = self._tensor_agent_types
         n_players = tensor.ndim
 
-        # Verify consistency between population and tensor model types
-        assert set(model_types) == set(population.keys()), \
-            f"Model types mismatch: tensor has {set(model_types)}, population has {set(population.keys())}"
+        # Verify consistency between population and tensor agent types
+        assert set(agent_types) == set(
+            population.keys()
+        ), f"Agent types mismatch: tensor has {set(agent_types)}, population has {set(population.keys())}"
 
         # Build population vector in the same order as tensor indices
-        pop = np.array([population[m] for m in model_types])
+        pop = np.array([population[agent_type] for agent_type in agent_types])
 
         # Create einsum expression: 'ijk...,j,k,...->i'
         indices = ''.join(chr(ord('a') + i) for i in range(n_players))
@@ -257,13 +271,16 @@ class MatchupPayoffs(PayoffsBase):
         # Compute fitness via einsum
         fitness_vec = np.einsum(expr, tensor, *([pop] * (n_players - 1)))
 
-        return {m: float(fitness_vec[i]) for i, m in enumerate(model_types)}
+        return {
+            agent_type: float(fitness_vec[i])
+            for i, agent_type in enumerate(agent_types)
+        }
 
     @override
     def to_json(self) -> dict[str, Any]:
         """Serialize payoff records.
 
-        Note: We store the current uid_to_model mapping and player configs
+        Note: We store the current uid_to_agent mapping and player configs
         in the JSON so from_json can reconstruct when players are not provided.
         """
         serialized_profile = []
