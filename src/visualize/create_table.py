@@ -41,12 +41,13 @@ class ExperimentData:
     model_scores: Dict[str, float]
     folder_path: Path
     game_config: dict  # Store full game config for score normalization
+    eval_config: dict  # Store evaluation config for consistency checking
     # New fields for additional metrics
     rd_fitness: Optional[Dict[str, float]] = None  # Required (None only for reputation)
     deviation_ranks: Optional[Dict[str, str]] = None  # Required (None only for reputation), store as rank strings
 
 
-def load_json(path: Path) -> Optional[dict]:
+def load_json(path: Path) -> dict:
     """Load JSON file with error handling."""
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -141,6 +142,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
         mechanism = config["mechanism"]["type"]
         game = config["game"]["type"]
         game_config = config["game"]
+        eval_config = config["evaluation"]
 
         # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
         if mechanism.lower() == "reputation":
@@ -187,6 +189,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
                 model_scores=payoffs,
                 folder_path=subdir,
                 game_config=game_config,
+                eval_config=eval_config,
                 rd_fitness=rd_fitness,
                 deviation_ranks=deviation_ranks,
             )
@@ -281,29 +284,98 @@ def sort_mechanisms(mechanisms: List[str]) -> List[str]:
     return sorted(mechanisms, key=sort_key)
 
 
-def extract_canonical_lists(
+def validate_experiments(
     experiments: List[ExperimentData],
-) -> tuple[List[str], List[str], List[str]]:
+) -> tuple[List[str], List[str], List[str], dict]:
     """
-    Extract canonical lists of mechanisms, games, and models from experiments.
+    Validate experiments and extract canonical lists.
+
+    Checks:
+    1. No duplicate (mechanism, game) combinations
+    2. All experiments have identical model lists
+    3. All experiments have identical evaluation configs
+    4. Complete mechanism×game grid coverage
 
     Args:
         experiments: List of ExperimentData objects
 
     Returns:
-        Tuple of (mechanisms, games, models) with mechanisms in preferred order,
-        games and models sorted alphabetically
+        Tuple of (mechanisms, games, models, eval_config)
+
+    Raises:
+        ValueError: If validation fails
     """
+    # Check for duplicate (mechanism, game) combinations
+    exp_map: Dict[tuple[str, str], ExperimentData] = {}
+    duplicates = []
+    for exp in experiments:
+        key = (exp.mechanism, exp.game)
+        if key in exp_map:
+            duplicates.append((
+                key,
+                exp_map[key].folder_path,
+                exp.folder_path
+            ))
+        else:
+            exp_map[key] = exp
+
+    if duplicates:
+        error_msg = f"Duplicate experiments detected! Found {len(duplicates)} duplicate(s):\n"
+        for (mech, game), path1, path2 in duplicates:
+            error_msg += f"  - {mech} × {game}: {path1} and {path2}\n"
+        error_msg += "\nEach (mechanism, game) combination must appear exactly once across all folders."
+        raise ValueError(error_msg)
+
+    # Validate non-empty experiments
+    if not experiments:
+        raise ValueError("No experiments provided")
+
+    # Extract canonical sets and validate consistency on the fly
     mechanisms = set()
     games = set()
-    models = set()
+    canonical_models = sorted(experiments[0].model_scores.keys())
+    canonical_eval = experiments[0].eval_config
 
-    for exp in experiments:
+    for i, exp in enumerate(experiments):
         mechanisms.add(exp.mechanism)
         games.add(exp.game)
-        models.update(exp.model_scores.keys())
+        
+        # Check model list matches
+        exp_models = sorted(exp.model_scores.keys())
+        if exp_models != canonical_models:
+            error_msg = f"Model list mismatch detected!\n"
+            error_msg += f"  Experiment 0: {canonical_models}\n"
+            error_msg += f"  Experiment {i}: {exp_models}\n"
+            error_msg += "\nAll experiments must test the same set of models."
+            raise ValueError(error_msg)
+        
+        # Check eval config matches
+        if exp.eval_config != canonical_eval:
+            error_msg = f"Evaluation config mismatch detected!\n"
+            error_msg += f"  Experiment 0: {canonical_eval}\n"
+            error_msg += f"  Experiment {i}: {exp.eval_config}\n"
+            error_msg += "\nAll experiments must use identical evaluation configurations."
+            raise ValueError(error_msg)
 
-    return sort_mechanisms(list(mechanisms)), sorted(games), sorted(models)
+    # Sort canonical lists
+    canonical_mechanisms = sort_mechanisms(list(mechanisms))
+    canonical_games = sorted(games)
+
+    # Validate complete grid coverage
+    missing_combinations = []
+    for mech in canonical_mechanisms:
+        for game in canonical_games:
+            if (mech, game) not in exp_map:
+                missing_combinations.append((mech, game))
+
+    if missing_combinations:
+        error_msg = f"Incomplete mechanism×game grid! Missing {len(missing_combinations)} combination(s):\n"
+        for mech, game in missing_combinations:
+            error_msg += f"  - {mech} × {game}\n"
+        error_msg += "\nAll mechanism×game combinations must be present."
+        raise ValueError(error_msg)
+
+    return canonical_mechanisms, canonical_games, canonical_models, canonical_eval
 
 
 def validate_data_consistency(
@@ -380,6 +452,7 @@ def generate_game_table(
     deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]],
     precision: int = 3,
     metrics: List[str] | None = None,
+    source_folders: List[Path] | None = None,
 ) -> str:
     """
     Generate LaTeX table for a single game with multicolumn headers.
@@ -393,6 +466,7 @@ def generate_game_table(
         deviation_ranks: Nested dictionary with deviation ranks
         precision: Number of decimal places
         metrics: List of metrics to include (subset of ["mean", "rd", "dr"])
+        source_folders: Optional list of source folder paths
 
     Returns:
         Complete LaTeX table as string
@@ -402,6 +476,13 @@ def generate_game_table(
 
     # Start building table
     lines = []
+    
+    # Add source folder comments if provided
+    if source_folders:
+        lines.append("% Source folders:")
+        for folder in source_folders:
+            lines.append(f"%   {folder}")
+    
     lines.append(r"\begin{table}[t]")
     lines.append(r"\centering")
     lines.append(f"\\caption{{Results for {game}}}")
@@ -460,7 +541,7 @@ def generate_game_table(
 
 
 def compute_aggregate_metric(
-    data: Dict[str, Dict[str, Dict[str, any]]],
+    data,
     game_configs: Dict[str, dict],
     mechanism: str,
     model: str,
@@ -550,6 +631,7 @@ def generate_aggregate_table(
     precision: int,
     metrics: List[str],
     show_stderr: bool,
+    source_folders: List[Path] | None = None,
 ) -> str:
     """
     Generate aggregated LaTeX table across social dilemma games with selected metrics.
@@ -564,6 +646,7 @@ def generate_aggregate_table(
         precision: Number of decimal places
         metrics: List of metrics to include (subset of ["mean", "rd", "dr"])
         show_stderr: Whether to show standard errors for mean/rd metrics
+        source_folders: Optional list of source folder paths
 
     Returns:
         Complete LaTeX table as string
@@ -592,6 +675,13 @@ def generate_aggregate_table(
 
     # Start building table
     lines = []
+    
+    # Add source folder comments if provided
+    if source_folders:
+        lines.append("% Source folders:")
+        for folder in source_folders:
+            lines.append(f"%   {folder}")
+    
     lines.append(r"\begin{table}[t]")
     lines.append(r"\centering")
     lines.append(
@@ -749,13 +839,15 @@ Examples:
   python src/visualize/create_table.py outputs/2026/01/14/16:14/
   python src/visualize/create_table.py outputs/2026/01/14/16:14/ --output tables/
   python src/visualize/create_table.py outputs/2026/01/14/16:14/ --quiet
+  python src/visualize/create_table.py outputs/folder1/ outputs/folder2/ --output tables/
         """,
     )
 
     parser.add_argument(
-        "batch_path",
+        "batch_paths",
         type=Path,
-        help="Path to batch experiment folder (e.g., outputs/2026/01/14/16:14/)",
+        nargs="+",
+        help="Path(s) to batch experiment folder(s) (e.g., outputs/2026/01/14/16:14/)",
     )
 
     parser.add_argument(
@@ -798,33 +890,44 @@ Examples:
 
     args = parser.parse_args()
 
-    # Parse batch folder
+    # Parse all batch folders
+    all_experiments = []
+    for batch_path in args.batch_paths:
+        try:
+            experiments = parse_batch_folder(batch_path, args.metrics)
+            all_experiments.extend(experiments)
+            print(f"Parsed {len(experiments)} experiments from {batch_path}")
+        except (FileNotFoundError, NotADirectoryError, ValueError) as e:
+            print(f"Error parsing {batch_path}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"\nTotal experiments: {len(all_experiments)}")
+
+    # Validate experiments and extract canonical lists
     try:
-        experiments = parse_batch_folder(args.batch_path, args.metrics)
-    except (FileNotFoundError, NotADirectoryError, ValueError) as e:
-        print(f"Error: {e}", file=sys.stderr)
+        mechanisms, games, models, eval_config = validate_experiments(all_experiments)
+    except ValueError as e:
+        print(f"Validation error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Found {len(experiments)} valid experiments")
+    print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models")
+    print(f"Grid completeness: {len(mechanisms)} × {len(games)} = {len(all_experiments)} experiments\n")
 
-    # Extract canonical lists (mechanism, game, model combinations)
-    mechanisms, games, models = extract_canonical_lists(experiments)
-    print(f"Games: {len(games)}, Mechanisms: {len(mechanisms)}, Models: {len(models)}")
-
-    # Build data structures (NOW WITH NEW METRICS)
-    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(experiments)
-
-    # Validate all combinations are present
-    validate_data_consistency(payoffs, mechanisms, games, models)
-    print("Data consistency validated: all mechanism×game×model combinations present")
+    # Build data structures
+    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(all_experiments)
 
     # Determine output directory
-    output_dir = args.output if args.output else args.batch_path
+    if args.output:
+        output_dir = args.output
+    elif len(args.batch_paths) == 1:
+        output_dir = args.batch_paths[0]
+    else:
+        output_dir = args.batch_paths[0].parent
 
     # Generate and save per-game tables
     for game in games:
         table_latex = generate_game_table(
-            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics
+            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics, args.batch_paths
         )
 
         output_path = output_dir / f"table_{game}.tex"
@@ -837,7 +940,7 @@ Examples:
 
     # Generate and save aggregate table (social dilemmas only)
     table_latex = generate_aggregate_table(
-        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr
+        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
     )
 
     output_path = output_dir / "table_aggregate.tex"
