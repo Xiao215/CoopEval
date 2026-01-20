@@ -112,6 +112,7 @@ is_experiment_completed() {
 
     # Check if experiment exists and should be skipped
     $PYTHON_BIN -c "
+import fcntl
 import json
 import sys
 
@@ -121,7 +122,10 @@ retry_failed = '${retry_failed}'
 
 try:
     with open(summary_file, 'r') as f:
+        # Acquire shared lock for reading (prevents corruption from concurrent writes)
+        fcntl.flock(f.fileno(), fcntl.LOCK_SH)
         summary = json.load(f)
+        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
     exp = summary.get('experiments', {}).get(exp_name)
     if not exp:
