@@ -16,8 +16,8 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-# AGENTS_CONFIG="agents/test_agents_6.yaml"
-AGENTS_CONFIG="agents/cheap_llms_3.yaml"
+AGENTS_CONFIG="agents/test_agents_6.yaml"
+# AGENTS_CONFIG="agents/cheap_llms_3.yaml"
 # AGENTS_CONFIG="agents/sota_llms.yaml"
 # AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
