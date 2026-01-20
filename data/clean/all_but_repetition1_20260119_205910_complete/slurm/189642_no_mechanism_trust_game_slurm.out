@@ -1,0 +1,29 @@
+==========================================
+SLURM Job Array Task
+==========================================
+Job ID: 189663
+Array Job ID: 189642
+Array Task ID: 20
+Node: marvel-1-23
+Batch Directory: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910
+==========================================
+
+Activating conda environment: llmcoop
+Python path: /marvel/home/etewolde/miniconda3/envs/llmcoop/bin/python
+Conda env: llmcoop
+Conda prefix: /marvel/home/etewolde/miniconda3/envs/llmcoop
+
+[20] RETRYING (failed previously): no_mechanism_trust_game
+  Removing previous experiment directory...
+  Game: games/trust_game.yaml
+  Mechanism: mechanisms/no_mechanism.yaml
+  Output: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/no_mechanism_trust_game
+--------------------------------------------------
+Running experiment: no_mechanism_trust_game
+Config: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/configs/no_mechanism_trust_game.yaml
+✓ no_mechanism_trust_game: Completed successfully (309s)
+
+
+==========================================
+Task 20 finished with exit code: 0
+==========================================

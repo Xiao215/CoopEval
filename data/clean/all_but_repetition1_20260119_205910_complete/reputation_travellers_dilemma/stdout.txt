@@ -1,0 +1,23 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/reputation_travellers_dilemma
+Running TravellersDilemma with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in the response 'Let\'s break down the problem step by step.\n\n---\n\n### **Step 1: Understand the Game Mechanics**\n\n- **Actions**: A0 → 2, A1 → 3, A2 → 4, A3 → 5\n- **You and the opponent choose actions simultaneously based on probability distributions**\n- **Payoff Rules**:...[truncated due to length]... if Agent #2 plays A3, you get 4+2=6.\n\nBut if Agent #2 plays A0, you get 0.\n\nAnd Agent #2 is *likely* to play A0.\n\nSo 10% chance to get 6, 90% chance to get 0 → expected 0.6 → total for that 10% is **0.6**\n\nBut in A0, you get 2.4.\n\nHow much would you lose?\n\nIf you play A0 90%, A2 10%:\n' from response "Let's break down the problem step by step.\n\n---\n\n### **Step 1: Understand the Game Mechanics**\n\n- **Actions**: A0 → 2, A1 → 3, A2 → 4, A3 → 5\n- **You and the opponent choose actions simultaneously based on probability distributions**\n- **Payoff Rules**:\n  - If X = Y: both get X points\n  - If X < Y: ...[truncated due to length]...hy A2? Because if Agent #2 plays A3, you get 4+2=6.\n\nBut if Agent #2 plays A0, you get 0.\n\nAnd Agent #2 is *likely* to play A0.\n\nSo 10% chance to get 6, 90% chance to get 0 → expected 0.6 → total for that 10% is **0.6**\n\nBut in A0, you get 2.4.\n\nHow much would you lose?\n\nIf you play A0 90%, A2 10%:\n"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 2.2400
+  google/gemini-3-flash-preview(CoT): 2.1724
+  google/gemini-3-flash-preview(IO): 2.0019
+  openai/gpt-4o-2024-05-13(CoT): 1.4695
+  openai/gpt-5.2(CoT): 2.2381
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 2.3600
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+

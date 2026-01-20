@@ -1,0 +1,20 @@
+==========================================
+SLURM Job Array Task
+==========================================
+Job ID: 189646
+Array Job ID: 189642
+Array Task ID: 3
+Node: marvel-1-19
+Batch Directory: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910
+==========================================
+
+Activating conda environment: llmcoop
+Python path: /marvel/home/etewolde/miniconda3/envs/llmcoop/bin/python
+Conda env: llmcoop
+Conda prefix: /marvel/home/etewolde/miniconda3/envs/llmcoop
+
+[3] SKIPPING (already completed): reputation_matching_pennies
+
+==========================================
+Task 3 finished with exit code: 0
+==========================================

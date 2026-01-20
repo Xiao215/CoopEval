@@ -1,0 +1,20 @@
+==========================================
+SLURM Job Array Task
+==========================================
+Job ID: 189683
+Array Job ID: 189666
+Array Task ID: 16
+Node: marvel-1-21
+Batch Directory: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910
+==========================================
+
+Activating conda environment: llmcoop
+Python path: /marvel/home/etewolde/miniconda3/envs/llmcoop/bin/python
+Conda env: llmcoop
+Conda prefix: /marvel/home/etewolde/miniconda3/envs/llmcoop
+
+[16] SKIPPING (already completed): no_mechanism_travellers_dilemma
+
+==========================================
+Task 16 finished with exit code: 0
+==========================================

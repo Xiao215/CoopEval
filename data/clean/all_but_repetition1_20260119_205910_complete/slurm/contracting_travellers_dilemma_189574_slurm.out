@@ -1,0 +1,28 @@
+==========================================
+SLURM Job Array Task
+==========================================
+Job ID: 189592
+Array Job ID: 189574
+Array Task ID: 17
+Node: marvel-1-21
+Batch Directory: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910
+==========================================
+
+Activating conda environment: llmcoop
+Python path: /marvel/home/etewolde/miniconda3/envs/llmcoop/bin/python
+Conda env: llmcoop
+Conda prefix: /marvel/home/etewolde/miniconda3/envs/llmcoop
+
+[17] Running: contracting_travellers_dilemma
+  Game: games/travellers_dilemma.yaml
+  Mechanism: mechanisms/contracting.yaml
+  Output: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/contracting_travellers_dilemma
+--------------------------------------------------
+Running experiment: contracting_travellers_dilemma
+Config: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/configs/contracting_travellers_dilemma.yaml
+✗ contracting_travellers_dilemma: Failed with exit code 1 (434s)
+
+
+==========================================
+Task 17 finished with exit code: 1
+==========================================

@@ -1,0 +1,28 @@
+==========================================
+SLURM Job Array Task
+==========================================
+Job ID: 189597
+Array Job ID: 189574
+Array Task ID: 22
+Node: marvel-1-23
+Batch Directory: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910
+==========================================
+
+Activating conda environment: llmcoop
+Python path: /marvel/home/etewolde/miniconda3/envs/llmcoop/bin/python
+Conda env: llmcoop
+Conda prefix: /marvel/home/etewolde/miniconda3/envs/llmcoop
+
+[22] Running: mediation_trust_game
+  Game: games/trust_game.yaml
+  Mechanism: mechanisms/mediation.yaml
+  Output: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/mediation_trust_game
+--------------------------------------------------
+Running experiment: mediation_trust_game
+Config: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/configs/mediation_trust_game.yaml
+✓ mediation_trust_game: Completed successfully (1050s)
+
+
+==========================================
+Task 22 finished with exit code: 0
+==========================================

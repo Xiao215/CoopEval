@@ -1,0 +1,22 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/reputation_stag_hunt
+Running StagHunt with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 5.0000
+  google/gemini-3-flash-preview(CoT): 5.0000
+  google/gemini-3-flash-preview(IO): 5.0000
+  openai/gpt-4o-2024-05-13(CoT): 5.0000
+  openai/gpt-5.2(CoT): 5.0000
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 5.0000
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
