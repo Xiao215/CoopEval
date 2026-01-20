@@ -4,8 +4,8 @@
 # =============================================================================
 #SBATCH --job-name=LLM_tournament
 #SBATCH --partition=cpu_opteron6272
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=8G
+#SBATCH --cpus-per-task=6
+#SBATCH --mem=16G
 #SBATCH --time=10:00:00
 #SBATCH --exclude=marvel-0-[15-29],marvel-1-[7,13]
 
