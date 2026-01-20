@@ -15,10 +15,10 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-AGENTS_CONFIG="agents/test_agents_6.yaml"
+# AGENTS_CONFIG="agents/test_agents_6.yaml"
 # AGENTS_CONFIG="agents/cheap_llms_3.yaml"
 # AGENTS_CONFIG="agents/sota_llms.yaml"
-# AGENTS_CONFIG="agents/few_strong_llms.yaml"
+AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
 # EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
@@ -26,7 +26,7 @@ EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
 
 # Concurrency settings
 EXPERIMENT_WORKERS=3    # Number of parallel workers within each experiment (for LLM queries)
-TOURNAMENT_WORKERS=3    # Number of parallel matchups within each tournament (1=sequential)
+TOURNAMENT_WORKERS=9    # Number of parallel matchups within each tournament (1=sequential)
 
 # Retry settings
 RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead of retrying them
@@ -34,10 +34,10 @@ RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    # "games/matching_pennies.yaml"
+    "games/matching_pennies.yaml"
     "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    # "games/stag_hunt.yaml"
+    "games/stag_hunt.yaml"
     "games/travellers_dilemma.yaml"
     "games/trust_game.yaml"
 )
@@ -45,12 +45,13 @@ GAME_CONFIGS=(
 # List of mechanism config paths (relative to configs/)
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
-    # "mechanisms/no_mechanism.yaml"
-    # "mechanisms/contracting.yaml"
+    "mechanisms/no_mechanism.yaml"
+    "mechanisms/contracting.yaml"
+    "mechanisms/mediation.yaml"
+    "mechanisms/reputation.yaml"
+    # "mechanisms/repetition.yaml"
+
     # "mechanisms/disarmament.yaml"
-    # "mechanisms/mediation.yaml"
-    "mechanisms/repetition.yaml"
-    # "mechanisms/reputation.yaml"
 )
 
 # =============================================================================

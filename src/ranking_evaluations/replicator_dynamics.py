@@ -167,7 +167,7 @@ class DiscreteReplicatorDynamics:
                 for agent_type, prob in zip(self.agent_types, population)
             }
             fitness_dict = matchup_payoffs.fitness(population_dict)
-            if step % 10 == 0 or step == 1:
+            if step % 100 == 0 or step == 1:
                 print(f"Step {step}: Population fitness is {fitness_dict}")
             fitness = np.array(
                 [fitness_dict[agent_type] for agent_type in self.agent_types]
