@@ -1,6 +1,6 @@
 #!/bin/bash
 # Main batch runner script - orchestrates experiment execution
-# Usage: ./run_batch.sh [--local|--slurm] [--batch-name NAME] [--resume BATCH_DIR]
+# Usage: ./script/run_batch.sh [--local|--slurm] [--batch-name NAME] [--resume BATCH_DIR]
 
 export PYTHONPATH=.
 
@@ -15,8 +15,8 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-AGENTS_CONFIG="agents/test_agents_6.yaml"
-# AGENTS_CONFIG="agents/cheap_llms_3.yaml"
+# AGENTS_CONFIG="agents/test_agents_6.yaml"
+AGENTS_CONFIG="agents/cheap_llms_3.yaml"
 # AGENTS_CONFIG="agents/sota_llms.yaml"
 # AGENTS_CONFIG="agents/few_strong_llms.yaml"
 

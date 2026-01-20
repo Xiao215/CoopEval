@@ -87,6 +87,10 @@ fi
 
 EXPERIMENT_DIR="${BATCH_DIR}/${EXP_NAME}"
 
+# Override config path to use local batch directory (for portability across machines)
+# The manifest may contain absolute paths from a different machine
+CONFIG_PATH="${BATCH_DIR}/configs/${EXP_NAME}.yaml"
+
 # =============================================================================
 # SLURM LOG SYMLINKS (if running in SLURM)
 # =============================================================================
