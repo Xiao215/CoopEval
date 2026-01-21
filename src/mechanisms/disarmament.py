@@ -136,16 +136,7 @@ class Disarmament(RepetitiveMechanism):
                 f"No JSON object found in the response {response!r}"
             )
         json_str = matches[-1]
-
-        try:
-            json_obj = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON: {e.msg}") from e
-
-        if not isinstance(json_obj, dict):
-            raise ValueError(
-                "Parsed JSON must be an object with a 'choice' field"
-            )
+        json_obj = json.loads(json_str)
 
         # Validate choice field
         if "choice" not in json_obj:

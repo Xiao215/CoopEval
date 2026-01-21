@@ -2,15 +2,16 @@
 Plot evolutionary dynamics results from experiment outputs.
 """
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import numpy as np
 
 # Add parent directory to path to import src modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from visualize.plot_replicator_dynamics import plot_probability_evolution, plot_share_progression
+from visualize.plot_replicator_dynamics import (plot_probability_evolution,
+                                                plot_share_progression)
 
 
 def load_experiment_data(output_dir: str):

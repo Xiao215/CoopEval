@@ -22,7 +22,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from src.utils.score_normalization import NormalizeScore
-from src.visualize.analysis_utils import discover_experiment_subfolders, load_json as load_json_file
+from src.visualize.analysis_utils import discover_experiment_subfolders
+from src.visualize.analysis_utils import load_json as load_json_file
 
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {

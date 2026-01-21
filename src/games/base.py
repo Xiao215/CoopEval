@@ -3,7 +3,7 @@ import random
 import re
 import textwrap
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Mapping, Self, Sequence, cast, override
 
@@ -48,6 +48,10 @@ class Action(Enum):
         """Return all playable moves (excluding the Mediator action)."""
         return [act for act in cls if not act.is_mediator]
 
+    def serialize(self) -> str:
+        """Convert the Action to a string, mostly for logging and record purpose."""
+        return str(self)
+
 
 @dataclass
 class Move:
@@ -67,7 +71,7 @@ class Move:
         # Build dict manually to avoid deepcopy issues with Agent's HTTP clients
         d = {
             "player": self.player.name,
-            "action": str(self.action),
+            "action": self.action,
             "points": self.points,
             "response": self.response,
             "trace_id": self.trace_id,
@@ -75,27 +79,6 @@ class Move:
         if self.mediated:
             d["mediated"] = True
         return d
-
-    @classmethod
-    def deserialize(
-        cls,
-        data: dict[str, Any],
-        *,
-        agent_resolver: Callable[[str], Agent],
-        action_resolver: Callable[[str], Action],
-    ) -> "Move":
-        """
-        Rebuild a Move from serialized data.
-        """
-        return cls(
-            player=agent_resolver(data["player"]),
-            action=action_resolver(data["action"]),
-            points=data["points"],
-            response=data["response"],
-            trace_id=data["trace_id"],
-            mediated=data.get("mediated", False),
-        )
-
 
 class Game(ABC):
     """
@@ -201,11 +184,7 @@ class Game(ABC):
                 f"No JSON object found in the response {response!r}"
             )
         json_str = matches[-1]
-
-        try:
-            json_obj = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON: {e.msg}") from e
+        json_obj = json.loads(json_str)
 
         result = {}
         total = 0

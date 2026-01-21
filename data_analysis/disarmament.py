@@ -24,12 +24,7 @@ def _parse_distribution(response: str, num_actions: int) -> Dict[int, float] | N
     if not response:
         return None
     matches = re.findall(r"\{.*?\}", response, re.DOTALL)
-    if not matches:
-        return None
-    try:
-        payload = json.loads(matches[-1])
-    except json.JSONDecodeError:
-        return None
+    payload = json.loads(matches[-1])
 
     probs: Dict[int, float] = {}
     for idx in range(num_actions):
