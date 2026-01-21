@@ -22,8 +22,8 @@ AGENTS_CONFIG="agents/test_agents_6.yaml"
 # AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
-# EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
-EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
+EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
+# EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
 
 # Concurrency settings
 EXPERIMENT_WORKERS=3    # Number of parallel workers within each experiment (for LLM queries)
@@ -39,8 +39,8 @@ GAME_CONFIGS=(
     "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
     # "games/stag_hunt.yaml"
-    "games/travellers_dilemma.yaml"
-    "games/trust_game.yaml"
+    # "games/travellers_dilemma.yaml"
+    # "games/trust_game.yaml"
 )
 
 # List of mechanism config paths (relative to configs/)

@@ -11,10 +11,12 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.visualize.analysis_utils import (
-    clean_model_name,
     discover_experiment_subfolders,
     get_num_players_from_matchup,
     load_json,
+    simplify_model_name,
+    sort_games,
+    sort_mechanisms,
 )
 
 # Styling constants
@@ -65,14 +67,54 @@ def to_snake_case(text: str) -> str:
 
 
 def get_output_path(output_dir: Path, mechanism: str, game: str) -> Path:
-    """Create output path: {output_dir}/{mechanism}/{game}_payoff_tensor.png"""
-    mechanism_folder = output_dir / to_snake_case(mechanism)
-    mechanism_folder.mkdir(parents=True, exist_ok=True)
+    """Create output path: {output_dir}/{mechanism}_{game}_payoff_tensor.png"""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    filename = f"{to_snake_case(mechanism)}_{to_snake_case(game)}_payoff_tensor.png"
+    return output_dir / filename
 
-    game_filename = to_snake_case(game) + "_payoff_tensor.png"
-    return mechanism_folder / game_filename
 
-
+def generate_latex_file(output_dir: Path, created_plots: list[tuple[str, str, Path]]) -> None:
+    """Generate LaTeX file with all plots for easy inclusion in papers.
+    
+    Args:
+        output_dir: Directory where LaTeX file will be saved
+        created_plots: List of (mechanism, game, filepath) tuples
+    """
+    latex_path = output_dir / "payoff_tensors.tex"
+    
+    with open(latex_path, 'w') as f:
+        f.write("% Payoff Tensor Visualizations\n")
+        f.write("% Generated automatically\n\n")
+        
+        # Group by mechanism
+        mechanisms = {}
+        for mechanism, game, filepath in created_plots:
+            if mechanism not in mechanisms:
+                mechanisms[mechanism] = []
+            mechanisms[mechanism].append((game, filepath))
+        
+        # Write organized by mechanism
+        for mechanism in sort_mechanisms(list(mechanisms.keys())):
+            f.write(f"\n% {mechanism.replace('_', ' ').title()}\n")
+            # Sort games within each mechanism
+            game_list = [game for game, _ in mechanisms[mechanism]]
+            sorted_games = sort_games(game_list)
+            game_filepath_map = {game: filepath for game, filepath in mechanisms[mechanism]}
+            
+            for game in sorted_games:
+                filepath = game_filepath_map[game]
+                filename = filepath.name
+                game_title = game.replace('_', ' ').title()
+                f.write(f"\n% {game_title}\n")
+                f.write("\\begin{figure}[htbp]\n")
+                f.write("    \\centering\n")
+                f.write(f"    \\includegraphics[width=0.8\\textwidth]{{{filename}}}\n")
+                f.write(f"    \\caption{{{game_title} - {mechanism.replace('_', ' ').title()}}}\n")
+                f.write(f"    \\label{{fig:{to_snake_case(mechanism)}_{to_snake_case(game)}}}\n")
+                f.write("\\end{figure}\n")
+    
+    print(f"\nGenerated LaTeX file: {latex_path}")
 
 
 # Visualization functions
@@ -102,7 +144,7 @@ def plot_2player_payoff_tensor(
             annotations[i, j] = f"{p1_payoffs[i, j]:.1f}/{p2_payoffs[i, j]:.1f}"
 
     # Clean labels for display
-    cleaned_labels = [clean_model_name(label) for label in agent_labels]
+    cleaned_labels = [simplify_model_name(label) for label in agent_labels]
 
     # Create heatmap - color by player 1's payoff, annotate with all payoffs
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -144,12 +186,12 @@ def plot_3player_payoff_tensor(
     """
     n = len(agent_labels)
 
-    # Create 2x3 subplot grid for 6 agents
-    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    # Create 2x3 subplot grid for 6 agents with larger figure and adjusted spacing
+    fig, axes = plt.subplots(2, 3, figsize=(24, 16))
     axes = axes.flatten()
 
     # Clean labels for display
-    cleaned_labels = [clean_model_name(label) for label in agent_labels]
+    cleaned_labels = [simplify_model_name(label) for label in agent_labels]
 
     # Find global min/max for consistent colorbar across all subplots
     vmin = full_tensor[0, :].min()
@@ -183,6 +225,7 @@ def plot_3player_payoff_tensor(
             data=p1_payoffs,
             annot=annotations,
             fmt='s',
+            annot_kws={'fontsize': 8},
             cmap=custom_cmap,
             square=True,
             linewidths=0.5,
@@ -195,20 +238,20 @@ def plot_3player_payoff_tensor(
             ax=ax,
         )
 
-        ax.set_xlabel("Player 2 Model", fontsize=10)
-        ax.set_ylabel("Player 1 Model", fontsize=10)
-        ax.set_title(f"Player 3: {cleaned_labels[k]}", fontsize=11, fontweight='bold')
+        ax.set_xlabel("Player 2 Model", fontsize=11)
+        ax.set_ylabel("Player 1 Model", fontsize=11)
+        ax.set_title(f"Player 3: {cleaned_labels[k]}", fontsize=12, fontweight='bold')
 
-    # Add a single colorbar for all subplots
+    # Add a single colorbar for all subplots on the right side
+    fig.subplots_adjust(right=0.92, hspace=0.3, wspace=0.3)
+    cbar_ax = fig.add_axes([0.94, 0.15, 0.02, 0.7])
     fig.colorbar(
         axes[0].collections[0],
-        ax=axes,
+        cax=cbar_ax,
         label='Player 1 Payoff',
-        shrink=0.6,
     )
 
-    fig.suptitle(f"{game_name} - {mechanism_name}", fontsize=16, fontweight='bold')
-    plt.tight_layout()
+    fig.suptitle(f"{game_name} - {mechanism_name}", fontsize=18, fontweight='bold', y=0.98)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
@@ -221,6 +264,7 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
     # Collect all experiment folders from all input directories
     all_folders = []
     seen_outputs = {}  # Track which output files we've created
+    created_plots = []  # Track all created plots for LaTeX file
 
     for experiment_dir in experiment_dirs:
         experiment_dir = Path(experiment_dir)
@@ -271,6 +315,10 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
             )
 
         print(f"Created: {output_path}")
+        created_plots.append((mechanism_type, game_type, output_path))
+    
+    # Generate LaTeX file
+    generate_latex_file(output_dir, created_plots)
 
 
 if __name__ == "__main__":
