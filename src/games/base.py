@@ -48,10 +48,6 @@ class Action(Enum):
         """Return all playable moves (excluding the Mediator action)."""
         return [act for act in cls if not act.is_mediator]
 
-    def serialize(self) -> str:
-        """Convert the Action to a string, mostly for logging and record purpose."""
-        return str(self)
-
 
 @dataclass
 class Move:
@@ -71,7 +67,7 @@ class Move:
         # Build dict manually to avoid deepcopy issues with Agent's HTTP clients
         d = {
             "player": self.player.name,
-            "action": self.action,
+            "action": str(self.action),
             "points": self.points,
             "response": self.response,
             "trace_id": self.trace_id,

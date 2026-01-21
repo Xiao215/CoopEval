@@ -249,7 +249,7 @@ class Contracting(Mechanism):
             self.contracts[player.name] = contract
             contract_design[player.name] = {
                 "response": response,
-                "contract": contract,
+                "contract": {str(k): v for k, v in contract.items()},
                 "trace_id": trace_id,
             }
         LOGGER.log_record(
@@ -291,9 +291,6 @@ class Contracting(Mechanism):
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """
         Have players vote on contracts, select winner, get signatures, and play once.
-
-        Returns:
-            A list containing a single move sequence (one game result).
         """
         # Step 1: Collect votes from all players
         def collect_vote_fn(
