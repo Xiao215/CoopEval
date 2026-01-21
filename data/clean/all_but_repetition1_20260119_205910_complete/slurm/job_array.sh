@@ -30,12 +30,12 @@ echo "Job ID: $SLURM_JOB_ID"
 echo "Array Job ID: $SLURM_ARRAY_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Node: $SLURMD_NODENAME"
-echo "Batch Directory: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910"
+echo "Batch Directory: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910_complete"
 echo "=========================================="
 echo ""
 
 # Run single experiment worker
-/marvel/home/etewolde/agent-tournament/script/run_single_experiment.sh "$SLURM_ARRAY_TASK_ID" "/marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910"
+/marvel/home/etewolde/agent-tournament/script/run_single_experiment.sh "$SLURM_ARRAY_TASK_ID" "/marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910_complete"
 
 EXIT_CODE=$?
 

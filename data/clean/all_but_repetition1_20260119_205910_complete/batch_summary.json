@@ -158,10 +158,10 @@
       "status": "success",
       "game": "games/public_goods.yaml",
       "mechanism": "mechanisms/mediation.yaml",
-      "start_time": "2026-01-20T10:25:45Z",
-      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/mediation_public_goods",
-      "end_time": "2026-01-20T11:49:50Z",
-      "duration_seconds": 5045,
+      "start_time": "2026-01-20T22:20:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910_complete/mediation_public_goods",
+      "end_time": "2026-01-21T01:51:34Z",
+      "duration_seconds": 12648,
       "exit_code": 0
     },
     "reputation_public_goods": {
