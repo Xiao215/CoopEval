@@ -22,7 +22,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from src.utils.score_normalization import NormalizeScore
-from src.visualize.analysis_utils import discover_experiment_subfolders, load_json as load_json_file
+from src.visualize.analysis_utils import (
+    discover_experiment_subfolders,
+    load_json as load_json_file,
+    simplify_model_name,
+    sort_games,
+    sort_mechanisms,
+    sort_models,
+)
 
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {
@@ -249,40 +256,6 @@ def build_data_structure(
     return payoffs, rd_fitness, deviation_ranks, game_configs
 
 
-def sort_mechanisms(mechanisms: List[str]) -> List[str]:
-    """
-    Sort mechanisms in the preferred order.
-
-    Args:
-        mechanisms: List of mechanism names
-
-    Returns:
-        Sorted list of mechanism names
-    """
-    # Define preferred order (case-insensitive matching)
-    preferred_order = [
-        "NoMechanism",
-        "Repetition",
-        "Reputation",
-        "Disarmament",
-        "Mediation",
-        "Contracting"
-    ]
-
-    # Create a mapping for case-insensitive lookup
-    order_map = {name.lower(): i for i, name in enumerate(preferred_order)}
-
-    # Sort mechanisms by preferred order, alphabetically for any not in the list
-    def sort_key(mech):
-        mech_lower = mech.lower()
-        if mech_lower in order_map:
-            return (0, order_map[mech_lower])
-        else:
-            return (1, mech)  # Unknown mechanisms go last, sorted alphabetically
-
-    return sorted(mechanisms, key=sort_key)
-
-
 def validate_experiments(
     experiments: List[ExperimentData],
 ) -> tuple[List[str], List[str], List[str], dict]:
@@ -358,7 +331,8 @@ def validate_experiments(
 
     # Sort canonical lists
     canonical_mechanisms = sort_mechanisms(list(mechanisms))
-    canonical_games = sorted(games)
+    canonical_games = sort_games(list(games))
+    canonical_models = sort_models(canonical_models)
 
     # Validate complete grid coverage
     missing_combinations = []
@@ -572,7 +546,7 @@ def generate_game_table(
 
     # Data rows (one per model)
     for model in models:
-        row_parts = [model]
+        row_parts = [simplify_model_name(model)]
         for mech in mechanisms:
             mech_metric_list = mech_metrics[mech]
             payoff_score = payoffs[game][mech][model]
@@ -854,7 +828,7 @@ def generate_aggregate_table(
 
     # Data rows (one per model)
     for model in models:
-        row_parts = [model]
+        row_parts = [simplify_model_name(model)]
         for mech in mechanisms:
             is_reputation = mech.lower() == "reputation"
             mech_metric_list = mech_metrics[mech]

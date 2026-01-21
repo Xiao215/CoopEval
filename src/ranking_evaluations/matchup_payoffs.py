@@ -12,6 +12,7 @@ from src.agents.agent_manager import Agent
 from src.games.base import Move
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.registry.agent_registry import create_agent
+from src.visualize.analysis_utils import sort_models
 
 ProfileKey: TypeAlias = tuple[Agent, ...]
 
@@ -122,12 +123,12 @@ class MatchupPayoffs(PayoffsBase):
                 "No matches recorded. Cannot compute payoff tensor."
             )
 
-        agent_types = sorted(
-            {
+        agent_types = sort_models(
+            list({
                 player.agent_type
                 for players in self._profiles.keys()
                 for player in players
-            }
+            })
         )
         agent_type_to_idx = {m: i for i, m in enumerate(agent_types)}
 

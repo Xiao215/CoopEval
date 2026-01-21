@@ -22,8 +22,8 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
-# EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
-EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
+EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
+# EVALUATION_CONFIG="evaluation/no_deviation_ratings.yaml"
 
 # Concurrency settings
 EXPERIMENT_WORKERS=3    # Number of parallel workers within each experiment (for LLM queries)
