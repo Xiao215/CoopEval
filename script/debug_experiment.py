@@ -6,7 +6,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Specify Configs and simulate command line arguments
-from script.run_experiment import set_seed, main
+from script.run_experiment import main, set_seed
+
 CONFIG = "main/pd_testing.yaml"
 # CONFIG = "main/pg_reputation_test.yaml"
 sys.argv = ["script/run_experiment.py", "--config", CONFIG]

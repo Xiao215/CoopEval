@@ -383,7 +383,7 @@ class Reputation(RepetitiveMechanism, ABC):
         matcher = RandomMatcher(players)
 
         # Helper function to process a single matchup
-        def process_matchup(match_up: tuple[Agent, ...]) -> list[Move]:
+        def process_matchup(match_up: list[Agent]) -> list[Move]:
             reputation_information = self._build_history_prompts(match_up)
             moves = self.base_game.play(
                 additional_info=reputation_information,

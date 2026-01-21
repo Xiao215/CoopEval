@@ -26,8 +26,7 @@ class Mediation(Mechanism):
         tournament_workers: int = 1,
     ) -> None:
         super().__init__(base_game, tournament_workers=tournament_workers)
-        # keyed by (agent_type, player_id)
-        self.mediators: dict[tuple[str, int], dict[int, Action]] = {}
+        self.mediators: dict[str, dict[int, Action]] = {}
         self.mediator_design_prompt = MEDIATOR_DESIGN_PROMPT
         self.mediation_mechanism_prompt = MEDIATION_MECHANISM_PROMPT
         self._cached_agents: list[Agent] | None = None
@@ -65,11 +64,7 @@ class Mediation(Mechanism):
                 f"No JSON object found in the response {response!r}"
             )
         json_str = matches[-1]
-
-        try:
-            json_obj = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON: {e.msg}") from e
+        json_obj = json.loads(json_str)
 
         mediator = {}
         for k, v in json_obj.items():
@@ -107,8 +102,7 @@ class Mediation(Mechanism):
         """Format all mediators for the voting prompt."""
         lines = []
         for player in players:
-            key = (player.agent_type, player.player_id)
-            mediator = self.mediators[key]
+            mediator = self.mediators[player.name]
             lines.append(f"Mediator proposed by Player {player.player_id}:")
             lines.append(self._mediator_description(mediator))
             lines.append("")
@@ -138,10 +132,7 @@ class Mediation(Mechanism):
                 )
 
             json_str = matches[-1]
-            try:
-                json_obj = json.loads(json_str)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON: {e.msg}") from e
+            json_obj = json.loads(json_str)
 
             # Convert M1, M2, ... to integer indices
             votes = {}
@@ -202,6 +193,7 @@ class Mediation(Mechanism):
 
     @override
     def run_tournament(self, players: list[Agent]) -> PayoffsBase:
+        self.mediators.clear()
         # Cache agents so base class reuses them
         self._cached_agents = players
 
@@ -211,11 +203,9 @@ class Mediation(Mechanism):
 
         results = run_tasks(players, design_fn)
 
-        self.mediators.clear()
         mediator_design = {}
         for player, trace_id, mediator in results:
-            key = (player.agent_type, player.player_id)
-            self.mediators[key] = mediator
+            self.mediators[player.name] = mediator
             mediator_design[player.name] = {
                 "trace_id": trace_id,
                 "mediator": [
@@ -268,8 +258,7 @@ class Mediation(Mechanism):
 
         # Step 3: Select winning mediator
         winning_idx, winning_agent = self._select_mediator(players, all_votes)
-        key = (winning_agent.agent_type, winning_agent.player_id)
-        winning_mediator = self.mediators[key]
+        winning_mediator = self.mediators[winning_agent.name]
 
         # Step 4: Play game once under selected mediator
         mediator_description = self._mediator_description(winning_mediator)

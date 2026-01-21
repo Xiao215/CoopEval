@@ -1,4 +1,0 @@
-
-CondaError: Run 'conda init' before 'conda activate'
-
-slurmstepd: error: *** JOB 189719 ON marvel-1-19 CANCELLED AT 2026-01-20T17:19:49 ***
