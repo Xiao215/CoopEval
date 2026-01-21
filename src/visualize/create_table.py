@@ -15,7 +15,6 @@ Required LaTeX packages:
 """
 
 import argparse
-import json
 import math
 import sys
 from dataclasses import dataclass
@@ -23,6 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from src.utils.score_normalization import NormalizeScore
+from src.visualize.analysis_utils import discover_experiment_subfolders, load_json as load_json_file
 
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {
@@ -41,15 +41,15 @@ class ExperimentData:
     model_scores: Dict[str, float]
     folder_path: Path
     game_config: dict  # Store full game config for score normalization
+    eval_config: dict  # Store evaluation config for consistency checking
     # New fields for additional metrics
     rd_fitness: Optional[Dict[str, float]] = None  # Required (None only for reputation)
     deviation_ranks: Optional[Dict[str, str]] = None  # Required (None only for reputation), store as rank strings
 
 
-def load_json(path: Path) -> Optional[dict]:
+def load_json(path: Path) -> dict:
     """Load JSON file with error handling."""
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_json_file(path)
 
 
 def compute_deviation_ranks(ratings: Dict[str, float]) -> Dict[str, str]:
@@ -119,7 +119,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
     experiments = []
 
     # Scan for subdirectories (skip configs and other non-experiment folders)
-    subdirs = [d for d in batch_path.iterdir() if d.is_dir() and d.name != "configs"]
+    subdirs = discover_experiment_subfolders(batch_path)
 
     for subdir in subdirs:
         # Check for required files
@@ -141,6 +141,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
         mechanism = config["mechanism"]["type"]
         game = config["game"]["type"]
         game_config = config["game"]
+        eval_config = config["evaluation"]
 
         # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
         if mechanism.lower() == "reputation":
@@ -187,6 +188,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
                 model_scores=payoffs,
                 folder_path=subdir,
                 game_config=game_config,
+                eval_config=eval_config,
                 rd_fitness=rd_fitness,
                 deviation_ranks=deviation_ranks,
             )
@@ -281,29 +283,98 @@ def sort_mechanisms(mechanisms: List[str]) -> List[str]:
     return sorted(mechanisms, key=sort_key)
 
 
-def extract_canonical_lists(
+def validate_experiments(
     experiments: List[ExperimentData],
-) -> tuple[List[str], List[str], List[str]]:
+) -> tuple[List[str], List[str], List[str], dict]:
     """
-    Extract canonical lists of mechanisms, games, and models from experiments.
+    Validate experiments and extract canonical lists.
+
+    Checks:
+    1. No duplicate (mechanism, game) combinations
+    2. All experiments have identical model lists
+    3. All experiments have identical evaluation configs
+    4. Complete mechanism×game grid coverage
 
     Args:
         experiments: List of ExperimentData objects
 
     Returns:
-        Tuple of (mechanisms, games, models) with mechanisms in preferred order,
-        games and models sorted alphabetically
+        Tuple of (mechanisms, games, models, eval_config)
+
+    Raises:
+        ValueError: If validation fails
     """
+    # Check for duplicate (mechanism, game) combinations
+    exp_map: Dict[tuple[str, str], ExperimentData] = {}
+    duplicates = []
+    for exp in experiments:
+        key = (exp.mechanism, exp.game)
+        if key in exp_map:
+            duplicates.append((
+                key,
+                exp_map[key].folder_path,
+                exp.folder_path
+            ))
+        else:
+            exp_map[key] = exp
+
+    if duplicates:
+        error_msg = f"Duplicate experiments detected! Found {len(duplicates)} duplicate(s):\n"
+        for (mech, game), path1, path2 in duplicates:
+            error_msg += f"  - {mech} × {game}: {path1} and {path2}\n"
+        error_msg += "\nEach (mechanism, game) combination must appear exactly once across all folders."
+        raise ValueError(error_msg)
+
+    # Validate non-empty experiments
+    if not experiments:
+        raise ValueError("No experiments provided")
+
+    # Extract canonical sets and validate consistency on the fly
     mechanisms = set()
     games = set()
-    models = set()
+    canonical_models = sorted(experiments[0].model_scores.keys())
+    canonical_eval = experiments[0].eval_config
 
-    for exp in experiments:
+    for i, exp in enumerate(experiments):
         mechanisms.add(exp.mechanism)
         games.add(exp.game)
-        models.update(exp.model_scores.keys())
+        
+        # Check model list matches
+        exp_models = sorted(exp.model_scores.keys())
+        if exp_models != canonical_models:
+            error_msg = f"Model list mismatch detected!\n"
+            error_msg += f"  Experiment 0: {canonical_models}\n"
+            error_msg += f"  Experiment {i}: {exp_models}\n"
+            error_msg += "\nAll experiments must test the same set of models."
+            raise ValueError(error_msg)
+        
+        # Check eval config matches
+        if exp.eval_config != canonical_eval:
+            error_msg = f"Evaluation config mismatch detected!\n"
+            error_msg += f"  Experiment 0: {canonical_eval}\n"
+            error_msg += f"  Experiment {i}: {exp.eval_config}\n"
+            error_msg += "\nAll experiments must use identical evaluation configurations."
+            raise ValueError(error_msg)
 
-    return sort_mechanisms(list(mechanisms)), sorted(games), sorted(models)
+    # Sort canonical lists
+    canonical_mechanisms = sort_mechanisms(list(mechanisms))
+    canonical_games = sorted(games)
+
+    # Validate complete grid coverage
+    missing_combinations = []
+    for mech in canonical_mechanisms:
+        for game in canonical_games:
+            if (mech, game) not in exp_map:
+                missing_combinations.append((mech, game))
+
+    if missing_combinations:
+        error_msg = f"Incomplete mechanism×game grid! Missing {len(missing_combinations)} combination(s):\n"
+        for mech, game in missing_combinations:
+            error_msg += f"  - {mech} × {game}\n"
+        error_msg += "\nAll mechanism×game combinations must be present."
+        raise ValueError(error_msg)
+
+    return canonical_mechanisms, canonical_games, canonical_models, canonical_eval
 
 
 def validate_data_consistency(
@@ -380,19 +451,21 @@ def generate_game_table(
     deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]],
     precision: int = 3,
     metrics: List[str] | None = None,
+    source_folders: List[Path] | None = None,
 ) -> str:
     """
     Generate LaTeX table for a single game with multicolumn headers.
 
     Args:
         game: Game name
-        mechanisms: List of mechanism names (rows)
-        models: List of model names (columns)
+        mechanisms: List of mechanism names (columns)
+        models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
         deviation_ranks: Nested dictionary with deviation ranks
         precision: Number of decimal places
         metrics: List of metrics to include (subset of ["mean", "rd", "dr"])
+        source_folders: Optional list of source folder paths
 
     Returns:
         Complete LaTeX table as string
@@ -402,52 +475,120 @@ def generate_game_table(
 
     # Start building table
     lines = []
+
+    # Add source folder comments if provided
+    if source_folders:
+        lines.append("% Source folders:")
+        for folder in source_folders:
+            lines.append(f"%   {folder}")
+
     lines.append(r"\begin{table}[t]")
     lines.append(r"\centering")
     lines.append(f"\\caption{{Results for {game}}}")
     game_slug = game.lower().replace(" ", "_")
     lines.append(f"\\label{{tab:{game_slug}}}")
 
+    # Determine which metrics each mechanism supports
+    mech_metrics = {}
+    for mech in mechanisms:
+        is_reputation = mech.lower() == "reputation"
+        if is_reputation:
+            # Reputation only supports mean
+            mech_metrics[mech] = ["mean"] if "mean" in metrics else []
+        else:
+            # All other mechanisms support all requested metrics
+            mech_metrics[mech] = metrics
+
     # Table header with vertical bars
-    # Each model has len(metrics) sub-columns
-    num_models = len(models)
-    num_metrics = len(metrics)
-    col_spec = "l|" + "|".join(["r" * num_metrics] * num_models)
+    # Each mechanism has different number of sub-columns based on supported metrics
+    col_spec_parts = ["l"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 0:
+            col_spec_parts.append("r" * num_cols)
+    col_spec = "|".join(col_spec_parts)
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
-    # First header row: Model names with multicolumn
-    header_parts = ["\\textbf{Mechanism}"]
-    for model in models:
-        header_parts.append(f"\\multicolumn{{{num_metrics}}}{{c}}{{\\textbf{{{model}}}}}")
+    # First header row: Mechanism names with multicolumn
+    header_parts = ["\\textbf{Model}"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 1:
+            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
+        elif num_cols == 1:
+            header_parts.append(f"\\textbf{{{mech}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
-    # Second header row: Sub-column labels
-    subheader_parts = [""]  # Empty for mechanism column
-    for _ in models:
-        metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in metrics])
-        subheader_parts.append(metric_cols)
-    lines.append(" & ".join(subheader_parts) + " \\\\")
+    # Second header row: Sub-column labels (only if needed)
+    show_subheaders = any(len(mech_metrics[mech]) > 1 for mech in mechanisms)
+    if show_subheaders:
+        subheader_parts = [""]  # Empty for model column
+        for mech in mechanisms:
+            mech_metric_list = mech_metrics[mech]
+            if len(mech_metric_list) > 1:
+                metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in mech_metric_list])
+                subheader_parts.append(metric_cols)
+            elif len(mech_metric_list) == 1:
+                # Single column - show the metric label
+                subheader_parts.append(f"\\textbf{{{METRIC_LABELS[mech_metric_list[0]]}}}")
+        lines.append(" & ".join(subheader_parts) + " \\\\")
 
     lines.append(r"\midrule")
 
-    # Data rows
+    # Summary row (average across all models)
+    row_parts = ["\\textbf{Average}"]
     for mech in mechanisms:
-        row_parts = [mech]
-        for model in models:
+        metric_averages = {}
+        mech_metric_list = mech_metrics[mech]
+
+        # Calculate average for each metric this mechanism supports
+        for metric in mech_metric_list:
+            if metric == "mean":
+                values = [payoffs[game][mech][model] for model in models]
+                avg = sum(values) / len(values)
+                metric_averages[metric] = format_score(avg, precision)
+            elif metric == "rd":
+                values = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    metric_averages[metric] = format_score(avg, precision)
+                else:
+                    metric_averages[metric] = "N/A"
+            elif metric == "dr":
+                values = [float(deviation_ranks[game][mech][model]) for model in models if deviation_ranks[game][mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    metric_averages[metric] = f"{avg:.1f}"
+                else:
+                    metric_averages[metric] = "N/A"
+
+        metric_values = [metric_averages[m] for m in mech_metric_list]
+        if metric_values:
+            row_parts.append(" & ".join(metric_values))
+
+    lines.append(" & ".join(row_parts) + " \\\\")
+    lines.append(r"\midrule")
+
+    # Data rows (one per model)
+    for model in models:
+        row_parts = [model]
+        for mech in mechanisms:
+            mech_metric_list = mech_metrics[mech]
             payoff_score = payoffs[game][mech][model]
             rd_val = rd_fitness[game][mech][model]
             dr_val = deviation_ranks[game][mech][model]
-            
+
             metric_data = {
                 "mean": format_score(payoff_score, precision),
                 "rd": format_score(rd_val, precision) if rd_val is not None else "N/A",
                 "dr": dr_val if dr_val is not None else "N/A",
             }
 
-            # Extract only selected metrics
-            metric_values = [metric_data[m] for m in metrics]
-            row_parts.append(" & ".join(metric_values))
+            # Extract only metrics this mechanism supports
+            metric_values = [metric_data[m] for m in mech_metric_list]
+            if metric_values:
+                row_parts.append(" & ".join(metric_values))
 
         lines.append(" & ".join(row_parts) + " \\\\")
 
@@ -460,7 +601,7 @@ def generate_game_table(
 
 
 def compute_aggregate_metric(
-    data: Dict[str, Dict[str, Dict[str, any]]],
+    data,
     game_configs: Dict[str, dict],
     mechanism: str,
     model: str,
@@ -550,13 +691,14 @@ def generate_aggregate_table(
     precision: int,
     metrics: List[str],
     show_stderr: bool,
+    source_folders: List[Path] | None = None,
 ) -> str:
     """
     Generate aggregated LaTeX table across social dilemma games with selected metrics.
 
     Args:
-        mechanisms: List of mechanism names (rows)
-        models: List of model names (columns)
+        mechanisms: List of mechanism names (columns)
+        models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
         deviation_ranks: Nested dictionary with deviation ranks
@@ -564,6 +706,7 @@ def generate_aggregate_table(
         precision: Number of decimal places
         metrics: List of metrics to include (subset of ["mean", "rd", "dr"])
         show_stderr: Whether to show standard errors for mean/rd metrics
+        source_folders: Optional list of source folder paths
 
     Returns:
         Complete LaTeX table as string
@@ -592,6 +735,13 @@ def generate_aggregate_table(
 
     # Start building table
     lines = []
+
+    # Add source folder comments if provided
+    if source_folders:
+        lines.append("% Source folders:")
+        for folder in source_folders:
+            lines.append(f"%   {folder}")
+
     lines.append(r"\begin{table}[t]")
     lines.append(r"\centering")
     lines.append(
@@ -599,99 +749,126 @@ def generate_aggregate_table(
     )
     lines.append(r"\label{tab:aggregate_results}")
 
-    # Table header with vertical bars
-    # "All Models" column excludes deviation ranking (only mean and rd)
-    all_models_metrics = [m for m in metrics if m != "dr"]
-    num_models = len(models)
-    num_metrics = len(metrics)
-    num_all_models_metrics = len(all_models_metrics)
+    # Determine which metrics each mechanism supports
+    mech_metrics = {}
+    for mech in mechanisms:
+        is_reputation = mech.lower() == "reputation"
+        if is_reputation:
+            # Reputation only supports mean
+            mech_metrics[mech] = ["mean"] if "mean" in metrics else []
+        else:
+            # All other mechanisms support all requested metrics
+            mech_metrics[mech] = metrics
 
-    col_spec = "l|" + "r" * num_all_models_metrics + "|" + "|".join(["r" * num_metrics] * num_models)
+    # Table header with vertical bars
+    # Each mechanism has different number of sub-columns based on supported metrics
+    col_spec_parts = ["l"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 0:
+            col_spec_parts.append("r" * num_cols)
+    col_spec = "|".join(col_spec_parts)
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
-    # First header row: "All Models" + individual model names with multicolumn
-    header_parts = ["\\textbf{Mechanism}"]
-    header_parts.append(f"\\multicolumn{{{num_all_models_metrics}}}{{c}}{{\\textbf{{All Models}}}}")
-    for model in models:
-        header_parts.append(f"\\multicolumn{{{num_metrics}}}{{c}}{{\\textbf{{{model}}}}}")
+    # First header row: Mechanism names with multicolumn
+    header_parts = ["\\textbf{Model}"]
+    for mech in mechanisms:
+        num_cols = len(mech_metrics[mech])
+        if num_cols > 1:
+            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
+        elif num_cols == 1:
+            header_parts.append(f"\\textbf{{{mech}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
-    # Second header row: Sub-column labels
-    subheader_parts = [""]
-    # Add labels for "All Models" column (no DR)
-    all_models_metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in all_models_metrics])
-    subheader_parts.append(all_models_metric_cols)
-    # Add labels for each model column (includes all metrics)
-    metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in metrics])
-    for _ in models:
-        subheader_parts.append(metric_cols)
-    lines.append(" & ".join(subheader_parts) + " \\\\")
+    # Second header row: Sub-column labels (only if needed)
+    show_subheaders = any(len(mech_metrics[mech]) > 1 for mech in mechanisms)
+    if show_subheaders:
+        subheader_parts = [""]  # Empty for model column
+        for mech in mechanisms:
+            mech_metric_list = mech_metrics[mech]
+            if len(mech_metric_list) > 1:
+                metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in mech_metric_list])
+                subheader_parts.append(metric_cols)
+            elif len(mech_metric_list) == 1:
+                # Single column - show the metric label
+                subheader_parts.append(f"\\textbf{{{METRIC_LABELS[mech_metric_list[0]]}}}")
+        lines.append(" & ".join(subheader_parts) + " \\\\")
 
     lines.append(r"\midrule")
 
-    # Data rows
+    # Summary row (average across all models)
+    row_parts = ["\\textbf{Average}"]
     for mech in mechanisms:
-        row_parts = [mech]
         is_reputation = mech.lower() == "reputation"
+        mech_metric_list = mech_metrics[mech]
+        metric_averages = {}
 
-        # Compute "All Models" aggregate statistics
-        all_models_metric_data = {}
-        
-        # Compute mean if requested
-        if "mean" in all_models_metrics:
-            all_models_mean_values = [aggregate_payoffs[mech][model][0] for model in models]
-            agg_mean = sum(all_models_mean_values) / len(all_models_mean_values)
-            if len(all_models_mean_values) > 1:
-                variance = sum((x - agg_mean) ** 2 for x in all_models_mean_values) / (len(all_models_mean_values) - 1)
-                agg_mean_std = math.sqrt(variance)
-            else:
-                agg_mean_std = 0.0
-            
-            if show_stderr:
-                all_models_metric_data["mean"] = f"{agg_mean:.{precision}f} $\\pm$ {agg_mean_std:.{precision}f}"
-            else:
-                all_models_metric_data["mean"] = f"{agg_mean:.{precision}f}"
-        
-        # Compute RD if requested (but not for reputation)
-        if "rd" in all_models_metrics:
-            if is_reputation:
-                all_models_metric_data["rd"] = "N/A"
-            else:
-                all_models_rd_values = [aggregate_rd[mech][model][0] for model in models if aggregate_rd[mech][model] is not None]
-                if all_models_rd_values:
-                    agg_rd = sum(all_models_rd_values) / len(all_models_rd_values)
-                    if len(all_models_rd_values) > 1:
-                        variance = sum((x - agg_rd) ** 2 for x in all_models_rd_values) / (len(all_models_rd_values) - 1)
-                        agg_rd_std = math.sqrt(variance)
-                    else:
-                        agg_rd_std = 0.0
-                    
-                    if show_stderr:
-                        all_models_metric_data["rd"] = f"{agg_rd:.{precision}f} $\\pm$ {agg_rd_std:.{precision}f}"
-                    else:
-                        all_models_metric_data["rd"] = f"{agg_rd:.{precision}f}"
+        # Calculate average for each metric this mechanism supports
+        for metric in mech_metric_list:
+            if metric == "mean":
+                values = [aggregate_payoffs[mech][model][0] for model in models]
+                avg = sum(values) / len(values)
+                if len(values) > 1:
+                    variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
+                    std = math.sqrt(variance)
                 else:
-                    all_models_metric_data["rd"] = "N/A"
+                    std = 0.0
 
-        all_models_values = [all_models_metric_data[m] for m in all_models_metrics]
-        row_parts.append(" & ".join(all_models_values))
-
-        # Add individual model columns
-        for model in models:
-            metric_data = {}
-            
-            if "mean" in metrics:
-                payoff_result = aggregate_payoffs[mech][model]
                 if show_stderr:
-                    metric_data["mean"] = format_score_with_stderr(payoff_result, precision)
+                    metric_averages["mean"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
                 else:
-                    metric_data["mean"] = format_score(payoff_result[0], precision)
-            
-            if "rd" in metrics:
-                if is_reputation:
-                    metric_data["rd"] = "N/A"
+                    metric_averages["mean"] = f"{avg:.{precision}f}"
+
+            elif metric == "rd":
+                values = [aggregate_rd[mech][model][0] for model in models if aggregate_rd[mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    if len(values) > 1:
+                        variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
+                        std = math.sqrt(variance)
+                    else:
+                        std = 0.0
+
+                    if show_stderr:
+                        metric_averages["rd"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
+                    else:
+                        metric_averages["rd"] = f"{avg:.{precision}f}"
                 else:
+                    metric_averages["rd"] = "N/A"
+
+            elif metric == "dr":
+                values = [float(aggregate_dr[mech][model]) for model in models if aggregate_dr[mech][model] is not None]
+                if values:
+                    avg = sum(values) / len(values)
+                    metric_averages["dr"] = f"{avg:.1f}"
+                else:
+                    metric_averages["dr"] = "N/A"
+
+        metric_values = [metric_averages[m] for m in mech_metric_list]
+        if metric_values:
+            row_parts.append(" & ".join(metric_values))
+
+    lines.append(" & ".join(row_parts) + " \\\\")
+    lines.append(r"\midrule")
+
+    # Data rows (one per model)
+    for model in models:
+        row_parts = [model]
+        for mech in mechanisms:
+            is_reputation = mech.lower() == "reputation"
+            mech_metric_list = mech_metrics[mech]
+            metric_data = {}
+
+            for metric in mech_metric_list:
+                if metric == "mean":
+                    payoff_result = aggregate_payoffs[mech][model]
+                    if show_stderr:
+                        metric_data["mean"] = format_score_with_stderr(payoff_result, precision)
+                    else:
+                        metric_data["mean"] = format_score(payoff_result[0], precision)
+
+                elif metric == "rd":
                     rd_result = aggregate_rd[mech][model]
                     if rd_result is not None:
                         if show_stderr:
@@ -700,17 +877,15 @@ def generate_aggregate_table(
                             metric_data["rd"] = format_score(rd_result[0], precision)
                     else:
                         metric_data["rd"] = "N/A"
-            
-            if "dr" in metrics:
-                if is_reputation:
-                    metric_data["dr"] = "N/A"
-                else:
+
+                elif metric == "dr":
                     dr_val = aggregate_dr[mech][model]
                     metric_data["dr"] = dr_val if dr_val is not None else "N/A"
 
-            # Extract only selected metrics
-            metric_values = [metric_data[m] for m in metrics]
-            row_parts.append(" & ".join(metric_values))
+            # Extract only metrics this mechanism supports
+            metric_values = [metric_data[m] for m in mech_metric_list]
+            if metric_values:
+                row_parts.append(" & ".join(metric_values))
 
         lines.append(" & ".join(row_parts) + " \\\\")
 
@@ -749,13 +924,15 @@ Examples:
   python src/visualize/create_table.py outputs/2026/01/14/16:14/
   python src/visualize/create_table.py outputs/2026/01/14/16:14/ --output tables/
   python src/visualize/create_table.py outputs/2026/01/14/16:14/ --quiet
+  python src/visualize/create_table.py outputs/folder1/ outputs/folder2/ --output tables/
         """,
     )
 
     parser.add_argument(
-        "batch_path",
+        "batch_paths",
         type=Path,
-        help="Path to batch experiment folder (e.g., outputs/2026/01/14/16:14/)",
+        nargs="+",
+        help="Path(s) to batch experiment folder(s) (e.g., outputs/2026/01/14/16:14/)",
     )
 
     parser.add_argument(
@@ -798,33 +975,47 @@ Examples:
 
     args = parser.parse_args()
 
-    # Parse batch folder
+    # Parse all batch folders
+    all_experiments = []
+    for batch_path in args.batch_paths:
+        try:
+            experiments = parse_batch_folder(batch_path, args.metrics)
+            all_experiments.extend(experiments)
+            print(f"Parsed {len(experiments)} experiments from {batch_path}")
+        except (FileNotFoundError, NotADirectoryError, ValueError) as e:
+            print(f"Error parsing {batch_path}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    print(f"\nTotal experiments: {len(all_experiments)}")
+
+    # Validate experiments and extract canonical lists
     try:
-        experiments = parse_batch_folder(args.batch_path, args.metrics)
-    except (FileNotFoundError, NotADirectoryError, ValueError) as e:
-        print(f"Error: {e}", file=sys.stderr)
+        mechanisms, games, models, eval_config = validate_experiments(all_experiments)
+    except ValueError as e:
+        print(f"Validation error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Found {len(experiments)} valid experiments")
+    print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models")
+    print(f"Grid completeness: {len(mechanisms)} × {len(games)} = {len(all_experiments)} experiments\n")
 
-    # Extract canonical lists (mechanism, game, model combinations)
-    mechanisms, games, models = extract_canonical_lists(experiments)
-    print(f"Games: {len(games)}, Mechanisms: {len(mechanisms)}, Models: {len(models)}")
-
-    # Build data structures (NOW WITH NEW METRICS)
-    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(experiments)
-
-    # Validate all combinations are present
-    validate_data_consistency(payoffs, mechanisms, games, models)
-    print("Data consistency validated: all mechanism×game×model combinations present")
+    # Build data structures
+    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(all_experiments)
 
     # Determine output directory
-    output_dir = args.output if args.output else args.batch_path
+    if args.output:
+        output_dir = args.output
+    elif len(args.batch_paths) == 1:
+        output_dir = args.batch_paths[0]
+    else:
+        output_dir = args.batch_paths[0].parent
+
+    # Store all table LaTeX for combined file
+    all_tables = []
 
     # Generate and save per-game tables
     for game in games:
         table_latex = generate_game_table(
-            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics
+            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics, args.batch_paths
         )
 
         output_path = output_dir / f"table_{game}.tex"
@@ -835,20 +1026,32 @@ Examples:
 
         print(f"Saved: {output_path}")
 
+        # Add to combined list
+        all_tables.append(table_latex)
+
     # Generate and save aggregate table (social dilemmas only)
-    table_latex = generate_aggregate_table(
-        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr
+    aggregate_table_latex = generate_aggregate_table(
+        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
     )
 
     output_path = output_dir / "table_aggregate.tex"
-    save_table(table_latex, output_path)
+    save_table(aggregate_table_latex, output_path)
 
     if not args.quiet:
-        print_table(table_latex, "Aggregate Table")
+        print_table(aggregate_table_latex, "Aggregate Table")
 
     print(f"Saved: {output_path}")
 
-    print(f"\nTotal tables generated: {len(games) + 1}")
+    # Add aggregate table to combined list
+    all_tables.append(aggregate_table_latex)
+
+    # Generate and save combined table file
+    combined_latex = "\n\n".join(all_tables)
+    combined_output_path = output_dir / "table_all_combined.tex"
+    save_table(combined_latex, combined_output_path)
+    print(f"Saved combined table: {combined_output_path}")
+
+    print(f"\nTotal tables generated: {len(games) + 1} (plus 1 combined file)")
 
 
 if __name__ == "__main__":

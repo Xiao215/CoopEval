@@ -1,7 +1,8 @@
 #!/bin/bash
 # Main batch runner script - orchestrates experiment execution
-# Usage: ./run_batch.sh [--local|--slurm] [--batch-name NAME] [--resume BATCH_DIR]
-
+# Usage: ./script/run_batch.sh [--local|--slurm] [--batch-name NAME] [--resume BATCH_DIR]
+# An example of resuming could be
+# ./script/run_batch.sh --slurm --resume outputs/test_resume_20260120_024307
 export PYTHONPATH=.
 
 # Don't exit on error - we want to continue even if individual experiments fail
@@ -15,10 +16,10 @@ trap 'echo ""; echo "Interrupted! Batch summary saved to: ${BATCH_DIR}/batch_sum
 # =============================================================================
 
 # Agents configuration (relative to configs/)
-# AGENTS_CONFIG="agents/test_agents_6.yaml"
+AGENTS_CONFIG="agents/test_agents_6.yaml"
 # AGENTS_CONFIG="agents/cheap_llms_3.yaml"
 # AGENTS_CONFIG="agents/sota_llms.yaml"
-AGENTS_CONFIG="agents/few_strong_llms.yaml"
+# AGENTS_CONFIG="agents/few_strong_llms.yaml"
 
 # Evaluation configuration (relative to configs/)
 # EVALUATION_CONFIG="evaluation/default_evaluation.yaml"
@@ -34,10 +35,10 @@ RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    "games/matching_pennies.yaml"
+    # "games/matching_pennies.yaml"
     "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    "games/stag_hunt.yaml"
+    # "games/stag_hunt.yaml"
     "games/travellers_dilemma.yaml"
     "games/trust_game.yaml"
 )
@@ -46,9 +47,9 @@ GAME_CONFIGS=(
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
     "mechanisms/no_mechanism.yaml"
-    "mechanisms/contracting.yaml"
-    "mechanisms/mediation.yaml"
-    "mechanisms/reputation.yaml"
+    # "mechanisms/contracting.yaml"
+    # "mechanisms/mediation.yaml"
+    # "mechanisms/reputation.yaml"
     # "mechanisms/repetition.yaml"
 
     # "mechanisms/disarmament.yaml"
@@ -323,7 +324,7 @@ elif [ "$MODE" == "slurm" ]; then
     echo "SLURM script generated: $SLURM_SCRIPT"
     echo ""
 
-    # Submit job array
+    # Submit job array (logs in flat slurm/ directory)
     echo "Submitting SLURM job array..."
     JOB_ID=$(sbatch --parsable \
         --array=0-$((num_experiments - 1)) \
@@ -338,6 +339,7 @@ elif [ "$MODE" == "slurm" ]; then
         echo "Job ID: $JOB_ID"
         echo "Array size: $num_experiments"
         echo "Batch directory: $BATCH_DIR"
+        echo "Logs directory: ${BATCH_DIR}/slurm/"
         echo ""
         echo "Monitor job status:"
         echo "  squeue -j $JOB_ID"
@@ -346,8 +348,8 @@ elif [ "$MODE" == "slurm" ]; then
         echo "Check batch progress:"
         echo "  watch -n 5 'python -c \"import json; d=json.load(open(\\\"${BATCH_DIR}/batch_summary.json\\\")); print(f\\\"Completed: {d.get(\\\\\\\"completed_experiments\\\\\\\", 0)}/{d.get(\\\\\\\"total_experiments\\\\\\\", 0)}\\\")\"'"
         echo ""
-        echo "View logs:"
-        echo "  tail -f ${BATCH_DIR}/slurm/slurm-${JOB_ID}_*.out"
+        echo "View logs (by job ID):"
+        echo "  tail -f ${BATCH_DIR}/slurm/${JOB_ID}_*.out"
         echo "=================================================="
     else
         echo "ERROR: Failed to submit SLURM job array"

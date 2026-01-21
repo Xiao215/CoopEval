@@ -87,18 +87,23 @@ fi
 
 EXPERIMENT_DIR="${BATCH_DIR}/${EXP_NAME}"
 
+# Override config path to use local batch directory (for portability across machines)
+# The manifest may contain absolute paths from a different machine
+CONFIG_PATH="${BATCH_DIR}/configs/${EXP_NAME}.yaml"
+
 # =============================================================================
 # SLURM LOG SYMLINKS (if running in SLURM)
 # =============================================================================
 
-# Create descriptive symlinks for SLURM logs: <mechanism>_<game>_<jobid>_slurm.{out,err}
+# Create descriptive symlinks for SLURM logs: <jobid>_<mechanism>_<game>_slurm.{out,err}
+# Job ID first groups logs by submission when sorted alphabetically
 if [ -n "$SLURM_ARRAY_JOB_ID" ] && [ -n "$SLURM_ARRAY_TASK_ID" ]; then
     SLURM_DIR="${BATCH_DIR}/slurm"
     SLURM_BASE="slurm-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 
-    # Create symlinks with descriptive names
-    ln -sf "${SLURM_BASE}.out" "${SLURM_DIR}/${EXP_NAME}_${SLURM_ARRAY_JOB_ID}_slurm.out"
-    ln -sf "${SLURM_BASE}.err" "${SLURM_DIR}/${EXP_NAME}_${SLURM_ARRAY_JOB_ID}_slurm.err"
+    # Create symlinks with job ID first for easy grouping
+    ln -sf "${SLURM_BASE}.out" "${SLURM_DIR}/${SLURM_ARRAY_JOB_ID}_${EXP_NAME}_slurm.out"
+    ln -sf "${SLURM_BASE}.err" "${SLURM_DIR}/${SLURM_ARRAY_JOB_ID}_${EXP_NAME}_slurm.err"
 fi
 
 # =============================================================================

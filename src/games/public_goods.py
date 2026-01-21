@@ -110,7 +110,7 @@ class PublicGoods(Game):
                     points=(
                         share
                         if players_decision[player][0]
-                        == PublicGoodsAction.CONTRIBUTE
+                        == self.action_class.CONTRIBUTE
                         else self.endowment + share
                     ),
                     response=players_decision[player][1],
@@ -123,10 +123,13 @@ class PublicGoods(Game):
     def _calculate_share(self, actions: list[Action]) -> float:
         """
         Calculate the payoff for each agent based on their contributions.
+
+        Note: Uses self.action_class.CONTRIBUTE instead of PublicGoodsAction.CONTRIBUTE
+        to ensure compatibility with mechanisms that modify the action enum (e.g., Mediation).
         """
 
         contribution_count = sum(
-            1 for v in actions if v == PublicGoodsAction.CONTRIBUTE
+            1 for v in actions if v == self.action_class.CONTRIBUTE
         )
 
         return (

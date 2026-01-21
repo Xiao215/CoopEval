@@ -65,10 +65,12 @@ class ClientAPILLM(LLM):
                     extra_body=extra_body if extra_body else None,
                     **kwargs,
                 )
+                # Extract and return the response content
+                # This needs to be inside the try block to catch malformed responses
                 return completion.choices[0].message.content
-            except (OpenAIError, json.JSONDecodeError, httpx.HTTPError) as e:
-                # Catch API errors, malformed responses, and HTTP errors
-                # These are typically transient issues (rate limits, server errors, network issues)
+            except Exception as e:
+                # Catch all errors (API errors, malformed responses, HTTP errors, etc.)
+                # These are typically transient issues that can be retried
                 if attempt == len(delays):
                     raise e
                 # Log the error for debugging

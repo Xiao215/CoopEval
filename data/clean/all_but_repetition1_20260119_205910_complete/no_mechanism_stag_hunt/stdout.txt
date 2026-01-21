@@ -1,0 +1,37 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/all_but_repetition1_20260119_205910/no_mechanism_stag_hunt
+Running StagHunt with mechanism NoMechanism.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in the response 'Let\'s analyze the game step by step.\n\n### Step 1: Understand the Payoff Matrix\n\nWe are Player 1. The payoff matrix (from Player 1\'s perspective) is:\n\n|               | Player 2: A0 | Player 2: A1 |\n|---------------|--------------|--------------|\n| **Pl...[truncated due to length]...r own payoff.\n\nTheir payoff from a strategy depends on p.\n\nLet’s write P2’s best response:\n\n- If p > 0.6 → P2 plays A0 → q=1\n- If p < 0.6 → P2 plays A1 → q=0\n- If p = 0.6 → P2 is indifferent → can choose q\n\nNow, our expected payoff:\n\nCase 1: p > 0.6 → q = 1\n- Our payoff = p×5 + (1-p)×3' from response "Let's analyze the game step by step.\n\n### Step 1: Understand the Payoff Matrix\n\nWe are Player 1. The payoff matrix (from Player 1's perspective) is:\n\n|               | Player 2: A0 | Player 2: A1 |\n|---------------|--------------|--------------|\n| **Player 1: A0** | 5            | 0            |\n| *...[truncated due to length]... maximize their own payoff.\n\nTheir payoff from a strategy depends on p.\n\nLet’s write P2’s best response:\n\n- If p > 0.6 → P2 plays A0 → q=1\n- If p < 0.6 → P2 plays A1 → q=0\n- If p = 0.6 → P2 is indifferent → can choose q\n\nNow, our expected payoff:\n\nCase 1: p > 0.6 → q = 1\n- Our payoff = p×5 + (1-p)×3"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 4.0000
+  google/gemini-3-flash-preview(CoT): 3.5833
+  google/gemini-3-flash-preview(IO): 4.1667
+  openai/gpt-4o-2024-05-13(CoT): 2.8333
+  openai/gpt-5.2(CoT): 2.8333
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 3.2500
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 3.9999999999999996, 'google/gemini-3-flash-preview(CoT)': 3.583333333333333, 'google/gemini-3-flash-preview(IO)': 4.166666666666666, 'openai/gpt-4o-2024-05-13(CoT)': 2.833333333333333, 'openai/gpt-5.2(CoT)': 2.833333333333333, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.2499999999999996}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.999990127746976, 'google/gemini-3-flash-preview(CoT)': 4.961842589276971, 'google/gemini-3-flash-preview(IO)': 4.999990128101665, 'openai/gpt-4o-2024-05-13(CoT)': 3.8916493107645036, 'openai/gpt-5.2(CoT)': 2.80879643243809, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.8535017719398095}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.99999999981644, 'google/gemini-3-flash-preview(CoT)': 4.987494793811268, 'google/gemini-3-flash-preview(IO)': 4.99999999981644, 'openai/gpt-4o-2024-05-13(CoT)': 3.918257367558241, 'openai/gpt-5.2(CoT)': 2.818013300744603, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.90575216155307}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.999999999999995, 'google/gemini-3-flash-preview(CoT)': 4.994623808711149, 'google/gemini-3-flash-preview(IO)': 4.999999999999995, 'openai/gpt-4o-2024-05-13(CoT)': 3.926633872889862, 'openai/gpt-5.2(CoT)': 2.8209142740839064, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.921257681601016}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 5.000000000000001, 'google/gemini-3-flash-preview(CoT)': 4.997455337560255, 'google/gemini-3-flash-preview(IO)': 5.000000000000001, 'openai/gpt-4o-2024-05-13(CoT)': 3.930148684842167, 'openai/gpt-5.2(CoT)': 2.8221315329811003, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.927604022402422}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 5.0, 'google/gemini-3-flash-preview(CoT)': 4.9987437974220565, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-4o-2024-05-13(CoT)': 3.9317912108004376, 'openai/gpt-5.2(CoT)': 2.8227003768804906, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.9305350082224955}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 5.000000000000001, 'google/gemini-3-flash-preview(CoT)': 4.999367320023443, 'google/gemini-3-flash-preview(IO)': 5.000000000000001, 'openai/gpt-4o-2024-05-13(CoT)': 3.9325967360067184, 'openai/gpt-5.2(CoT)': 2.822979348483399, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.931964056030161}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.999999999999999, 'google/gemini-3-flash-preview(CoT)': 4.9996781829451145, 'google/gemini-3-flash-preview(IO)': 4.999999999999999, 'openai/gpt-4o-2024-05-13(CoT)': 3.9330010615411064, 'openai/gpt-5.2(CoT)': 2.8231193755633046, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.932679244486221}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 5.000000000000001, 'google/gemini-3-flash-preview(CoT)': 4.9998354864384815, 'google/gemini-3-flash-preview(IO)': 5.000000000000001, 'openai/gpt-4o-2024-05-13(CoT)': 3.9332063664855204, 'openai/gpt-5.2(CoT)': 2.8231904773103174, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.933041852924001}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 5.000000000000001, 'google/gemini-3-flash-preview(CoT)': 4.999915686452883, 'google/gemini-3-flash-preview(IO)': 5.000000000000001, 'openai/gpt-4o-2024-05-13(CoT)': 3.9333112248784916, 'openai/gpt-5.2(CoT)': 2.823226792144089, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.933226911331374}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 5.0, 'google/gemini-3-flash-preview(CoT)': 4.999956732980855, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-4o-2024-05-13(CoT)': 3.933364940305741, 'openai/gpt-5.2(CoT)': 2.823245395011788, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.933321673286596}
+
+============================================================
+
