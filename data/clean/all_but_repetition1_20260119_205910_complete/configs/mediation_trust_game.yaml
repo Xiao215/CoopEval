@@ -1,9 +1,0 @@
-# Auto-generated config for game-mechanism combination
-game_config: games/trust_game.yaml
-mechanism_config: mechanisms/mediation.yaml
-agents_config: agents/few_strong_llms.yaml
-evaluation_config: evaluation/no_deviation_ratings.yaml
-name: mediation_trust_game
-concurrency:
-  max_workers: 3
-  tournament_workers: 9

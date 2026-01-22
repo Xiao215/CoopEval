@@ -30,6 +30,7 @@ hf_cache/
 
 # SLURM job outputs (if not wanted in version control)
 slurm-*.out
+**/slurm/
 *.sbatch
 
 # Datasets or large experiment files
