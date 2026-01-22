@@ -34,6 +34,7 @@ slurm-*.out
 *.sbatch
 
 # Datasets or large experiment files
+slurm/
 checkpoints/
 *.pt
 *.bin

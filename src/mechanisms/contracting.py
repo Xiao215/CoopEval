@@ -6,7 +6,7 @@ import re
 from typing import Sequence, override
 
 from src.agents.agent_manager import Agent
-from src.games.base import Game, Move
+from src.games.base import Action, Game, Move
 from src.logger_manager import LOGGER
 from src.mechanisms.base import Mechanism
 from src.mechanisms.prompts import (CONTRACT_APPROVAL_VOTE_PROMPT,
@@ -17,6 +17,7 @@ from src.mechanisms.prompts import (CONTRACT_APPROVAL_VOTE_PROMPT,
 from src.ranking_evaluations.payoffs_base import PayoffsBase
 from src.utils.concurrency import run_tasks
 
+Contract = dict[Action, int]
 
 class Contracting(Mechanism):
     """Mechanism where players negotiate and optionally sign payoff contracts."""
@@ -28,26 +29,19 @@ class Contracting(Mechanism):
         tournament_workers: int = 1,
     ) -> None:
         super().__init__(base_game, tournament_workers=tournament_workers)
-        # keyed by (agent_type, player_id)
-        self.contracts: dict[tuple[str, int], list[int]] = {}
-        self.contracts_design_prompt = CONTRACT_DESIGN_PROMPT
-        self.contract_confirmation_prompt = CONTRACT_CONFIRMATION_PROMPT
-        self.contract_mechanism_prompt = CONTRACT_MECHANISM_PROMPT
+        self.contracts: dict[str, Contract] = {}
         self._cached_agents: list[Agent] | None = None
 
-    def _design_contract(self, designer: Agent) -> tuple[str, str, list[int]]:
+    def _design_contract(self, designer: Agent) -> tuple[str, str, Contract]:
         """
         Design a contract from the given LLM agent.
 
         Returns:
             response (str): The raw response from the designer.
-            contract (dict[int]): The contract with index representing the action
-                and value representing the payoff adjustment.
+            contract (Contract): The contract with Action keys and integer payoff adjustments.
         """
         game_prompt = self.base_game.get_player_prompt(designer.player_id)
-        base_prompt = (
-            game_prompt + "\n" + self.contracts_design_prompt.format()
-        )
+        base_prompt = game_prompt + "\n" + CONTRACT_DESIGN_PROMPT.format()
         response, trace_id, contract = designer.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=self._parse_contract,
@@ -61,15 +55,14 @@ class Contracting(Mechanism):
         Ask the LLM to confirm agreement to the contract with automatic retries.
         """
         game_prompt = self.base_game.get_player_prompt(player.player_id)
-        key = (designer.agent_type, designer.player_id)
         base_prompt = (
             game_prompt
             + "\n"
-            + self.contract_confirmation_prompt.format(
+            + CONTRACT_CONFIRMATION_PROMPT.format(
                 contract_description=self._contract_description(
-                    self.contracts[key]
+                    self.contracts[designer.name]
                 ),
-                designer_player_id=designer.player_id
+                designer_player_id=designer.player_id,
             )
         )
         response, trace_id, agreement = player.chat_with_retries(
@@ -78,7 +71,7 @@ class Contracting(Mechanism):
         )
         return response, trace_id, agreement
 
-    def _parse_contract(self, response: str) -> list[int]:
+    def _parse_contract(self, response: str) -> Contract:
         """
         Parse the contract design from the response.
         Expecting a Python dictionary in string format.
@@ -89,27 +82,22 @@ class Contracting(Mechanism):
                 f"No JSON object found in the response {response!r}"
             )
         json_str = matches[-1]
+        json_obj = json.loads(json_str)
 
-        try:
-            json_obj = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON: {e.msg}") from e
+        got_actions = set(
+            self.base_game.action_class.from_token(k) for k in json_obj.keys()
+        )
+        expected_actions = set(self.base_game.action_class)
+        if got_actions != expected_actions:
+            raise ValueError(
+                f"Action key mismatch. Expected {[a.to_token() for a in expected_actions]}, "
+                f"Got {[a.to_token() for a in got_actions]}"
+            )
 
-        n = self.base_game.num_actions
-        got_keys = set(json_obj.keys())
-        missing = set(f"A{i}" for i in range(n)) - got_keys
-        extra = got_keys - set(f"A{i}" for i in range(n))
-        if extra:
-            raise ValueError(f"Action key mismatch. Extra: {sorted(extra)}")
-        if missing:
-            raise ValueError(f"Action key mismatch. Missing: {sorted(missing)}")
-
-        contract = [0] * n
-        for k, v in json_obj.items():
-            if not isinstance(v, int):
-                raise ValueError(f"Value for {k} must be an integer, got {v!r}")
-            idx = int(k[1:])  # strip the leading 'A'
-            contract[idx] = v
+        contract = {
+            self.base_game.action_class.from_token(k): int(v)
+            for k, v in json_obj.items()
+        }
         return contract
 
     def _parse_agreement(self, response: str) -> bool:
@@ -123,11 +111,7 @@ class Contracting(Mechanism):
                 f"No JSON object found in the response {response!r}"
             )
         json_str = matches[-1]
-
-        try:
-            json_obj = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON: {e.msg}") from e
+        json_obj = json.loads(json_str)
 
         if "sign" not in json_obj:
             raise ValueError(f"Missing 'sign' key in the response {response!r}")
@@ -136,7 +120,7 @@ class Contracting(Mechanism):
             raise ValueError(f"'sign' value must be a boolean, got {sign!r}")
         return sign
 
-    def _contract_description(self, contract: list[int]) -> str:
+    def _contract_description(self, contract: Contract) -> str:
         """Format the prompt for the contract agent.
 
         Args:
@@ -144,18 +128,18 @@ class Contracting(Mechanism):
                 and value representing the payoff adjustment.
         """
         lines = []
-        for idx, payoff in enumerate(contract):
+        for action, payoff in contract.items():
             if payoff > 0:
                 lines.append(
-                    f"- If a player chooses A{idx}, they receive an additional payment of {payoff} point(s), drawn equally from the other players."
+                    f"- If a player chooses {action.to_token()}, they receive an additional payment of {payoff} point(s), drawn equally from the other players."
                 )
             elif payoff < 0:
                 lines.append(
-                    f"- If a player chooses A{idx}, they pay an additional payment of {-payoff} point(s), distributed equally among the other players."
+                    f"- If a player chooses {action.to_token()}, they pay an additional payment of {-payoff} point(s), distributed equally among the other players."
                 )
             else:
                 lines.append(
-                    f"- If a player chooses A{idx}, there is no additional payments in either direction."
+                    f"- If a player chooses {action.to_token()}, there is no additional payments in either direction."
                 )
         return "\n".join(lines)
 
@@ -163,8 +147,7 @@ class Contracting(Mechanism):
         """Format all contracts for the voting prompt."""
         lines = []
         for player in players:
-            key = (player.agent_type, player.player_id)
-            contract = self.contracts[key]
+            contract = self.contracts[player.name]
             lines.append(f"Contract proposed by Player {player.player_id}:")
             lines.append(self._contract_description(contract))
             lines.append("")
@@ -196,10 +179,7 @@ class Contracting(Mechanism):
                 raise ValueError(f"No JSON object found in response {response!r}")
 
             json_str = matches[-1]
-            try:
-                json_obj = json.loads(json_str)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON: {e.msg}") from e
+            json_obj = json.loads(json_str)
 
             # Convert C1, C2, ... to integer indices
             votes = {}
@@ -257,7 +237,7 @@ class Contracting(Mechanism):
         # Cache agents so base class reuses them
         self._cached_agents = players
 
-        def design_fn(player: Agent) -> tuple[Agent, str, str, list[int]]:
+        def design_fn(player: Agent) -> tuple[Agent, str, str, Contract]:
             response, trace_id, contract = self._design_contract(player)
             return player, response, trace_id, contract
 
@@ -266,11 +246,10 @@ class Contracting(Mechanism):
         self.contracts.clear()
         contract_design = {}
         for player, response, trace_id, contract in design_results:
-            key = (player.agent_type, player.player_id)
-            self.contracts[key] = contract
+            self.contracts[player.name] = contract
             contract_design[player.name] = {
                 "response": response,
-                "contract": contract,
+                "contract": {str(k): v for k, v in contract.items()},
                 "trace_id": trace_id,
             }
         LOGGER.log_record(
@@ -285,13 +264,58 @@ class Contracting(Mechanism):
 
         return result
 
+    def _apply_contract(
+        self,
+        moves: list[Move],
+        selected_contract: Contract,
+    ) -> list[Move]:
+        """
+        Adjust payoffs based on the contract logic:
+        A player performing Action X gets +Payoff.
+        This amount is deducted equally from all other players.
+
+        Returns:
+            New list of Move objects with adjusted payoffs.
+        """
+        # Calculate adjustments for each player
+        adjustments = [0.0] * len(moves)
+
+        for i, move in enumerate(moves):
+            contract_adjustment = selected_contract[move.action]
+
+            if contract_adjustment != 0:
+                # Player i receives the contract value
+                adjustments[i] += contract_adjustment
+
+                # Cost is distributed equally among other players
+                cost_per_other = contract_adjustment / (
+                    self.base_game.num_players - 1
+                )
+
+                # Deduct from all other players (avoid list slicing)
+                for j in range(len(moves)):
+                    if j != i:
+                        adjustments[j] -= cost_per_other
+
+        # Create new Move objects with adjusted payoffs
+        adjusted_moves = []
+        for move, adjustment in zip(moves, adjustments):
+            adjusted_move = Move(
+                player=move.player,
+                action=move.action,
+                points=move.points + adjustment,
+                response=move.response,
+                trace_id=move.trace_id,
+                mediated=move.mediated,
+            )
+            adjusted_moves.append(adjusted_move)
+
+        return adjusted_moves
+
     @override
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
         """
         Have players vote on contracts, select winner, get signatures, and play once.
-
-        Returns:
-            A list containing a single move sequence (one game result).
         """
         # Step 1: Collect votes from all players
         def collect_vote_fn(
@@ -317,8 +341,7 @@ class Contracting(Mechanism):
 
         # Step 3: Select winning contract
         winning_idx, winning_agent = self._select_contract(players, all_votes)
-        key = (winning_agent.agent_type, winning_agent.player_id)
-        winning_contract = self.contracts[key]
+        winning_contract = self.contracts[winning_agent.name]
 
         # Step 4: Collect signatures for the winning contract
         def sign_contract_fn(player: Agent) -> tuple[Agent, str, bool]:
@@ -346,9 +369,11 @@ class Contracting(Mechanism):
 
         # Step 6: Play game once (with or without contract)
         if all_agree:
-            contract_prompt = self.contract_mechanism_prompt.format(
-                contract_description=self._contract_description(winning_contract),
-                designer_player_id=winning_agent.player_id
+            contract_prompt = CONTRACT_MECHANISM_PROMPT.format(
+                contract_description=self._contract_description(
+                    winning_contract
+                ),
+                designer_player_id=winning_agent.player_id,
             )
             additional_info = [contract_prompt] * len(players)
         else:
@@ -364,6 +389,9 @@ class Contracting(Mechanism):
             additional_info=additional_info,
             players=players,
         )
+
+        if all_agree:
+            moves = self._apply_contract(moves, winning_contract)
 
         # Step 8: Log voting, signatures, and game results
         record = {

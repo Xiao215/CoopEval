@@ -10,14 +10,13 @@ import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
-from src.visualize.analysis_utils import (
-    discover_experiment_subfolders,
-    get_num_players_from_matchup,
-    load_json,
-    simplify_model_name,
-    sort_games,
-    sort_mechanisms,
-)
+from src.visualize.analysis_utils import (discover_experiment_subfolders,
+                                            get_num_players_from_matchup,
+                                            load_json,
+                                            simplify_model_name,
+                                            sort_games,
+                                            sort_mechanisms,
+                                            )
 
 # Styling constants
 PALETTE_BASE = ["#355070", "#6D597A", "#B56576", "#E56B6F", "#EAAC8B", "#5C7AEA"]

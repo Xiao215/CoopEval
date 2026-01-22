@@ -13,6 +13,7 @@ from src.agents.agent_manager import Agent
 from src.games.base import Action, Game, Move
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.ranking_evaluations.payoffs_base import PayoffsBase
+from src.utils.concurrency import run_tasks
 
 
 class Mechanism(ABC):
@@ -46,7 +47,6 @@ class Mechanism(ABC):
         # Run matchups with optional parallelization
         results = self._run_matchups(combo_iter, matchup_labels)
 
-        # Add all results to payoffs
         for match_moves in results:
             payoffs.add_profile(match_moves)
 
@@ -69,7 +69,6 @@ class Mechanism(ABC):
         is_parallel = self.tournament_workers > 1
 
         if is_parallel:
-            from src.utils.concurrency import run_tasks
             print(
                 f"[Parallel] Running {len(combo_iter)} matchups with "
                 f"{self.tournament_workers} workers"

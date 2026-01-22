@@ -2,10 +2,13 @@ name: "Testing on Prisoners Dilemma"
 
 # Component references (relative to configs/)
 game_config: games/prisoners_dilemma.yaml
-mechanism_config: mechanisms/no_mechanism.yaml
-agents_config: agents/sota_llms.yaml
+mechanism_config: mechanisms/contracting.yaml
+agents_config: agents/cheap_llms_3.yaml
 evaluation_config: evaluation/default_evaluation.yaml
 
 # Experiment-level settings
 concurrency:
-  max_workers: 4
+  # Global max workers for LLM API calls (default threads in ThreadPoolExecutor)
+  max_workers: 3
+  # Parallel tournament matchups (mechanism-level parallelism)
+  tournament_workers: 8

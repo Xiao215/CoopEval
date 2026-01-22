@@ -5,9 +5,9 @@ from typing import Literal
 import numpy as np
 from tqdm import tqdm
 
+from src.agents.agent_manager import Agent
 from src.logger_manager import LOGGER
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
-from src.agents.agent_manager import Agent
 
 
 class DiscreteReplicatorDynamics:

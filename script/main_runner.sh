@@ -39,10 +39,10 @@ RESUME_BATCH_DIR=""
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    # "games/matching_pennies.yaml"
+    "games/matching_pennies.yaml"
     "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    # "games/stag_hunt.yaml"
+    "games/stag_hunt.yaml"
     "games/travellers_dilemma.yaml"
     "games/trust_game.yaml"
 )
@@ -51,10 +51,10 @@ GAME_CONFIGS=(
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
     # "mechanisms/no_mechanism.yaml"
-    # "mechanisms/contracting.yaml"
-    "mechanisms/disarmament.yaml"
-    # "mechanisms/mediation.yaml"
-    "mechanisms/repetition.yaml"
+    "mechanisms/contracting.yaml"
+    # "mechanisms/disarmament.yaml"
+    "mechanisms/mediation.yaml"
+    # "mechanisms/repetition.yaml"
     # "mechanisms/reputation.yaml"
 )
 

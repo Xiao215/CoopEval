@@ -7,18 +7,18 @@ import numpy as np
 import torch
 
 from config import DATA_DIR
+from src.agents.agent_manager import Agent
 from src.config_loader import ConfigLoader
-from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
-from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
-from src.ranking_evaluations.replicator_dynamics import DiscreteReplicatorDynamics
+from src.logger_manager import LOGGER
 from src.ranking_evaluations.deviation_rating import DeviationRating
+from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
+from src.ranking_evaluations.replicator_dynamics import \
+    DiscreteReplicatorDynamics
+from src.ranking_evaluations.reputation_payoffs import ReputationPayoffs
 from src.registry.agent_registry import create_players_with_player_id
 from src.registry.game_registry import GAME_REGISTRY
 from src.registry.mechanism_registry import MECHANISM_REGISTRY
-from src.logger_manager import LOGGER
 from src.utils.concurrency import set_default_max_workers
-from src.agents.agent_manager import Agent
-
 
 # =============================================================================
 # DEFAULT EVALUATION PARAMETERS
