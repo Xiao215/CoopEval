@@ -3,7 +3,6 @@
 import json
 import random
 import re
-from copy import deepcopy
 from typing import Sequence, override
 
 from src.agents.agent_manager import Agent
@@ -301,8 +300,14 @@ class Contracting(Mechanism):
         # Create new Move objects with adjusted payoffs
         adjusted_moves = []
         for move, adjustment in zip(moves, adjustments):
-            adjusted_move = deepcopy(move)
-            adjusted_move.points += adjustment
+            adjusted_move = Move(
+                player=move.player,
+                action=move.action,
+                points=move.points + adjustment,
+                response=move.response,
+                trace_id=move.trace_id,
+                mediated=move.mediated,
+            )
             adjusted_moves.append(adjusted_move)
 
         return adjusted_moves
