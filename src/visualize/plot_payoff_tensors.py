@@ -10,7 +10,8 @@ import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
-from src.visualize.analysis_utils import (discover_experiment_subfolders,
+from src.visualize.analysis_utils import (NormalizeScore,
+                                            discover_experiment_subfolders,
                                             get_num_players_from_matchup,
                                             load_json,
                                             simplify_model_name,
@@ -123,11 +124,13 @@ def plot_2player_payoff_tensor(
     game_name: str,
     mechanism_name: str,
     output_path: Path,
+    normalizer: NormalizeScore,
 ) -> None:
     """Create heatmap for 2-player game payoff tensor.
 
     Args:
         full_tensor: Shape (2, n^2) from build_full_payoff_tensor()
+        normalizer: Score normalizer for the game
     """
     n = len(agent_labels)
 
@@ -136,7 +139,16 @@ def plot_2player_payoff_tensor(
     p1_payoffs = full_tensor[0, :].reshape(n, n)
     p2_payoffs = full_tensor[1, :].reshape(n, n)
 
-    # Create annotation matrix with both players' payoffs
+    # Create normalized payoff matrix for coloring
+    p1_normalized = np.zeros_like(p1_payoffs)
+    for i in range(n):
+        for j in range(n):
+            p1_normalized[i, j] = normalizer.normalize(p1_payoffs[i, j])
+
+    # Clip normalized scores to [-1, 1.5] range for consistent color mapping
+    p1_normalized = np.clip(p1_normalized, -1.0, 1.5)
+
+    # Create annotation matrix with both players' payoffs (raw scores)
     annotations = np.empty((n, n), dtype=object)
     for i in range(n):
         for j in range(n):
@@ -145,11 +157,12 @@ def plot_2player_payoff_tensor(
     # Clean labels for display
     cleaned_labels = [simplify_model_name(label) for label in agent_labels]
 
-    # Create heatmap - color by player 1's payoff, annotate with all payoffs
+    # Create heatmap - color by normalized player 1's payoff, annotate with raw payoffs
+    # Use fixed vmin/vmax for consistent colors across all plots
     fig, ax = plt.subplots(figsize=(10, 8))
 
     sns.heatmap(
-        data=p1_payoffs,
+        data=p1_normalized,
         annot=annotations,
         fmt='s',
         cmap=custom_cmap,
@@ -158,7 +171,9 @@ def plot_2player_payoff_tensor(
         linecolor='white',
         xticklabels=cleaned_labels,
         yticklabels=cleaned_labels,
-        cbar_kws={'label': 'Player 1 Payoff'},
+        cbar_kws={'label': 'Normalized Score (0=NE, 1=Cooperative)'},
+        vmin=-1.0,
+        vmax=1.5,
         ax=ax,
     )
 
@@ -177,11 +192,13 @@ def plot_3player_payoff_tensor(
     game_name: str,
     mechanism_name: str,
     output_path: Path,
+    normalizer: NormalizeScore,
 ) -> None:
     """Create multiple heatmaps for 3-player game, one per player 3's choice.
 
     Args:
         full_tensor: Shape (3, n^3) from build_full_payoff_tensor()
+        normalizer: Score normalizer for the game
     """
     n = len(agent_labels)
 
@@ -192,9 +209,9 @@ def plot_3player_payoff_tensor(
     # Clean labels for display
     cleaned_labels = [simplify_model_name(label) for label in agent_labels]
 
-    # Find global min/max for consistent colorbar across all subplots
-    vmin = full_tensor[0, :].min()
-    vmax = full_tensor[0, :].max()
+    # Use fixed vmin/vmax for consistent colors across all plots
+    vmin = -1.0
+    vmax = 1.5
 
     # Create a heatmap for each player 3 choice
     for k in range(n):
@@ -203,25 +220,30 @@ def plot_3player_payoff_tensor(
         # Extract all players' payoffs when player 3 chooses strategy k
         # Joint strategies are ordered as (i,j,k) -> i*n*n + j*n + k
         p1_payoffs = np.zeros((n, n))
+        p1_normalized = np.zeros((n, n))
         p2_payoffs = np.zeros((n, n))
         p3_payoffs = np.zeros((n, n))
         annotations = np.empty((n, n), dtype=object)
-        
+
         for i in range(n):
             for j in range(n):
                 joint_idx = i * n * n + j * n + k
                 p1 = full_tensor[0, joint_idx]
                 p2 = full_tensor[1, joint_idx]
                 p3 = full_tensor[2, joint_idx]
-                
+
                 p1_payoffs[i, j] = p1
+                p1_normalized[i, j] = normalizer.normalize(p1)
                 p2_payoffs[i, j] = p2
                 p3_payoffs[i, j] = p3
                 annotations[i, j] = f"{p1:.1f}/{p2:.1f}/{p3:.1f}"
 
-        # Create heatmap - color by player 1's payoff, annotate with all three payoffs
+        # Clip normalized scores to [-1, 1.5] range for consistent color mapping
+        p1_normalized = np.clip(p1_normalized, -1.0, 1.5)
+
+        # Create heatmap - color by normalized player 1's payoff, annotate with raw payoffs
         sns.heatmap(
-            data=p1_payoffs,
+            data=p1_normalized,
             annot=annotations,
             fmt='s',
             annot_kws={'fontsize': 8},
@@ -247,7 +269,7 @@ def plot_3player_payoff_tensor(
     fig.colorbar(
         axes[0].collections[0],
         cax=cbar_ax,
-        label='Player 1 Payoff',
+        label='Normalized Score (0=NE, 1=Cooperative)',
     )
 
     fig.suptitle(f"{game_name} - {mechanism_name}", fontsize=18, fontweight='bold', y=0.98)
@@ -300,17 +322,22 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
 
         seen_outputs[output_path] = folder
 
+        # Load config to create normalizer
+        config = load_json(folder / "config.json")
+        game_config = config["game"]
+        normalizer = NormalizeScore(game_type, game_config)
+
         # Load and build payoff tensor, get num_players from matchup data
         full_tensor, agent_labels, num_players = load_and_build_tensor(folder)
 
         # Create appropriate visualization
         if num_players == 2:
             plot_2player_payoff_tensor(
-                full_tensor, agent_labels, game_type, mechanism_type, output_path
+                full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
             )
         else:  # num_players == 3
             plot_3player_payoff_tensor(
-                full_tensor, agent_labels, game_type, mechanism_type, output_path
+                full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
             )
 
         print(f"Created: {output_path}")

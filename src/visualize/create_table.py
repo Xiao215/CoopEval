@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from src.utils.score_normalization import NormalizeScore
 from src.visualize.analysis_utils import (
+    NormalizeScore,
     discover_experiment_subfolders,
     load_json as load_json_file,
     simplify_model_name,
