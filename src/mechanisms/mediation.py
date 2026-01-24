@@ -293,8 +293,8 @@ class Mediation(Mechanism):
         """
 
         def apply_mediation(
-            players_decision: dict[Agent, tuple[Action, str, str, bool]],
-        ) -> dict[Agent, tuple[Action, str, str, bool]]:
+            players_decision: dict[Agent, tuple[Action, str, bool]],
+        ) -> dict[Agent, tuple[Action, str, bool]]:
             post_mapping_decision = players_decision.copy()
 
             num_delegating = sum(
@@ -308,14 +308,13 @@ class Mediation(Mechanism):
 
             for player, (
                 action,
-                response,
                 trace_id,
-                _,
+                _mediated,
             ) in players_decision.items():
                 if action.is_mediator:
+                    # Hard coded mediated to True for identifying whether a move comes from mediation in record
                     post_mapping_decision[player] = (
                         recommended_action,
-                        response,
                         trace_id,
                         True,
                     )
