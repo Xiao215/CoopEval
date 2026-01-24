@@ -50,12 +50,12 @@ GAME_CONFIGS=(
 # List of mechanism config paths (relative to configs/)
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
-    # "mechanisms/no_mechanism.yaml"
+    "mechanisms/no_mechanism.yaml"
     "mechanisms/contracting.yaml"
     # "mechanisms/disarmament.yaml"
     "mechanisms/mediation.yaml"
-    # "mechanisms/repetition.yaml"
-    # "mechanisms/reputation.yaml"
+    "mechanisms/repetition.yaml"
+    "mechanisms/reputation.yaml"
 )
 
 # GAME_CONFIGS=("games/matching_pennies.yaml" "games/prisoners_dilemma.yaml")

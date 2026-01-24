@@ -106,17 +106,15 @@ class TrustGame(Game):
                 player=player1,
                 action=players_decision[player1][0],
                 points=pts1,
-                response=players_decision[player1][1],
-                trace_id=players_decision[player1][2],
-                mediated=players_decision[player1][3],
+                trace_id=players_decision[player1][1],
+                mediated=players_decision[player1][2],
             ),
             Move(
                 player=player2,
                 action=players_decision[player2][0],
                 points=pts2,
-                response=players_decision[player2][1],
-                trace_id=players_decision[player2][2],
-                mediated=players_decision[player2][3],
+                trace_id=players_decision[player2][1],
+                mediated=players_decision[player2][2],
             ),
         ]
 
