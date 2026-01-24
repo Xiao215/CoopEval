@@ -272,38 +272,28 @@ class Contracting(Mechanism):
         Adjust payoffs based on the contract logic:
         A player performing Action X gets +Payoff.
         This amount is deducted equally from all other players.
-
-        Returns:
-            New list of Move objects with adjusted payoffs.
         """
-        # Calculate adjustments for each player
         adjustments = [0.0] * len(moves)
 
         for i, move in enumerate(moves):
             contract_adjustment = selected_contract[move.action]
 
             if contract_adjustment != 0:
-                # Player i receives the contract value
                 adjustments[i] += contract_adjustment
-
-                # Cost is distributed equally among other players
                 cost_per_other = contract_adjustment / (
                     self.base_game.num_players - 1
                 )
 
-                # Deduct from all other players (avoid list slicing)
                 for j in range(len(moves)):
                     if j != i:
                         adjustments[j] -= cost_per_other
 
-        # Create new Move objects with adjusted payoffs
         adjusted_moves = []
         for move, adjustment in zip(moves, adjustments):
             adjusted_move = Move(
                 player=move.player,
                 action=move.action,
                 points=move.points + adjustment,
-                response=move.response,
                 trace_id=move.trace_id,
                 mediated=move.mediated,
             )
