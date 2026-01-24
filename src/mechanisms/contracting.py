@@ -248,7 +248,7 @@ class Contracting(Mechanism):
         for player, trace_id, contract in design_results:
             self.contracts[player.name] = contract
             contract_design[player.name] = {
-                "contract": {str(k): v for k, v in contract.items()},
+                "contract": {str(k): v for k, v in {str(k): v for k, v in contract.items()}.items()},
                 "trace_id": trace_id,
             }
         LOGGER.log_record(
@@ -267,24 +267,49 @@ class Contracting(Mechanism):
         self,
         moves: list[Move],
         selected_contract: Contract,
-    ) -> None:
+    ) -> list[Move]:
         """
         Adjust payoffs based on the contract logic:
         A player performing Action X gets +Payoff.
         This amount is deducted equally from all other players.
+
+        Returns:
+            New list of Move objects with adjusted payoffs.
         """
+        # Calculate adjustments for each player
+        adjustments = [0.0] * len(moves)
+
         for i, move in enumerate(moves):
             contract_adjustment = selected_contract[move.action]
 
             if contract_adjustment != 0:
-                move.points += contract_adjustment
-                other_moves = moves[:i] + moves[i + 1 :]
+                # Player i receives the contract value
+                adjustments[i] += contract_adjustment
 
+                # Cost is distributed equally among other players
                 cost_per_other = contract_adjustment / (
                     self.base_game.num_players - 1
                 )
-                for other_move in other_moves:
-                    other_move.points -= cost_per_other
+
+                # Deduct from all other players (avoid list slicing)
+                for j in range(len(moves)):
+                    if j != i:
+                        adjustments[j] -= cost_per_other
+
+        # Create new Move objects with adjusted payoffs
+        adjusted_moves = []
+        for move, adjustment in zip(moves, adjustments):
+            adjusted_move = Move(
+                player=move.player,
+                action=move.action,
+                points=move.points + adjustment,
+                response=move.response,
+                trace_id=move.trace_id,
+                mediated=move.mediated,
+            )
+            adjusted_moves.append(adjusted_move)
+
+        return adjusted_moves
 
     @override
     def _play_matchup(self, players: Sequence[Agent]) -> list[list[Move]]:
@@ -365,7 +390,7 @@ class Contracting(Mechanism):
         )
 
         if all_agree:
-            self._apply_contract(moves, winning_contract)
+            moves = self._apply_contract(moves, winning_contract)
 
         # Step 8: Log voting, signatures, and game results
         record = {
