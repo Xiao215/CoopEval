@@ -67,7 +67,10 @@ class ClientAPILLM(LLM):
                 )
                 # Extract and return the response content
                 # This needs to be inside the try block to catch malformed responses
-                return completion.choices[0].message.content
+                content = completion.choices[0].message.content
+                if not content or content.strip() == "":
+                    raise OpenAIError("API returned empty response content")
+                return content
             except Exception as e:
                 # Catch all errors (API errors, malformed responses, HTTP errors, etc.)
                 # These are typically transient issues that can be retried

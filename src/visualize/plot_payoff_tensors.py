@@ -286,6 +286,7 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
     all_folders = []
     seen_outputs = {}  # Track which output files we've created
     created_plots = []  # Track all created plots for LaTeX file
+    failed_folders = []  # Track folders that failed to process
 
     for experiment_dir in experiment_dirs:
         experiment_dir = Path(experiment_dir)
@@ -310,41 +311,62 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
 
     # Process all folders
     for folder, game_type, mechanism_type in all_folders:
-        # Get output path
-        output_path = get_output_path(output_dir, mechanism_type, game_type)
+        try:
+            # Get output path
+            output_path = get_output_path(output_dir, mechanism_type, game_type)
 
-        # Check if we're overwriting a previously created plot
-        if output_path in seen_outputs:
-            print(f"WARNING: Duplicate found for {mechanism_type}_{game_type}")
-            print(f"  Previous: {seen_outputs[output_path]}")
-            print(f"  Current:  {folder}")
-            print(f"  Replacing plot at {output_path}")
+            # Check if we're overwriting a previously created plot
+            if output_path in seen_outputs:
+                print(f"WARNING: Duplicate found for {mechanism_type}_{game_type}")
+                print(f"  Previous: {seen_outputs[output_path]}")
+                print(f"  Current:  {folder}")
+                print(f"  Replacing plot at {output_path}")
 
-        seen_outputs[output_path] = folder
+            seen_outputs[output_path] = folder
 
-        # Load config to create normalizer
-        config = load_json(folder / "config.json")
-        game_config = config["game"]
-        normalizer = NormalizeScore(game_type, game_config)
+            # Load config to create normalizer
+            config = load_json(folder / "config.json")
+            game_config = config["game"]
+            normalizer = NormalizeScore(game_type, game_config)
 
-        # Load and build payoff tensor, get num_players from matchup data
-        full_tensor, agent_labels, num_players = load_and_build_tensor(folder)
+            # Load and build payoff tensor, get num_players from matchup data
+            full_tensor, agent_labels, num_players = load_and_build_tensor(folder)
 
-        # Create appropriate visualization
-        if num_players == 2:
-            plot_2player_payoff_tensor(
-                full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
-            )
-        else:  # num_players == 3
-            plot_3player_payoff_tensor(
-                full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
-            )
+            # Create appropriate visualization
+            if num_players == 2:
+                plot_2player_payoff_tensor(
+                    full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
+                )
+            else:  # num_players == 3
+                plot_3player_payoff_tensor(
+                    full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
+                )
 
-        print(f"Created: {output_path}")
-        created_plots.append((mechanism_type, game_type, output_path))
-    
+            print(f"Created: {output_path}")
+            created_plots.append((mechanism_type, game_type, output_path))
+
+        except Exception as e:
+            print(f"WARNING: Failed to process {mechanism_type}_{game_type} from {folder}")
+            print(f"  Error: {type(e).__name__}: {e}")
+            failed_folders.append((folder, game_type, mechanism_type, e))
+
     # Generate LaTeX file
-    generate_latex_file(output_dir, created_plots)
+    if created_plots:
+        generate_latex_file(output_dir, created_plots)
+
+    # Print summary
+    print(f"\n{'='*80}")
+    print(f"Summary:")
+    print(f"  Successfully created: {len(created_plots)} plots")
+    print(f"  Failed: {len(failed_folders)} folders")
+
+    if failed_folders:
+        print(f"\n{'='*80}")
+        print(f"Failed folders ({len(failed_folders)}):")
+        for folder, game_type, mechanism_type, error in failed_folders:
+            print(f"  - {mechanism_type}_{game_type} ({folder})")
+            print(f"    Error: {type(error).__name__}: {error}")
+    print(f"{'='*80}")
 
 
 if __name__ == "__main__":
