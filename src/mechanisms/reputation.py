@@ -31,8 +31,8 @@ class Reputation(RepetitiveMechanism, ABC):
         *,
         num_rounds: int,
         discount: float,
-        lookup_depth: int = 5,
-        max_recursion_depth: int | None = None,
+        max_recursion_depth: int,
+        lookup_depth: int,
         include_prior_distributions: bool = True,
         tournament_workers: int = 1,
     ) -> None:
@@ -42,10 +42,7 @@ class Reputation(RepetitiveMechanism, ABC):
         self.reputation_depth = lookup_depth
         self.include_prior_distributions = include_prior_distributions
         self.player_to_uid = {}
-        if not max_recursion_depth:
-            self.max_recursion_depth = lookup_depth + 1
-        else:
-            self.max_recursion_depth = max_recursion_depth
+        self.max_recursion_depth = max_recursion_depth
 
     def _get_display_name(self, target_player: Agent, observer: Agent) -> str:
         """
