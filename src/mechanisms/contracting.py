@@ -248,7 +248,7 @@ class Contracting(Mechanism):
         for player, trace_id, contract in design_results:
             self.contracts[player.name] = contract
             contract_design[player.name] = {
-                "contract": {str(k): v for k, v in {str(k): v for k, v in contract.items()}.items()},
+                "contract": {str(k): v for k, v in contract.items()},
                 "trace_id": trace_id,
             }
         LOGGER.log_record(
