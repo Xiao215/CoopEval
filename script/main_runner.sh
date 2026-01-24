@@ -56,6 +56,7 @@ MECHANISM_CONFIGS=(
     "mechanisms/mediation.yaml"
     "mechanisms/repetition.yaml"
     "mechanisms/reputation.yaml"
+    "mechanisms/reputation_zero_order.yaml"
 )
 
 # GAME_CONFIGS=("games/matching_pennies.yaml" "games/prisoners_dilemma.yaml")
