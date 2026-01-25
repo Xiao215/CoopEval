@@ -8,6 +8,7 @@ from src.mechanisms.reputation import Reputation
 MECHANISM_REGISTRY = {
     "NoMechanism": NoMechanism,
     "Reputation": Reputation,
+    "ReputationFirstOrder": Reputation,
     "Repetition": Repetition,
     "Disarmament": Disarmament,
     "Mediation": Mediation,

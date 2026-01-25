@@ -39,6 +39,11 @@ METRIC_LABELS = {
 }
 
 
+def is_reputation_mechanism(mechanism_type: str) -> bool:
+    """Check if mechanism is any variant of Reputation."""
+    return mechanism_type.lower() in ["reputation", "reputationfirstorder"]
+
+
 @dataclass
 class ExperimentData:
     """Represents a single experiment's data."""
@@ -153,7 +158,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> tuple[List[Exper
             eval_config = config["evaluation"]
 
             # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
-            if mechanism.lower() == "reputation":
+            if is_reputation_mechanism(mechanism):
                 # Reputation mechanism: explicitly use None (will display N/A)
                 rd_fitness = None
                 deviation_ranks = None
@@ -473,7 +478,7 @@ def generate_game_table(
     # Determine which metrics each mechanism supports
     mech_metrics = {}
     for mech in mechanisms:
-        is_reputation = mech.lower() == "reputation"
+        is_reputation = is_reputation_mechanism(mech)
         if is_reputation:
             # Reputation only supports mean
             mech_metrics[mech] = ["mean"] if "mean" in metrics else []
@@ -754,7 +759,7 @@ def generate_aggregate_table(
     # Determine which metrics each mechanism supports
     mech_metrics = {}
     for mech in mechanisms:
-        is_reputation = mech.lower() == "reputation"
+        is_reputation = is_reputation_mechanism(mech)
         if is_reputation:
             # Reputation only supports mean
             mech_metrics[mech] = ["mean"] if "mean" in metrics else []
@@ -802,7 +807,7 @@ def generate_aggregate_table(
     # Summary row (average across all models)
     row_parts = ["\\textbf{Average}"]
     for mech in mechanisms:
-        is_reputation = mech.lower() == "reputation"
+        is_reputation = is_reputation_mechanism(mech)
         mech_metric_list = mech_metrics[mech]
         metric_averages = {}
 
@@ -858,7 +863,7 @@ def generate_aggregate_table(
     for model in models:
         row_parts = [simplify_model_name(model)]
         for mech in mechanisms:
-            is_reputation = mech.lower() == "reputation"
+            is_reputation = is_reputation_mechanism(mech)
             mech_metric_list = mech_metrics[mech]
             metric_data = {}
 

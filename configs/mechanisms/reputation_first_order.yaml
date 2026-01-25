@@ -1,4 +1,4 @@
-type: Reputation
+type: ReputationFirstOrder
 kwargs:
   num_rounds: 15
   discount: 0.8
