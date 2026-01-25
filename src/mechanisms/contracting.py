@@ -32,7 +32,7 @@ class Contracting(Mechanism):
         self.contracts: dict[str, Contract] = {}
         self._cached_agents: list[Agent] | None = None
 
-    def _design_contract(self, designer: Agent) -> tuple[str, str, Contract]:
+    def _design_contract(self, designer: Agent) -> tuple[str, Contract]:
         """
         Design a contract from the given LLM agent.
 
@@ -42,11 +42,11 @@ class Contracting(Mechanism):
         """
         game_prompt = self.base_game.get_player_prompt(designer.player_id)
         base_prompt = game_prompt + "\n" + CONTRACT_DESIGN_PROMPT.format()
-        response, trace_id, contract = designer.chat_with_retries(
+        _response, trace_id, contract = designer.chat_with_retries(
             base_prompt=base_prompt,
             parse_func=self._parse_contract,
         )
-        return response, trace_id, contract
+        return trace_id, contract
 
     def _agree_to_contract(
         self, *, player: Agent, designer: Agent
@@ -237,18 +237,17 @@ class Contracting(Mechanism):
         # Cache agents so base class reuses them
         self._cached_agents = players
 
-        def design_fn(player: Agent) -> tuple[Agent, str, str, Contract]:
-            response, trace_id, contract = self._design_contract(player)
-            return player, response, trace_id, contract
+        def design_fn(player: Agent) -> tuple[Agent, str, Contract]:
+            trace_id, contract = self._design_contract(player)
+            return player, trace_id, contract
 
         design_results = run_tasks(players, design_fn)
 
         self.contracts.clear()
         contract_design = {}
-        for player, response, trace_id, contract in design_results:
+        for player, trace_id, contract in design_results:
             self.contracts[player.name] = contract
             contract_design[player.name] = {
-                "response": response,
                 "contract": {str(k): v for k, v in contract.items()},
                 "trace_id": trace_id,
             }
@@ -273,38 +272,28 @@ class Contracting(Mechanism):
         Adjust payoffs based on the contract logic:
         A player performing Action X gets +Payoff.
         This amount is deducted equally from all other players.
-
-        Returns:
-            New list of Move objects with adjusted payoffs.
         """
-        # Calculate adjustments for each player
         adjustments = [0.0] * len(moves)
 
         for i, move in enumerate(moves):
             contract_adjustment = selected_contract[move.action]
 
             if contract_adjustment != 0:
-                # Player i receives the contract value
                 adjustments[i] += contract_adjustment
-
-                # Cost is distributed equally among other players
                 cost_per_other = contract_adjustment / (
                     self.base_game.num_players - 1
                 )
 
-                # Deduct from all other players (avoid list slicing)
                 for j in range(len(moves)):
                     if j != i:
                         adjustments[j] -= cost_per_other
 
-        # Create new Move objects with adjusted payoffs
         adjusted_moves = []
         for move, adjustment in zip(moves, adjustments):
             adjusted_move = Move(
                 player=move.player,
                 action=move.action,
                 points=move.points + adjustment,
-                response=move.response,
                 trace_id=move.trace_id,
                 mediated=move.mediated,
             )

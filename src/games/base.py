@@ -58,7 +58,6 @@ class Move:
     player: Agent
     action: Action
     points: float
-    response: str
     trace_id: str
     mediated: bool = False
 
@@ -69,7 +68,6 @@ class Move:
             "player": self.player.name,
             "action": str(self.action),
             "points": self.points,
-            "response": self.response,
             "trace_id": self.trace_id,
         }
         if self.mediated:
@@ -142,7 +140,7 @@ class Game(ABC):
         player: Agent,
         extra_info: str | None = None,
         output_instruction: str | None = None,
-    ) -> tuple[str, str, dict[int, float]]:
+    ) -> tuple[str, dict[int, float]]:
         """
         Given the mechanism's additional info and the base game prompt,
         format the full prompt and query the player.
@@ -158,10 +156,10 @@ class Game(ABC):
             output_instruction = self.default_output_instruction
         prompt += "\n" + output_instruction
 
-        response, trace_id, mix_probs = player.chat_with_retries(
+        _response, trace_id, mix_probs = player.chat_with_retries(
             prompt, self._parse_mixed_probs
         )
-        return response, trace_id, mix_probs
+        return trace_id, mix_probs
 
     def _parse_mixed_probs(
         self,
@@ -215,25 +213,24 @@ class Game(ABC):
         self,
         players: Sequence[Agent],
         info: Sequence[str],
-    ) -> dict[Agent, tuple[Action, str, str, bool]]:
+    ) -> dict[Agent, tuple[Action, str, bool]]:
         if len(players) != len(info):
             raise ValueError(f"Count mismatch: {len(players)} vs {len(info)}.")
 
-        def query(player: Agent, extra_info: str):
-            response, trace_id, mix_probs = self.prompt_player_mix_probs(
+        def query(player: Agent, extra_info: str) -> tuple[int, str]:
+            trace_id, mix_probs = self.prompt_player_mix_probs(
                 player, extra_info=extra_info
             )
             action_idx = self._choose_from_mix_strategy(mix_probs)
-            return action_idx, response, trace_id
+            return action_idx, trace_id
 
         return {
             player: (
                 self.action_class.from_index(action_idx),
-                response,
                 trace_id,
                 False,  # mediated=False, could be modified with action_map
             )
-            for player, (action_idx, response, trace_id) in zip(
+            for player, (action_idx, trace_id) in zip(
                 players, run_tasks(zip(players, info), lambda p: query(*p))
             )
         }

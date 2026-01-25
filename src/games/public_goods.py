@@ -113,9 +113,8 @@ class PublicGoods(Game):
                         == self.action_class.CONTRIBUTE
                         else self.endowment + share
                     ),
-                    response=players_decision[player][1],
-                    trace_id=players_decision[player][2],
-                    mediated=players_decision[player][3],
+                    trace_id=players_decision[player][1],
+                    mediated=players_decision[player][2],
                 )
             )
         return moves
