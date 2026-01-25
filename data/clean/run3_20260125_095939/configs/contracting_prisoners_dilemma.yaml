@@ -1,0 +1,9 @@
+# Auto-generated config for game-mechanism combination
+game_config: games/prisoners_dilemma.yaml
+mechanism_config: mechanisms/contracting.yaml
+agents_config: agents/few_strong_llms.yaml
+evaluation_config: evaluation/no_deviation_ratings.yaml
+name: contracting_prisoners_dilemma
+concurrency:
+  max_workers: 3
+  tournament_workers: 9

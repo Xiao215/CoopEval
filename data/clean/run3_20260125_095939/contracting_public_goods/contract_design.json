@@ -1,0 +1,128 @@
+{
+  "google/gemini-3-flash-preview(CoT)#P1": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "4cfe2c98"
+  },
+  "google/gemini-3-flash-preview(CoT)#P2": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 2,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "2cf78d7b"
+  },
+  "google/gemini-3-flash-preview(CoT)#P3": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "9b626173"
+  },
+  "google/gemini-3-flash-preview(IO)#P1": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "3c0c0496"
+  },
+  "google/gemini-3-flash-preview(IO)#P2": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "fa315f88"
+  },
+  "google/gemini-3-flash-preview(IO)#P3": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "c232ace8"
+  },
+  "openai/gpt-5.2(CoT)#P1": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": -1
+    },
+    "trace_id": "70444d1f"
+  },
+  "openai/gpt-5.2(CoT)#P2": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": -1
+    },
+    "trace_id": "be309110"
+  },
+  "openai/gpt-5.2(CoT)#P3": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": -1
+    },
+    "trace_id": "a9ef5931"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P1": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "01c26adf"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P2": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": -1,
+      "PublicGoodsAction.FREE_RIDE": 1
+    },
+    "trace_id": "7cd227d8"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P3": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "302d8c85"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P1": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "6623a52c"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P2": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "4a8a176d"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P3": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 1,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "81692638"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 2,
+      "PublicGoodsAction.FREE_RIDE": 0
+    },
+    "trace_id": "f886c182"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 100,
+      "PublicGoodsAction.FREE_RIDE": -1
+    },
+    "trace_id": "d645666a"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P3": {
+    "contract": {
+      "PublicGoodsAction.CONTRIBUTE": 2,
+      "PublicGoodsAction.FREE_RIDE": -2
+    },
+    "trace_id": "9976e799"
+  }
+}

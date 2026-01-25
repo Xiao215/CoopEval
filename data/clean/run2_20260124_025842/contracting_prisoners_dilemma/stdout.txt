@@ -1,0 +1,38 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/contracting_prisoners_dilemma
+Running PrisonersDilemma with mechanism Contracting.
+
+No precomputed matchup payoff provided; running tournament...
+Attempt 1 of openai/gpt-4o-2024-05-13(CoT)#P2 to parse response failed: Unknown action token 'Player 1' from response 'To strategize effectively for this decision-making game, let\'s break down the process step by step to arrive at the optimal additional payoff agreement for the proposed contract.\n\n### Step 1: Understand the Payoff Matrix\nThe payoff matrix for the original game (without contracts) is as follows:\n\n| P...[truncated due to length]...ands acceptable.\n\nHere\'s the final proposed contract encapsulated in JSON format:\n```json\n{"A0": {"Player 1": 1, "Player 2": -1}, "A1": {"Player 1": 0, "Player 2": 0}}\n```\n\nNurturing this contract ensures both playing strategically for optimality, influencing the balance towards holistic attainment.'
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in response 'Let\'s solve this step by step.\n\n---\n\n### **Step 1: Understand the Base Game (Without Contracts)**\n\nThe base game is a symmetric 2-player simultaneous game with actions A0 and A1.\n\nPayoff matrix (Player 1 rows, Player 2 columns):\n\n| Player 1 \\ Player 2 | ...[truncated due to length]...proves** each contract.\n\nSo **both players** vote independently on each contract.\n\nThen, the contracts with the **maximum number of approvals** are collected. If multiple, one is picked uniformly at random.\n\nSo you control your own approvals.\n\nYou (Player 1) decide whether to approve C1 and' from response "Let's solve this step by step.\n\n---\n\n### **Step 1: Understand the Base Game (Without Contracts)**\n\nThe base game is a symmetric 2-player simultaneous game with actions A0 and A1.\n\nPayoff matrix (Player 1 rows, Player 2 columns):\n\n| Player 1 \\ Player 2 | A0       | A1       |\n|---------------------|-...[truncated due to length]...r **disapproves** each contract.\n\nSo **both players** vote independently on each contract.\n\nThen, the contracts with the **maximum number of approvals** are collected. If multiple, one is picked uniformly at random.\n\nSo you control your own approvals.\n\nYou (Player 1) decide whether to approve C1 and"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 1.8333
+  google/gemini-3-flash-preview(CoT): 2.0000
+  google/gemini-3-flash-preview(IO): 2.0833
+  openai/gpt-4o-2024-05-13(CoT): 1.7500
+  openai/gpt-5.2(CoT): 1.9167
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 1.7500
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.8333333333333333, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.083333333333333, 'openai/gpt-5.2(CoT)': 1.9166666666666665, 'openai/gpt-4o-2024-05-13(CoT)': 1.75, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.7499999999999998}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.974824024028805, 'google/gemini-3-flash-preview(CoT)': 2.0000000000000004, 'google/gemini-3-flash-preview(IO)': 2.0046053397952104, 'openai/gpt-5.2(CoT)': 1.9794293638240155, 'openai/gpt-4o-2024-05-13(CoT)': 1.600415230188651, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8459818265696042}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9948194526670167, 'google/gemini-3-flash-preview(CoT)': 1.9999999999999996, 'google/gemini-3-flash-preview(IO)': 2.000080999559226, 'openai/gpt-5.2(CoT)': 1.9949004522262428, 'openai/gpt-4o-2024-05-13(CoT)': 1.5829500751466055, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8570766102762777}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9987444352988835, 'google/gemini-3-flash-preview(CoT)': 1.9999999999999996, 'google/gemini-3-flash-preview(IO)': 2.0000012493687374, 'openai/gpt-5.2(CoT)': 1.9987456846676215, 'openai/gpt-4o-2024-05-13(CoT)': 1.580179386446457, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8588550763882288}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9996922375290704, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0000000187655074, 'openai/gpt-5.2(CoT)': 1.999692256294578, 'openai/gpt-4o-2024-05-13(CoT)': 1.5795256186666804, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8592753035592091}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999245414859446, 'google/gemini-3-flash-preview(CoT)': 1.9999999999999996, 'google/gemini-3-flash-preview(IO)': 2.0000000002800564, 'openai/gpt-5.2(CoT)': 1.999924541766001, 'openai/gpt-4o-2024-05-13(CoT)': 1.5793656221779977, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8593781558017906}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999815005092239, 'google/gemini-3-flash-preview(CoT)': 1.9999999999999998, 'google/gemini-3-flash-preview(IO)': 2.0000000000041727, 'openai/gpt-5.2(CoT)': 1.999981500513397, 'openai/gpt-4o-2024-05-13(CoT)': 1.579326395828049, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8594033722772811}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999954647945346, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.000000000000062, 'openai/gpt-5.2(CoT)': 1.9999954647945968, 'openai/gpt-4o-2024-05-13(CoT)': 1.5793167789937106, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8594095544188582}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999988881904824, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.000000000000001, 'openai/gpt-5.2(CoT)': 1.9999988881904833, 'openai/gpt-4o-2024-05-13(CoT)': 1.5793144213914805, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8594110699937352}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999997274395316, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 1.9999997274395316, 'openai/gpt-4o-2024-05-13(CoT)': 1.5793138434228307, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.859411441538509}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.999999933181747, 'google/gemini-3-flash-preview(CoT)': 1.9999999999999998, 'google/gemini-3-flash-preview(IO)': 1.9999999999999998, 'openai/gpt-5.2(CoT)': 1.999999933181747, 'openai/gpt-4o-2024-05-13(CoT)': 1.5793137017335992, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8594115326228502}
+
+============================================================
+
