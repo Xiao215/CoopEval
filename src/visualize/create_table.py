@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from src.utils.score_normalization import NormalizeScore
 from src.visualize.analysis_utils import (
+    NormalizeScore,
     discover_experiment_subfolders,
     load_json as load_json_file,
     simplify_model_name,
@@ -104,7 +104,7 @@ def compute_deviation_ranks(ratings: Dict[str, float]) -> Dict[str, str]:
     return ranks
 
 
-def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentData]:
+def parse_batch_folder(batch_path: Path, metrics: List[str]) -> tuple[List[ExperimentData], List[tuple[Path, Exception]]]:
     """
     Parse batch folder and extract experiment data.
 
@@ -113,7 +113,7 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
         metrics: List of metrics to load (subset of ["mean", "rd", "dr"])
 
     Returns:
-        List of ExperimentData objects
+        Tuple of (list of ExperimentData objects, list of (failed_path, error) tuples)
 
     Raises:
         ValueError: If no valid experiments found
@@ -124,87 +124,94 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
         raise NotADirectoryError(f"Path is not a directory: {batch_path}")
 
     experiments = []
+    failed_experiments = []
 
     # Scan for subdirectories (skip configs and other non-experiment folders)
     subdirs = discover_experiment_subfolders(batch_path)
 
     for subdir in subdirs:
-        # Check for required files
-        config_path = subdir / "config.json"
-        payoff_path = subdir / "agent_average_payoff.json"
+        try:
+            # Check for required files
+            config_path = subdir / "config.json"
+            payoff_path = subdir / "agent_average_payoff.json"
 
-        if not config_path.exists() or not payoff_path.exists():
-            raise FileNotFoundError(
-                f"Missing required files in {subdir}"
+            if not config_path.exists() or not payoff_path.exists():
+                raise FileNotFoundError(
+                    f"Missing required files in {subdir}"
+                )
+
+            # Load config
+            config = load_json(config_path)
+
+            # Load payoffs
+            payoffs = load_json(payoff_path)
+
+            # Extract mechanism and game from config
+            mechanism = config["mechanism"]["type"]
+            game = config["game"]["type"]
+            game_config = config["game"]
+            eval_config = config["evaluation"]
+
+            # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
+            if mechanism.lower() == "reputation":
+                # Reputation mechanism: explicitly use None (will display N/A)
+                rd_fitness = None
+                deviation_ranks = None
+            else:
+                # All other mechanisms: Load only requested metric files
+                rd_fitness = None
+                deviation_ranks = None
+
+                # Load RD fitness if requested
+                if "rd" in metrics:
+                    rd_fitness_path = subdir / "replicator_dynamics_fitness.json"
+                    if not rd_fitness_path.exists():
+                        raise FileNotFoundError(
+                            f"Missing replicator_dynamics_fitness.json in {subdir} for mechanism {mechanism}"
+                        )
+                    rd_fitness_data = load_json(rd_fitness_path)
+                    if rd_fitness_data is None:
+                        raise ValueError(f"Failed to parse replicator_dynamics_fitness.json in {subdir}")
+                    rd_fitness = {
+                        model: data["fitness"]
+                        for model, data in rd_fitness_data.items()
+                    }
+
+                # Load deviation ratings if requested
+                if "dr" in metrics:
+                    deviation_ratings_path = subdir / "deviation_ratings.json"
+                    if not deviation_ratings_path.exists():
+                        raise FileNotFoundError(
+                            f"Missing deviation_ratings.json in {subdir} for mechanism {mechanism}"
+                        )
+                    deviation_ratings_data = load_json(deviation_ratings_path)
+                    if deviation_ratings_data is None:
+                        raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
+                    deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
+
+            # Create experiment data with new fields
+            experiments.append(
+                ExperimentData(
+                    mechanism=mechanism,
+                    game=game,
+                    model_scores=payoffs,
+                    folder_path=subdir,
+                    game_config=game_config,
+                    eval_config=eval_config,
+                    rd_fitness=rd_fitness,
+                    deviation_ranks=deviation_ranks,
+                )
             )
 
-        # Load config
-        config = load_json(config_path)
-
-        # Load payoffs
-        payoffs = load_json(payoff_path)
-
-        # Extract mechanism and game from config
-        mechanism = config["mechanism"]["type"]
-        game = config["game"]["type"]
-        game_config = config["game"]
-        eval_config = config["evaluation"]
-
-        # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
-        if mechanism.lower() == "reputation":
-            # Reputation mechanism: explicitly use None (will display N/A)
-            rd_fitness = None
-            deviation_ranks = None
-        else:
-            # All other mechanisms: Load only requested metric files
-            rd_fitness = None
-            deviation_ranks = None
-            
-            # Load RD fitness if requested
-            if "rd" in metrics:
-                rd_fitness_path = subdir / "replicator_dynamics_fitness.json"
-                if not rd_fitness_path.exists():
-                    raise FileNotFoundError(
-                        f"Missing replicator_dynamics_fitness.json in {subdir} for mechanism {mechanism}"
-                    )
-                rd_fitness_data = load_json(rd_fitness_path)
-                if rd_fitness_data is None:
-                    raise ValueError(f"Failed to parse replicator_dynamics_fitness.json in {subdir}")
-                rd_fitness = {
-                    model: data["fitness"]
-                    for model, data in rd_fitness_data.items()
-                }
-
-            # Load deviation ratings if requested
-            if "dr" in metrics:
-                deviation_ratings_path = subdir / "deviation_ratings.json"
-                if not deviation_ratings_path.exists():
-                    raise FileNotFoundError(
-                        f"Missing deviation_ratings.json in {subdir} for mechanism {mechanism}"
-                    )
-                deviation_ratings_data = load_json(deviation_ratings_path)
-                if deviation_ratings_data is None:
-                    raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
-                deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
-
-        # Create experiment data with new fields
-        experiments.append(
-            ExperimentData(
-                mechanism=mechanism,
-                game=game,
-                model_scores=payoffs,
-                folder_path=subdir,
-                game_config=game_config,
-                eval_config=eval_config,
-                rd_fitness=rd_fitness,
-                deviation_ranks=deviation_ranks,
-            )
-        )
+        except Exception as e:
+            print(f"WARNING: Failed to parse experiment in {subdir}")
+            print(f"  Error: {type(e).__name__}: {e}")
+            failed_experiments.append((subdir, e))
 
     if not experiments:
         raise ValueError(f"No valid experiments found in {batch_path}")
 
-    return experiments
+    return experiments, failed_experiments
 
 
 def build_data_structure(
@@ -334,7 +341,7 @@ def validate_experiments(
     canonical_games = sort_games(list(games))
     canonical_models = sort_models(canonical_models)
 
-    # Validate complete grid coverage
+    # Check for complete grid coverage (warn if incomplete)
     missing_combinations = []
     for mech in canonical_mechanisms:
         for game in canonical_games:
@@ -342,13 +349,12 @@ def validate_experiments(
                 missing_combinations.append((mech, game))
 
     if missing_combinations:
-        error_msg = f"Incomplete mechanism×game grid! Missing {len(missing_combinations)} combination(s):\n"
+        print(f"\nWARNING: Incomplete mechanism×game grid! Missing {len(missing_combinations)} combination(s):")
         for mech, game in missing_combinations:
-            error_msg += f"  - {mech} × {game}\n"
-        error_msg += "\nAll mechanism×game combinations must be present."
-        raise ValueError(error_msg)
+            print(f"  - {mech} × {game}")
+        print("Tables will show 'Unav.' for missing data.\n")
 
-    return canonical_mechanisms, canonical_games, canonical_models, canonical_eval
+    return canonical_mechanisms, canonical_games, canonical_models, canonical_eval, missing_combinations
 
 
 def validate_data_consistency(
@@ -366,37 +372,39 @@ def validate_data_consistency(
         canonical_games: Expected list of games
         canonical_models: Expected list of models
 
-    Raises:
-        ValueError: If any combinations are missing
+    Note:
+        Missing data will be handled gracefully by showing "Unav." in tables
     """
-    missing_combinations = []
-
-    for game in canonical_games:
-        if game not in data:
-            for mechanism in canonical_mechanisms:
-                for model in canonical_models:
-                    missing_combinations.append((game, mechanism, model))
-            continue
-
-        for mechanism in canonical_mechanisms:
-            if mechanism not in data[game]:
-                for model in canonical_models:
-                    missing_combinations.append((game, mechanism, model))
-                continue
-
-            for model in canonical_models:
-                if model not in data[game][mechanism]:
-                    missing_combinations.append((game, mechanism, model))
-
-    if missing_combinations:
-        error_msg = f"Data inconsistency detected! Missing {len(missing_combinations)} combinations:\n"
-        # Show first 10 missing combinations
-        for game, mechanism, model in missing_combinations[:10]:
-            error_msg += f"  - {game} × {mechanism} × {model}\n"
-        if len(missing_combinations) > 10:
-            error_msg += f"  ... and {len(missing_combinations) - 10} more\n"
-        error_msg += "\nAll mechanism×game×model combinations must be present in batch experiments."
-        raise ValueError(error_msg)
+    # Validation disabled - we now handle missing data gracefully in table generation
+    # missing_combinations = []
+    #
+    # for game in canonical_games:
+    #     if game not in data:
+    #         for mechanism in canonical_mechanisms:
+    #             for model in canonical_models:
+    #                 missing_combinations.append((game, mechanism, model))
+    #         continue
+    #
+    #     for mechanism in canonical_mechanisms:
+    #         if mechanism not in data[game]:
+    #             for model in canonical_models:
+    #                 missing_combinations.append((game, mechanism, model))
+    #             continue
+    #
+    #         for model in canonical_models:
+    #             if model not in data[game][mechanism]:
+    #                 missing_combinations.append((game, mechanism, model))
+    #
+    # if missing_combinations:
+    #     error_msg = f"Data inconsistency detected! Missing {len(missing_combinations)} combinations:\n"
+    #     # Show first 10 missing combinations
+    #     for game, mechanism, model in missing_combinations[:10]:
+    #         error_msg += f"  - {game} × {mechanism} × {model}\n"
+    #     if len(missing_combinations) > 10:
+    #         error_msg += f"  ... and {len(missing_combinations) - 10} more\n"
+    #     error_msg += "\nAll mechanism×game×model combinations must be present in batch experiments."
+    #     raise ValueError(error_msg)
+    pass
 
 
 def format_score(score: Optional[float], precision: int = 3) -> str:
@@ -516,26 +524,32 @@ def generate_game_table(
         metric_averages = {}
         mech_metric_list = mech_metrics[mech]
 
-        # Calculate average for each metric this mechanism supports
-        for metric in mech_metric_list:
-            if metric == "mean":
-                values = [payoffs[game][mech][model] for model in models]
-                avg = sum(values) / len(values)
-                metric_averages[metric] = format_score(avg, precision)
-            elif metric == "rd":
-                values = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
-                if values:
+        # Check if data exists for this game-mechanism combination
+        if game in payoffs and mech in payoffs[game]:
+            # Calculate average for each metric this mechanism supports
+            for metric in mech_metric_list:
+                if metric == "mean":
+                    values = [payoffs[game][mech][model] for model in models]
                     avg = sum(values) / len(values)
                     metric_averages[metric] = format_score(avg, precision)
-                else:
-                    metric_averages[metric] = "N/A"
-            elif metric == "dr":
-                values = [float(deviation_ranks[game][mech][model]) for model in models if deviation_ranks[game][mech][model] is not None]
-                if values:
-                    avg = sum(values) / len(values)
-                    metric_averages[metric] = f"{avg:.1f}"
-                else:
-                    metric_averages[metric] = "N/A"
+                elif metric == "rd":
+                    values = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
+                    if values:
+                        avg = sum(values) / len(values)
+                        metric_averages[metric] = format_score(avg, precision)
+                    else:
+                        metric_averages[metric] = "N/A"
+                elif metric == "dr":
+                    values = [float(deviation_ranks[game][mech][model]) for model in models if deviation_ranks[game][mech][model] is not None]
+                    if values:
+                        avg = sum(values) / len(values)
+                        metric_averages[metric] = f"{avg:.1f}"
+                    else:
+                        metric_averages[metric] = "N/A"
+        else:
+            # Missing data - use "Unav." for all metrics
+            for metric in mech_metric_list:
+                metric_averages[metric] = "Unav."
 
         metric_values = [metric_averages[m] for m in mech_metric_list]
         if metric_values:
@@ -549,15 +563,25 @@ def generate_game_table(
         row_parts = [simplify_model_name(model)]
         for mech in mechanisms:
             mech_metric_list = mech_metrics[mech]
-            payoff_score = payoffs[game][mech][model]
-            rd_val = rd_fitness[game][mech][model]
-            dr_val = deviation_ranks[game][mech][model]
 
-            metric_data = {
-                "mean": format_score(payoff_score, precision),
-                "rd": format_score(rd_val, precision) if rd_val is not None else "N/A",
-                "dr": dr_val if dr_val is not None else "N/A",
-            }
+            # Safely access nested dictionaries - use "Unav." for missing data
+            if game in payoffs and mech in payoffs[game]:
+                payoff_score = payoffs[game][mech][model]
+                rd_val = rd_fitness[game][mech][model]
+                dr_val = deviation_ranks[game][mech][model]
+
+                metric_data = {
+                    "mean": format_score(payoff_score, precision),
+                    "rd": format_score(rd_val, precision) if rd_val is not None else "N/A",
+                    "dr": dr_val if dr_val is not None else "N/A",
+                }
+            else:
+                # Missing data - use "Unav." for all metrics
+                metric_data = {
+                    "mean": "Unav.",
+                    "rd": "Unav.",
+                    "dr": "Unav.",
+                }
 
             # Extract only metrics this mechanism supports
             metric_values = [metric_data[m] for m in mech_metric_list]
@@ -616,6 +640,10 @@ def compute_aggregate_metric(
     values = []
     for game in data:
         if game not in social_dilemmas:
+            continue
+
+        # Skip if this game-mechanism combination doesn't exist
+        if mechanism not in data[game]:
             continue
 
         value = data[game][mechanism][model]
@@ -951,22 +979,25 @@ Examples:
 
     # Parse all batch folders
     all_experiments = []
+    all_failed = []
     for batch_path in args.batch_paths:
         try:
-            experiments = parse_batch_folder(batch_path, args.metrics)
+            experiments, failed_experiments = parse_batch_folder(batch_path, args.metrics)
             all_experiments.extend(experiments)
-            print(f"Parsed {len(experiments)} experiments from {batch_path}")
+            all_failed.extend(failed_experiments)
+            print(f"Parsed {len(experiments)} experiments from {batch_path} ({len(failed_experiments)} failed)")
         except (FileNotFoundError, NotADirectoryError, ValueError) as e:
             print(f"Error parsing {batch_path}: {e}", file=sys.stderr)
             sys.exit(1)
 
-    print(f"\nTotal experiments: {len(all_experiments)}")
+    print(f"\nTotal experiments: {len(all_experiments)} successful, {len(all_failed)} failed")
 
     # Validate experiments and extract canonical lists
     try:
-        mechanisms, games, models, eval_config = validate_experiments(all_experiments)
+        mechanisms, games, models, eval_config, missing_combinations = validate_experiments(all_experiments)
     except ValueError as e:
         print(f"Validation error: {e}", file=sys.stderr)
+        print(f"NOTE: This may be due to incomplete experiments (still running)")
         sys.exit(1)
 
     print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models")
@@ -1026,6 +1057,15 @@ Examples:
     print(f"Saved combined table: {combined_output_path}")
 
     print(f"\nTotal tables generated: {len(games) + 1} (plus 1 combined file)")
+
+    # Print summary of failed experiments
+    if all_failed:
+        print(f"\n{'='*80}")
+        print(f"Failed to parse {len(all_failed)} experiment(s):")
+        for folder, error in all_failed:
+            print(f"  - {folder}")
+            print(f"    Error: {type(error).__name__}: {error}")
+        print(f"{'='*80}")
 
 
 if __name__ == "__main__":
