@@ -1,0 +1,158 @@
+{
+  "google/gemini-3-flash-preview(CoT)#P1": {
+    "trace_id": "6da37a15",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(CoT)#P2": {
+    "trace_id": "04e19447",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(IO)#P1": {
+    "trace_id": "b5ebcd7e",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(IO)#P2": {
+    "trace_id": "17b00132",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "openai/gpt-5.2(CoT)#P1": {
+    "trace_id": "af683a9e",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "openai/gpt-5.2(CoT)#P2": {
+    "trace_id": "1f7af565",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P1": {
+    "trace_id": "d51d8b0b",
+    "mediator": [
+      [
+        1,
+        "A2"
+      ],
+      [
+        2,
+        "A2"
+      ]
+    ]
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P2": {
+    "trace_id": "52181f1c",
+    "mediator": [
+      [
+        1,
+        "A2"
+      ],
+      [
+        2,
+        "A2"
+      ]
+    ]
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P1": {
+    "trace_id": "561c0f3c",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P2": {
+    "trace_id": "858b1956",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1": {
+    "trace_id": "b2fc3ce7",
+    "mediator": [
+      [
+        1,
+        "A2"
+      ],
+      [
+        2,
+        "A2"
+      ]
+    ]
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2": {
+    "trace_id": "1a140890",
+    "mediator": [
+      [
+        1,
+        "A0"
+      ],
+      [
+        2,
+        "A3"
+      ]
+    ]
+  }
+}

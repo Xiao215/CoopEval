@@ -1,0 +1,308 @@
+{
+  "google/gemini-3-flash-preview(CoT)#P1": {
+    "trace_id": "506f81f3",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(CoT)#P2": {
+    "trace_id": "7d8669d1",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(CoT)#P3": {
+    "trace_id": "3a491c75",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(IO)#P1": {
+    "trace_id": "f8473e84",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(IO)#P2": {
+    "trace_id": "b2df9750",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "google/gemini-3-flash-preview(IO)#P3": {
+    "trace_id": "422f54bc",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "openai/gpt-5.2(CoT)#P1": {
+    "trace_id": "853f228d",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A1"
+      ]
+    ]
+  },
+  "openai/gpt-5.2(CoT)#P2": {
+    "trace_id": "c3b2de2e",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "openai/gpt-5.2(CoT)#P3": {
+    "trace_id": "eed1cebe",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A1"
+      ]
+    ]
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P1": {
+    "trace_id": "fdd1e247",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A1"
+      ]
+    ]
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P2": {
+    "trace_id": "4dfee70f",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A1"
+      ]
+    ]
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P3": {
+    "trace_id": "163a517c",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P1": {
+    "trace_id": "31dd670e",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P2": {
+    "trace_id": "92d959d4",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P3": {
+    "trace_id": "57d8db68",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1": {
+    "trace_id": "9207532d",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2": {
+    "trace_id": "4d87c085",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A1"
+      ]
+    ]
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P3": {
+    "trace_id": "4f27bde0",
+    "mediator": [
+      [
+        1,
+        "A1"
+      ],
+      [
+        2,
+        "A1"
+      ],
+      [
+        3,
+        "A0"
+      ]
+    ]
+  }
+}

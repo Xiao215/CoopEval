@@ -1,0 +1,25 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/reputation_trust_game
+Running TrustGame with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in the response 'Let\'s break this down step by step.\n\n---\n\n### **Step 1: Understand the Game and Payoffs**\n\nWe are playing a two-player simultaneous-move game with actions A0 and A1.\n\nYou are **Player 2** (the one whose perspective is being described).\n\nThe payoff mat...[truncated due to length]...erved to play either A0 or A1**.\n\nSo if you **play A1**, future players will think you defect.\n\nBut if you **play A0**, they think you cooperate.\n\nSo if you want to **maximize long-term reputation**, you should **play A0**.\n\nThus, even though A1 gives 20 now, the **long-term cost** of being' from response "Let's break this down step by step.\n\n---\n\n### **Step 1: Understand the Game and Payoffs**\n\nWe are playing a two-player simultaneous-move game with actions A0 and A1.\n\nYou are **Player 2** (the one whose perspective is being described).\n\nThe payoff matrix (from **Player 2's** perspective) is:\n\n| Your...[truncated due to length]...ll be observed to play either A0 or A1**.\n\nSo if you **play A1**, future players will think you defect.\n\nBut if you **play A0**, they think you cooperate.\n\nSo if you want to **maximize long-term reputation**, you should **play A0**.\n\nThus, even though A1 gives 20 now, the **long-term cost** of being"
+API call failed (attempt 1/8): OpenAIError: API error (code 502): Network connection lost.
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in the response 'Let’s break this down step by step and reason through the decision-making process for maximizing your expected points over the repeated game, given the history, the visibility of your past actions, and the behavior of opponent Agent #8.\n\n---\n\n### Step 1: Und...[truncated due to length]...e Agent #8 will play **A0**, then your best response is:\n\n- If you play **A0**, you get **10**\n- If you play **A1**, you get **6**\n\nSo **A0 is better** for you — 10 vs 6.\n\nBut wait — **you are playing repeatedly**, so **your future rounds matter too**.\n\nAnd **Agent #8 observes your current' from response 'Let’s break this down step by step and reason through the decision-making process for maximizing your expected points over the repeated game, given the history, the visibility of your past actions, and the behavior of opponent Agent #8.\n\n---\n\n### Step 1: Understand the Payoff Matrix\n\nLet’s write the...[truncated due to length]...you believe Agent #8 will play **A0**, then your best response is:\n\n- If you play **A0**, you get **10**\n- If you play **A1**, you get **6**\n\nSo **A0 is better** for you — 10 vs 6.\n\nBut wait — **you are playing repeatedly**, so **your future rounds matter too**.\n\nAnd **Agent #8 observes your current'
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 8.4083
+  google/gemini-3-flash-preview(CoT): 6.8152
+  google/gemini-3-flash-preview(IO): 6.1837
+  openai/gpt-4o-2024-05-13(CoT): 5.3179
+  openai/gpt-5.2(CoT): 7.2065
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 7.1060
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+

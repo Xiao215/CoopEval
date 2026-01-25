@@ -1,0 +1,110 @@
+{
+  "google/gemini-3-flash-preview(CoT)#P1": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 0,
+      "TravellersDilemmaAction.CLAIM_1": 0,
+      "TravellersDilemmaAction.CLAIM_2": 0,
+      "TravellersDilemmaAction.CLAIM_3": 10
+    },
+    "trace_id": "bd9b4b0d"
+  },
+  "google/gemini-3-flash-preview(CoT)#P2": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 0,
+      "TravellersDilemmaAction.CLAIM_1": 3,
+      "TravellersDilemmaAction.CLAIM_2": 6,
+      "TravellersDilemmaAction.CLAIM_3": 9
+    },
+    "trace_id": "097c693b"
+  },
+  "google/gemini-3-flash-preview(IO)#P1": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 0,
+      "TravellersDilemmaAction.CLAIM_1": 3,
+      "TravellersDilemmaAction.CLAIM_2": 6,
+      "TravellersDilemmaAction.CLAIM_3": 9
+    },
+    "trace_id": "7f57208a"
+  },
+  "google/gemini-3-flash-preview(IO)#P2": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 0,
+      "TravellersDilemmaAction.CLAIM_1": 0,
+      "TravellersDilemmaAction.CLAIM_2": 0,
+      "TravellersDilemmaAction.CLAIM_3": 5
+    },
+    "trace_id": "d0d2485b"
+  },
+  "openai/gpt-5.2(CoT)#P1": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 0,
+      "TravellersDilemmaAction.CLAIM_1": 0,
+      "TravellersDilemmaAction.CLAIM_2": 0,
+      "TravellersDilemmaAction.CLAIM_3": 3
+    },
+    "trace_id": "fd61bdc8"
+  },
+  "openai/gpt-5.2(CoT)#P2": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": -3,
+      "TravellersDilemmaAction.CLAIM_1": -2,
+      "TravellersDilemmaAction.CLAIM_2": -1,
+      "TravellersDilemmaAction.CLAIM_3": 2
+    },
+    "trace_id": "0a1457fe"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P1": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 1,
+      "TravellersDilemmaAction.CLAIM_1": 2,
+      "TravellersDilemmaAction.CLAIM_2": 3,
+      "TravellersDilemmaAction.CLAIM_3": 2
+    },
+    "trace_id": "0a07f43b"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P2": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": -1,
+      "TravellersDilemmaAction.CLAIM_1": 2,
+      "TravellersDilemmaAction.CLAIM_2": 1,
+      "TravellersDilemmaAction.CLAIM_3": 0
+    },
+    "trace_id": "e5bdbf4b"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P1": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": -2,
+      "TravellersDilemmaAction.CLAIM_1": -1,
+      "TravellersDilemmaAction.CLAIM_2": 1,
+      "TravellersDilemmaAction.CLAIM_3": 2
+    },
+    "trace_id": "cfb10e74"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P2": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": -3,
+      "TravellersDilemmaAction.CLAIM_1": -2,
+      "TravellersDilemmaAction.CLAIM_2": -1,
+      "TravellersDilemmaAction.CLAIM_3": 0
+    },
+    "trace_id": "6b4cbd4f"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 4,
+      "TravellersDilemmaAction.CLAIM_1": -1,
+      "TravellersDilemmaAction.CLAIM_2": -1,
+      "TravellersDilemmaAction.CLAIM_3": -1
+    },
+    "trace_id": "b681a17d"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2": {
+    "contract": {
+      "TravellersDilemmaAction.CLAIM_0": 10,
+      "TravellersDilemmaAction.CLAIM_1": 0,
+      "TravellersDilemmaAction.CLAIM_2": -5,
+      "TravellersDilemmaAction.CLAIM_3": -10
+    },
+    "trace_id": "71120d7e"
+  }
+}

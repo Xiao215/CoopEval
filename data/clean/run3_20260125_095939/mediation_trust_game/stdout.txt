@@ -1,0 +1,39 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/mediation_trust_game
+Running TrustGame with mechanism Mediation.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in the response "Let's break this down step by step.\n\n---\n\n### **Step 1: Understand the Game Structure**\n\nWe are playing a two-player simultaneous-move game. The actions available are:\n- A0\n- A1\n- A2 (Delegate to Mediator)\n\nYou are **Player 2**.\n\nYour goal is to **m...[truncated due to length]...0,1]**\n\nNote: this is under the assumption that both players use same strategy (symmetric equilibrium).\n\nBut is a symmetric equilibrium valid? Possibly.\n\nLet’s try specific values.\n\n---\n\n### **Try: p = 0 (no delegation)**\n\nThen:\n- (1−p)^2 = 1\n- p(1−p) = 0\n- p² = 0\n\nSo E = (-8 q² + " from response "Let's break this down step by step.\n\n---\n\n### **Step 1: Understand the Game Structure**\n\nWe are playing a two-player simultaneous-move game. The actions available are:\n- A0\n- A1\n- A2 (Delegate to Mediator)\n\nYou are **Player 2**.\n\nYour goal is to **maximize your expected points**, considering the pos...[truncated due to length]...r p ∈ [0,1], q ∈ [0,1]**\n\nNote: this is under the assumption that both players use same strategy (symmetric equilibrium).\n\nBut is a symmetric equilibrium valid? Possibly.\n\nLet’s try specific values.\n\n---\n\n### **Try: p = 0 (no delegation)**\n\nThen:\n- (1−p)^2 = 1\n- p(1−p) = 0\n- p² = 0\n\nSo E = (-8 q² + "
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in response "Let's break this down **step by step**, considering the entire game structure, the players' incentives, and the approval voting for mediators.\n\n---\n\n### 🔷 Step 1: Understand the Core Game (Without Delegation)\n\nWe are playing a simultaneous-move game with two a...[truncated due to length]... delegates**, you get **10**\n\nSo **delegating gives you 10 if opponent delegates**, but only **4 if you don’t delegate and they delegate**\n\nSimilarly, if **you don’t delegate** and **opponent doesn’t delegate**, you can choose, and opponent will play to maximize their gain.\n\nAs shown earlier:" from response "Let's break this down **step by step**, considering the entire game structure, the players' incentives, and the approval voting for mediators.\n\n---\n\n### 🔷 Step 1: Understand the Core Game (Without Delegation)\n\nWe are playing a simultaneous-move game with two actions: A0 and A1.\n\nThe payoff matrix (w...[truncated due to length]...pponent delegates**, you get **10**\n\nSo **delegating gives you 10 if opponent delegates**, but only **4 if you don’t delegate and they delegate**\n\nSimilarly, if **you don’t delegate** and **opponent doesn’t delegate**, you can choose, and opponent will play to maximize their gain.\n\nAs shown earlier:"
+API call failed (attempt 1/8): JSONDecodeError: Expecting value: line 191 column 1 (char 1045)
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 9.0000
+  google/gemini-3-flash-preview(CoT): 10.0000
+  google/gemini-3-flash-preview(IO): 9.6667
+  openai/gpt-4o-2024-05-13(CoT): 7.1667
+  openai/gpt-5.2(CoT): 8.3333
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 7.8333
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 9.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 9.666666666666664, 'openai/gpt-5.2(CoT)': 8.333333333333332, 'openai/gpt-4o-2024-05-13(CoT)': 7.166666666666666, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.833333333333332}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 9.999999992407824, 'google/gemini-3-flash-preview(CoT)': 9.999999993673189, 'google/gemini-3-flash-preview(IO)': 9.99999999776204, 'openai/gpt-5.2(CoT)': 7.929192887065448, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753932618212, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457661862585}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.92919288610309, 'openai/gpt-4o-2024-05-13(CoT)': 8.175753941373051, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 6.4432457628817215}
+
+============================================================
+

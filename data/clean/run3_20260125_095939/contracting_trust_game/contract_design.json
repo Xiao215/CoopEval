@@ -1,0 +1,86 @@
+{
+  "google/gemini-3-flash-preview(CoT)#P1": {
+    "contract": {
+      "TrustGameAction.GIVE": 0,
+      "TrustGameAction.KEEP": -11
+    },
+    "trace_id": "92733892"
+  },
+  "google/gemini-3-flash-preview(CoT)#P2": {
+    "contract": {
+      "TrustGameAction.GIVE": 5,
+      "TrustGameAction.KEEP": 0
+    },
+    "trace_id": "2da53dbc"
+  },
+  "google/gemini-3-flash-preview(IO)#P1": {
+    "contract": {
+      "TrustGameAction.GIVE": 10,
+      "TrustGameAction.KEEP": 0
+    },
+    "trace_id": "d24ca38a"
+  },
+  "google/gemini-3-flash-preview(IO)#P2": {
+    "contract": {
+      "TrustGameAction.GIVE": 5,
+      "TrustGameAction.KEEP": 0
+    },
+    "trace_id": "b7714267"
+  },
+  "openai/gpt-5.2(CoT)#P1": {
+    "contract": {
+      "TrustGameAction.GIVE": 11,
+      "TrustGameAction.KEEP": 0
+    },
+    "trace_id": "3bcc3127"
+  },
+  "openai/gpt-5.2(CoT)#P2": {
+    "contract": {
+      "TrustGameAction.GIVE": 0,
+      "TrustGameAction.KEEP": -5
+    },
+    "trace_id": "4f74db5a"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P1": {
+    "contract": {
+      "TrustGameAction.GIVE": 2,
+      "TrustGameAction.KEEP": -2
+    },
+    "trace_id": "1423f84d"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P2": {
+    "contract": {
+      "TrustGameAction.GIVE": 10,
+      "TrustGameAction.KEEP": -10
+    },
+    "trace_id": "7e248eab"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P1": {
+    "contract": {
+      "TrustGameAction.GIVE": 10,
+      "TrustGameAction.KEEP": 0
+    },
+    "trace_id": "93450606"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P2": {
+    "contract": {
+      "TrustGameAction.GIVE": 3,
+      "TrustGameAction.KEEP": -13
+    },
+    "trace_id": "aacd107b"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1": {
+    "contract": {
+      "TrustGameAction.GIVE": -1,
+      "TrustGameAction.KEEP": 0
+    },
+    "trace_id": "588e7bda"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2": {
+    "contract": {
+      "TrustGameAction.GIVE": 11,
+      "TrustGameAction.KEEP": 0
+    },
+    "trace_id": "04eabf9f"
+  }
+}

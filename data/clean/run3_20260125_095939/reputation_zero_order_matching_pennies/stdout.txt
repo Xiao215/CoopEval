@@ -1,0 +1,25 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/reputation_zero_order_matching_pennies
+Running MatchingPennies with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+API call failed (attempt 1/8): OpenAIError: API error (code 502): Overloaded
+Attempt 1 of openai/gpt-4o-2024-05-13(CoT)#P1 to parse response failed: Expecting ',' delimiter: line 1 column 20 (char 19) from response 'Given the setup of this repeated decision-making game, let\'s consider both the history of play and the potential strategies each player might use based on previous outcomes.\n\n### Analyzing History of Play\n\n#### My History:\n\\[\n\\begin{array}{|c|c|c|}\n\\hline\n\\text{Round} & \\text{Action} & \\text{Outcome...[truncated due to length]...\n\\]\n\nThis allows for variability but leans on the expectation that Agent #10 may switch their actions or that I can win in specific scenarios.\n\n### JSON Output:\n\\[\n\\{"A0": 40, "A1": 60\\}\n\\]\n\nThis mixed strategy should effectively balance the needs for unpredictability and maximizing expected points.'
+API call failed (attempt 1/8): JSONDecodeError: Expecting value: line 449 column 1 (char 2464)
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 0.3078
+  google/gemini-3-flash-preview(CoT): 0.0959
+  google/gemini-3-flash-preview(IO): 0.0190
+  openai/gpt-4o-2024-05-13(CoT): -0.5084
+  openai/gpt-5.2(CoT): 0.0844
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 0.0013
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
