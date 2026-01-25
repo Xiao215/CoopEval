@@ -67,7 +67,15 @@ class ClientAPILLM(LLM):
                 )
                 # Extract and return the response content
                 # This needs to be inside the try block to catch malformed responses
-                content = completion.choices[0].message.content
+                choice = completion.choices[0]
+
+                # Check for error in the choice object (e.g., quota exceeded, content filter)
+                if hasattr(choice, 'error') and choice.error:
+                    error_msg = choice.error.get('message', 'Unknown error')
+                    error_code = choice.error.get('code', 'unknown')
+                    raise OpenAIError(f"API error (code {error_code}): {error_msg}")
+
+                content = choice.message.content
                 if not content or content.strip() == "":
                     raise OpenAIError("API returned empty response content")
                 return content
