@@ -73,6 +73,7 @@ try:
     print(f"EXPERIMENT_WORKERS={exp['experiment_workers']}")
     print(f"TOURNAMENT_WORKERS={exp['tournament_workers']}")
     print(f"RETRY_FAILED={str(exp['retry_failed_experiments']).lower()}")
+    print(f"SEED={exp['seed']}")
 
 except Exception as e:
     print(f"ERROR: Failed to parse manifest: {e}", file=sys.stderr)
@@ -180,6 +181,7 @@ $PYTHON_BIN script/run_experiment.py \
     --config "$CONFIG_PATH" \
     --output-dir "$BATCH_DIR" \
     --experiment-name "$EXP_NAME" \
+    --seed "$SEED" \
     > "${EXPERIMENT_DIR}/stdout.txt" 2> "${EXPERIMENT_DIR}/stderr.txt"
 
 EXIT_CODE=$?
