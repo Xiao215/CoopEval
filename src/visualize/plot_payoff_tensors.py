@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -69,9 +70,144 @@ def to_snake_case(text: str) -> str:
 def get_output_path(output_dir: Path, mechanism: str, game: str) -> Path:
     """Create output path: {output_dir}/{mechanism}_{game}_payoff_tensor.png"""
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     filename = f"{to_snake_case(mechanism)}_{to_snake_case(game)}_payoff_tensor.png"
     return output_dir / filename
+
+
+def average_tensors(tensors: list[np.ndarray], group_key: tuple[str, str]) -> np.ndarray:
+    """Average multiple payoff tensors for the same game-mechanism combination.
+
+    Args:
+        tensors: List of tensor arrays to average (all must have same shape)
+        group_key: (game_type, mechanism_type) for error messages
+
+    Returns:
+        Averaged tensor with same shape as inputs
+
+    Raises:
+        ValueError: If tensors have inconsistent shapes
+    """
+    if not tensors:
+        raise ValueError(f"No tensors to average for {group_key}")
+
+    # Validate all tensors have same shape
+    expected_shape = tensors[0].shape
+    for i, tensor in enumerate(tensors[1:], start=1):
+        if tensor.shape != expected_shape:
+            raise ValueError(
+                f"Shape mismatch in {group_key}: "
+                f"tensor 0 has shape {expected_shape}, "
+                f"tensor {i} has shape {tensor.shape}"
+            )
+
+    # Stack and compute mean along new axis
+    stacked = np.stack(tensors, axis=0)
+    averaged = np.mean(stacked, axis=0)
+
+    return averaged
+
+
+def validate_group_consistency(
+    agent_labels_list: list[list[str]],
+    configs: list[dict],
+    folders: list[Path],
+    group_key: tuple[str, str]
+) -> tuple[list[str], dict, dict]:
+    """Validate all folders in a group have identical experimental setup.
+
+    Args:
+        agent_labels_list: List of agent_labels from each folder
+        configs: List of full config dicts from each folder
+        folders: List of folder paths (for error messages)
+        group_key: (game_type, mechanism_type) for error messages
+
+    Returns:
+        Tuple of (validated_agent_labels, validated_game_config, validated_mechanism_config)
+
+    Raises:
+        AssertionError: If any inconsistencies are found
+    """
+    if not agent_labels_list or not configs or not folders:
+        raise ValueError(f"Empty inputs for validation of {group_key}")
+
+    # Validate agent labels (same models in same order)
+    reference_labels = agent_labels_list[0]
+    reference_folder = folders[0]
+
+    for i, (labels, folder) in enumerate(zip(agent_labels_list[1:], folders[1:]), start=1):
+        if labels != reference_labels:
+            raise AssertionError(
+                f"Agent labels mismatch in {group_key}:\n"
+                f"  Folder 0 ({reference_folder.name}):\n    {reference_labels}\n"
+                f"  Folder {i} ({folder.name}):\n    {labels}\n"
+                f"  Note: Both agents AND order must match for valid averaging."
+            )
+
+    # Validate game configs (identical game parameters)
+    reference_game_config = configs[0]["game"]
+    for i, (config, folder) in enumerate(zip(configs[1:], folders[1:]), start=1):
+        game_config = config["game"]
+        if game_config != reference_game_config:
+            raise AssertionError(
+                f"Game config mismatch in {group_key}:\n"
+                f"  Folder 0 ({reference_folder.name}):\n    {reference_game_config}\n"
+                f"  Folder {i} ({folder.name}):\n    {game_config}"
+            )
+
+    # Validate mechanism configs (identical mechanism parameters)
+    reference_mechanism_config = configs[0]["mechanism"]
+    for i, (config, folder) in enumerate(zip(configs[1:], folders[1:]), start=1):
+        mechanism_config = config["mechanism"]
+        if mechanism_config != reference_mechanism_config:
+            raise AssertionError(
+                f"Mechanism config mismatch in {group_key}:\n"
+                f"  Folder 0 ({reference_folder.name}):\n    {reference_mechanism_config}\n"
+                f"  Folder {i} ({folder.name}):\n    {mechanism_config}"
+            )
+
+    return reference_labels, reference_game_config, reference_mechanism_config
+
+
+def validate_folder_count_consistency(grouped_folders: dict[tuple[str, str], dict]) -> int:
+    """Validate all game+mechanism combinations have same number of folders.
+
+    Args:
+        grouped_folders: Dictionary mapping (game_type, mechanism_type) to group data
+
+    Returns:
+        The expected folder count per group
+
+    Raises:
+        AssertionError: If groups have different folder counts
+    """
+    if not grouped_folders:
+        raise ValueError("No groups to validate")
+
+    # Get folder counts for all groups
+    folder_counts = {group_key: len(group_data['folders'])
+                     for group_key, group_data in grouped_folders.items()}
+
+    unique_counts = set(folder_counts.values())
+
+    if len(unique_counts) != 1:
+        # Build detailed error message showing which groups have which counts
+        counts_by_group = {}
+        for group_key, count in folder_counts.items():
+            if count not in counts_by_group:
+                counts_by_group[count] = []
+            game_type, mechanism_type = group_key
+            counts_by_group[count].append(f"{mechanism_type}_{game_type}")
+
+        error_msg = "Folder count mismatch across groups:\n"
+        for count in sorted(counts_by_group.keys()):
+            groups = counts_by_group[count]
+            error_msg += f"  {count} folder(s): {', '.join(groups)}\n"
+        error_msg += "All game+mechanism combinations must have the same number of folders."
+
+        raise AssertionError(error_msg)
+
+    return list(unique_counts)[0]
 
 
 def generate_latex_file(output_dir: Path, created_plots: list[tuple[str, str, Path]]) -> None:
@@ -281,19 +417,26 @@ def plot_3player_payoff_tensor(
 def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Path) -> None:
     """Generate payoff tensor visualizations for all game-mechanism combinations from multiple experiment folders."""
     output_dir = Path(output_dir)
+    created_plots = []
 
-    # Collect all experiment folders from all input directories
-    all_folders = []
-    seen_outputs = {}  # Track which output files we've created
-    created_plots = []  # Track all created plots for LaTeX file
-    failed_folders = []  # Track folders that failed to process
+    # ==========================================
+    # PHASE 1: Discovery and Grouping
+    # ==========================================
+    print("Phase 1: Discovering and grouping experiment folders...")
+
+    grouped_folders: dict[tuple[str, str], dict] = defaultdict(lambda: {
+        'folders': [],
+        'configs': [],
+        'tensors': [],
+        'agent_labels_list': [],
+    })
 
     for experiment_dir in experiment_dirs:
         experiment_dir = Path(experiment_dir)
         folders = discover_experiment_subfolders(experiment_dir)
 
         for folder in folders:
-            # Load config
+            # Load config (let errors propagate)
             config = load_json(folder / "config.json")
             game_type = config["game"]["type"]
             mechanism_type = config["mechanism"]["type"]
@@ -303,69 +446,99 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
                 print(f"Skipping reputation mechanism: {mechanism_type}_{game_type}")
                 continue
 
-            all_folders.append((folder, game_type, mechanism_type))
+            # Add to group
+            group_key = (game_type, mechanism_type)
+            grouped_folders[group_key]['folders'].append(folder)
+            grouped_folders[group_key]['configs'].append(config)
 
         print(f"Discovered {len(folders)} experiment folders from {experiment_dir}")
 
-    print(f"\nProcessing {len(all_folders)} game-mechanism combinations\n")
+    print(f"Grouped into {len(grouped_folders)} game-mechanism combinations\n")
 
-    # Process all folders
-    for folder, game_type, mechanism_type in all_folders:
-        try:
-            # Get output path
-            output_path = get_output_path(output_dir, mechanism_type, game_type)
+    # ==========================================
+    # PHASE 2: Validate Folder Count and Load Tensors
+    # ==========================================
+    print("Phase 2: Validating folder counts and loading tensors...")
 
-            # Check if we're overwriting a previously created plot
-            if output_path in seen_outputs:
-                print(f"WARNING: Duplicate found for {mechanism_type}_{game_type}")
-                print(f"  Previous: {seen_outputs[output_path]}")
-                print(f"  Current:  {folder}")
-                print(f"  Replacing plot at {output_path}")
+    # Validate that all groups have the same number of folders
+    expected_folder_count = validate_folder_count_consistency(grouped_folders)
+    print(f"All groups have {expected_folder_count} folder(s) - validation passed\n")
 
-            seen_outputs[output_path] = folder
+    # Load tensors from each folder in each group
+    for group_key, group_data in grouped_folders.items():
+        game_type, mechanism_type = group_key
+        print(f"Loading {mechanism_type}_{game_type}...")
 
-            # Load config to create normalizer
-            config = load_json(folder / "config.json")
-            game_config = config["game"]
-            normalizer = NormalizeScore(game_type, game_config)
-
-            # Load and build payoff tensor, get num_players from matchup data
+        for folder in group_data['folders']:
+            # Let errors propagate - no try/catch
             full_tensor, agent_labels, num_players = load_and_build_tensor(folder)
+            group_data['tensors'].append(full_tensor)
+            group_data['agent_labels_list'].append(agent_labels)
 
-            # Create appropriate visualization
-            if num_players == 2:
-                plot_2player_payoff_tensor(
-                    full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
-                )
-            else:  # num_players == 3
-                plot_3player_payoff_tensor(
-                    full_tensor, agent_labels, game_type, mechanism_type, output_path, normalizer
-                )
+        # Validate consistency within this group
+        agent_labels, game_config, mechanism_config = validate_group_consistency(
+            group_data['agent_labels_list'],
+            group_data['configs'],
+            group_data['folders'],
+            group_key
+        )
 
-            print(f"Created: {output_path}")
-            created_plots.append((mechanism_type, game_type, output_path))
+        # Store validated values
+        group_data['agent_labels'] = agent_labels
+        group_data['game_config'] = game_config
+        group_data['mechanism_config'] = mechanism_config
 
-        except Exception as e:
-            print(f"WARNING: Failed to process {mechanism_type}_{game_type} from {folder}")
-            print(f"  Error: {type(e).__name__}: {e}")
-            failed_folders.append((folder, game_type, mechanism_type, e))
+        print(f"  Loaded and validated {len(group_data['tensors'])} tensor(s)")
+
+    # ==========================================
+    # PHASE 3: Average and Plot
+    # ==========================================
+    print("\nPhase 3: Averaging tensors and creating plots...")
+
+    for group_key, group_data in grouped_folders.items():
+        game_type, mechanism_type = group_key
+        print(f"\nPlotting {mechanism_type}_{game_type}...")
+
+        # Average tensors
+        averaged_tensor = average_tensors(group_data['tensors'], group_key)
+        print(f"  Averaged {len(group_data['tensors'])} tensor(s)")
+
+        # Get validated metadata
+        agent_labels = group_data['agent_labels']
+        game_config = group_data['game_config']
+
+        # Create normalizer
+        normalizer = NormalizeScore(game_type, game_config)
+
+        # Determine number of players from tensor shape
+        num_players = averaged_tensor.shape[0]
+
+        # Get output path
+        output_path = get_output_path(output_dir, mechanism_type, game_type)
+
+        # Create plot (let errors propagate)
+        if num_players == 2:
+            plot_2player_payoff_tensor(
+                averaged_tensor, agent_labels, game_type,
+                mechanism_type, output_path, normalizer
+            )
+        else:  # num_players == 3
+            plot_3player_payoff_tensor(
+                averaged_tensor, agent_labels, game_type,
+                mechanism_type, output_path, normalizer
+            )
+
+        created_plots.append((mechanism_type, game_type, output_path))
+        print(f"  Created: {output_path}")
 
     # Generate LaTeX file
-    if created_plots:
-        generate_latex_file(output_dir, created_plots)
+    generate_latex_file(output_dir, created_plots)
 
     # Print summary
     print(f"\n{'='*80}")
     print(f"Summary:")
-    print(f"  Successfully created: {len(created_plots)} plots")
-    print(f"  Failed: {len(failed_folders)} folders")
-
-    if failed_folders:
-        print(f"\n{'='*80}")
-        print(f"Failed folders ({len(failed_folders)}):")
-        for folder, game_type, mechanism_type, error in failed_folders:
-            print(f"  - {mechanism_type}_{game_type} ({folder})")
-            print(f"    Error: {type(error).__name__}: {error}")
+    print(f"  Created {len(created_plots)} plots")
+    print(f"  Each plot averaged {expected_folder_count} tensor(s)")
     print(f"{'='*80}")
 
 
