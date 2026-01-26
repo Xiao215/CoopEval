@@ -299,7 +299,7 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
             mechanism_type = config["mechanism"]["type"]
 
             # Skip reputation mechanisms
-            if mechanism_type.lower() == "reputation":
+            if mechanism_type.lower() in ["reputation", "reputationfirstorder"]:
                 print(f"Skipping reputation mechanism: {mechanism_type}_{game_type}")
                 continue
 

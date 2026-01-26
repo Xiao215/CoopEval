@@ -196,6 +196,7 @@ def sort_mechanisms(mechanisms: list[str]) -> list[str]:
     preferred_order = [
         "NoMechanism",
         "Repetition",
+        "ReputationFirstOrder",
         "Reputation",
         "Disarmament",
         "Mediation",
