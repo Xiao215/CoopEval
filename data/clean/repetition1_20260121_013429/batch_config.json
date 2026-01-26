@@ -1,11 +1,20 @@
 {
   "agents_config": "agents/few_strong_llms.yaml",
-  "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+  "evaluation_config": "evaluation/default_evaluation.yaml",
   "experiment_workers": 3,
   "tournament_workers": 9,
   "retry_failed_experiments": true,
-  "games": ["games/matching_pennies.yaml","games/prisoners_dilemma.yaml","games/public_goods.yaml","games/stag_hunt.yaml","games/travellers_dilemma.yaml","games/trust_game.yaml"],
-  "mechanisms": ["mechanisms/repetition.yaml"],
+  "games": [
+    "games/matching_pennies.yaml",
+    "games/prisoners_dilemma.yaml",
+    "games/public_goods.yaml",
+    "games/stag_hunt.yaml",
+    "games/travellers_dilemma.yaml",
+    "games/trust_game.yaml"
+  ],
+  "mechanisms": [
+    "mechanisms/repetition.yaml"
+  ],
   "total_experiments": 6,
   "mode": "slurm"
 }

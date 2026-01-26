@@ -1,26 +1,26 @@
 {
   "anthropic/claude-sonnet-4.5(CoT)": {
-    "fitness": -0.20346730391041956,
-    "final_population": 2.1139049027714546e-12
+    "fitness": -0.2034673039104195,
+    "final_population": 2.113904902771454e-12
   },
   "google/gemini-3-flash-preview(CoT)": {
-    "fitness": -0.11584319553657058,
-    "final_population": 1.998655847864132e-06
+    "fitness": -0.1158431955365706,
+    "final_population": 1.9986558478641287e-06
   },
   "google/gemini-3-flash-preview(IO)": {
-    "fitness": -0.1565259664922826,
-    "final_population": 2.189389852516665e-09
-  },
-  "openai/gpt-4o-2024-05-13(CoT)": {
-    "fitness": -0.03885711086241308,
-    "final_population": 0.2754919578834351
+    "fitness": -0.15652596649228206,
+    "final_population": 2.1893898525166544e-09
   },
   "openai/gpt-5.2(CoT)": {
-    "fitness": -0.0011160125102956998,
-    "final_population": 0.3982234262869008
+    "fitness": -0.0011160125102955137,
+    "final_population": 0.39822342628690066
+  },
+  "openai/gpt-4o-2024-05-13(CoT)": {
+    "fitness": -0.038857110862413335,
+    "final_population": 0.27549195788343434
   },
   "qwen/qwen3-30b-a3b-instruct-2507(CoT)": {
-    "fitness": 0.034171222236955366,
-    "final_population": 0.3262826149823125
+    "fitness": 0.03417122223695515,
+    "final_population": 0.32628261498231337
   }
 }

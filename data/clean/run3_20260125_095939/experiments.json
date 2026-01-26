@@ -6,7 +6,7 @@
     "experiment_name": "no_mechanism_matching_pennies",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/no_mechanism_matching_pennies.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -18,7 +18,7 @@
     "experiment_name": "contracting_matching_pennies",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/contracting_matching_pennies.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -30,7 +30,7 @@
     "experiment_name": "mediation_matching_pennies",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/mediation_matching_pennies.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -54,7 +54,7 @@
     "experiment_name": "repetition_matching_pennies",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/repetition_matching_pennies.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -78,7 +78,7 @@
     "experiment_name": "no_mechanism_prisoners_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/no_mechanism_prisoners_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -90,7 +90,7 @@
     "experiment_name": "contracting_prisoners_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/contracting_prisoners_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -102,7 +102,7 @@
     "experiment_name": "mediation_prisoners_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/mediation_prisoners_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -126,7 +126,7 @@
     "experiment_name": "repetition_prisoners_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/repetition_prisoners_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -150,7 +150,7 @@
     "experiment_name": "no_mechanism_public_goods",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/no_mechanism_public_goods.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -162,7 +162,7 @@
     "experiment_name": "contracting_public_goods",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/contracting_public_goods.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -174,7 +174,7 @@
     "experiment_name": "mediation_public_goods",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/mediation_public_goods.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -198,7 +198,7 @@
     "experiment_name": "repetition_public_goods",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/repetition_public_goods.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -222,7 +222,7 @@
     "experiment_name": "no_mechanism_stag_hunt",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/no_mechanism_stag_hunt.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -234,7 +234,7 @@
     "experiment_name": "contracting_stag_hunt",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/contracting_stag_hunt.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -246,7 +246,7 @@
     "experiment_name": "mediation_stag_hunt",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/mediation_stag_hunt.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -270,7 +270,7 @@
     "experiment_name": "repetition_stag_hunt",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/repetition_stag_hunt.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -294,7 +294,7 @@
     "experiment_name": "no_mechanism_travellers_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/no_mechanism_travellers_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -306,7 +306,7 @@
     "experiment_name": "contracting_travellers_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/contracting_travellers_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -318,7 +318,7 @@
     "experiment_name": "mediation_travellers_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/mediation_travellers_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -342,7 +342,7 @@
     "experiment_name": "repetition_travellers_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/repetition_travellers_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -366,7 +366,7 @@
     "experiment_name": "no_mechanism_trust_game",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/no_mechanism_trust_game.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -378,7 +378,7 @@
     "experiment_name": "contracting_trust_game",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/contracting_trust_game.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -390,7 +390,7 @@
     "experiment_name": "mediation_trust_game",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/mediation_trust_game.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -414,7 +414,7 @@
     "experiment_name": "repetition_trust_game",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/configs/repetition_trust_game.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true

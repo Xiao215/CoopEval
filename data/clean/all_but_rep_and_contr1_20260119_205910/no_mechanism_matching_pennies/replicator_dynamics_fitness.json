@@ -4,23 +4,23 @@
     "final_population": 0.2643365933008594
   },
   "google/gemini-3-flash-preview(CoT)": {
-    "fitness": 5.412741756009599e-21,
+    "fitness": 5.412741756009605e-21,
     "final_population": 0.4713268133977475
   },
   "google/gemini-3-flash-preview(IO)": {
     "fitness": 2.668214591987639e-13,
     "final_population": 0.2643365933008594
   },
-  "openai/gpt-4o-2024-05-13(CoT)": {
+  "openai/gpt-5.2(CoT)": {
     "fitness": -0.2643365933008594,
     "final_population": 2.668214591987639e-13
   },
-  "openai/gpt-5.2(CoT)": {
+  "openai/gpt-4o-2024-05-13(CoT)": {
     "fitness": -0.2643365933008594,
     "final_population": 2.668214591987639e-13
   },
   "qwen/qwen3-30b-a3b-instruct-2507(CoT)": {
     "fitness": -0.47132681339721383,
-    "final_population": 5.412741756009599e-21
+    "final_population": 5.412741756009605e-21
   }
 }

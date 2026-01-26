@@ -1,26 +1,26 @@
 {
   "anthropic/claude-sonnet-4.5(CoT)": {
     "fitness": 2.0,
-    "final_population": 0.265790427529238
+    "final_population": 0.26579042752923887
   },
   "google/gemini-3-flash-preview(CoT)": {
     "fitness": 2.0,
-    "final_population": 0.1605385501664811
+    "final_population": 0.160538550166481
   },
   "google/gemini-3-flash-preview(IO)": {
     "fitness": 2.0,
-    "final_population": 0.2065662360688999
+    "final_population": 0.2065662360688996
   },
   "openai/gpt-5.2(CoT)": {
     "fitness": 2.0,
-    "final_population": 0.2065662360688999
+    "final_population": 0.2065662360688996
   },
   "openai/gpt-4o-2024-05-13(CoT)": {
-    "fitness": 1.573671022304281,
-    "final_population": 8.403415901572063e-20
+    "fitness": 1.5736710223042802,
+    "final_population": 8.403415901571673e-20
   },
   "qwen/qwen3-30b-a3b-instruct-2507(CoT)": {
     "fitness": 2.0,
-    "final_population": 0.1605385501664811
+    "final_population": 0.160538550166481
   }
 }

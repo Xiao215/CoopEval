@@ -11,16 +11,16 @@
     "fitness": 0.0,
     "final_population": 0.16199020894588947
   },
-  "openai/gpt-4o-2024-05-13(CoT)": {
-    "fitness": -1.0140293731623315,
-    "final_population": 7.169184960351475e-45
-  },
   "openai/gpt-5.2(CoT)": {
     "fitness": -1.0140293731623315,
     "final_population": 4.365690085545515e-45
   },
+  "openai/gpt-4o-2024-05-13(CoT)": {
+    "fitness": -1.0140293731623315,
+    "final_population": 7.169184960351475e-45
+  },
   "qwen/qwen3-30b-a3b-instruct-2507(CoT)": {
     "fitness": -1.352039164216442,
-    "final_population": 1.6765078276950036e-59
+    "final_population": 1.6765078276950025e-59
   }
 }

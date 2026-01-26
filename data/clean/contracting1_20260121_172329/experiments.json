@@ -6,7 +6,7 @@
     "experiment_name": "contracting_matching_pennies",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/configs/contracting_matching_pennies.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -18,7 +18,7 @@
     "experiment_name": "contracting_prisoners_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/configs/contracting_prisoners_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -30,7 +30,7 @@
     "experiment_name": "contracting_public_goods",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/configs/contracting_public_goods.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -42,7 +42,7 @@
     "experiment_name": "contracting_stag_hunt",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/configs/contracting_stag_hunt.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -54,7 +54,7 @@
     "experiment_name": "contracting_travellers_dilemma",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/configs/contracting_travellers_dilemma.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true
@@ -66,7 +66,7 @@
     "experiment_name": "contracting_trust_game",
     "config_path": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/configs/contracting_trust_game.yaml",
     "agents_config": "agents/few_strong_llms.yaml",
-    "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
     "experiment_workers": 3,
     "tournament_workers": 9,
     "retry_failed_experiments": true

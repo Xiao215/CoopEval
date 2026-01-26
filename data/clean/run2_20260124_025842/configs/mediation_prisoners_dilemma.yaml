@@ -1,8 +1,7 @@
-# Auto-generated config for game-mechanism combination
 game_config: games/prisoners_dilemma.yaml
 mechanism_config: mechanisms/mediation.yaml
 agents_config: agents/few_strong_llms.yaml
-evaluation_config: evaluation/no_deviation_ratings.yaml
+evaluation_config: evaluation/default_evaluation.yaml
 name: mediation_prisoners_dilemma
 concurrency:
   max_workers: 3

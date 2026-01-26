@@ -1,8 +1,7 @@
-# Auto-generated config for game-mechanism combination
 game_config: games/matching_pennies.yaml
 mechanism_config: mechanisms/no_mechanism.yaml
 agents_config: agents/few_strong_llms.yaml
-evaluation_config: evaluation/no_deviation_ratings.yaml
+evaluation_config: evaluation/default_evaluation.yaml
 name: no_mechanism_matching_pennies
 concurrency:
   max_workers: 3

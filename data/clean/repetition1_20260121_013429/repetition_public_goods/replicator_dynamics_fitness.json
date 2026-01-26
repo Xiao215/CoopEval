@@ -1,26 +1,26 @@
 {
   "anthropic/claude-sonnet-4.5(CoT)": {
-    "fitness": 1.4895425944845926,
-    "final_population": 0.16958833684911997
+    "fitness": 1.4895425944845921,
+    "final_population": 0.16958833684911984
   },
   "google/gemini-3-flash-preview(CoT)": {
-    "fitness": 1.486757103944567,
-    "final_population": 0.08711720386512999
+    "fitness": 1.4867571039445666,
+    "final_population": 0.08711720386513004
   },
   "google/gemini-3-flash-preview(IO)": {
-    "fitness": 1.4994304916208316,
-    "final_population": 0.7432942802046634
-  },
-  "openai/gpt-4o-2024-05-13(CoT)": {
-    "fitness": 1.2929376870335663,
-    "final_population": 9.318553366810821e-08
+    "fitness": 1.4994304916208312,
+    "final_population": 0.7432942802046633
   },
   "openai/gpt-5.2(CoT)": {
-    "fitness": 1.2787888206667941,
-    "final_population": 8.545031130454557e-08
+    "fitness": 1.2787888206667934,
+    "final_population": 8.545031130454632e-08
+  },
+  "openai/gpt-4o-2024-05-13(CoT)": {
+    "fitness": 1.2929376870335658,
+    "final_population": 9.318553366810876e-08
   },
   "qwen/qwen3-30b-a3b-instruct-2507(CoT)": {
-    "fitness": 1.2282394952833866,
-    "final_population": 4.4524169289402205e-10
+    "fitness": 1.2282394952833862,
+    "final_population": 4.4524169289402066e-10
   }
 }

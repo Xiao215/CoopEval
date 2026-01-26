@@ -1,10 +1,10 @@
 {
   "anthropic/claude-sonnet-4.5(CoT)": {
     "fitness": -0.8353410628828531,
-    "final_population": 1.638241749305376e-37
+    "final_population": 1.638241749305373e-37
   },
   "google/gemini-3-flash-preview(CoT)": {
-    "fitness": 1.638241749305376e-37,
+    "fitness": 1.638241749305373e-37,
     "final_population": 0.21563411326453172
   },
   "google/gemini-3-flash-preview(IO)": {

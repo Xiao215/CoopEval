@@ -110,6 +110,12 @@
           "lr_method": "constant",
           "lr_nu": 0.1
         }
+      },
+      {
+        "type": "deviation_rating",
+        "kwargs": {
+          "tolerance": "1e-14"
+        }
       }
     ]
   },
