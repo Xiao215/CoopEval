@@ -1022,6 +1022,22 @@ Examples:
     # Store all table LaTeX for combined file
     all_tables = []
 
+    # Generate and save aggregate table FIRST (social dilemmas only)
+    aggregate_table_latex = generate_aggregate_table(
+        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
+    )
+
+    output_path = output_dir / "table_aggregate.tex"
+    save_table(aggregate_table_latex, output_path)
+
+    if not args.quiet:
+        print_table(aggregate_table_latex, "Aggregate Table")
+
+    print(f"Saved: {output_path}")
+
+    # Add aggregate table to combined list FIRST
+    all_tables.append(aggregate_table_latex)
+
     # Generate and save per-game tables
     for game in games:
         table_latex = generate_game_table(
@@ -1038,22 +1054,6 @@ Examples:
 
         # Add to combined list
         all_tables.append(table_latex)
-
-    # Generate and save aggregate table (social dilemmas only)
-    aggregate_table_latex = generate_aggregate_table(
-        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
-    )
-
-    output_path = output_dir / "table_aggregate.tex"
-    save_table(aggregate_table_latex, output_path)
-
-    if not args.quiet:
-        print_table(aggregate_table_latex, "Aggregate Table")
-
-    print(f"Saved: {output_path}")
-
-    # Add aggregate table to combined list
-    all_tables.append(aggregate_table_latex)
 
     # Generate and save combined table file
     combined_latex = "\n\n".join(all_tables)
