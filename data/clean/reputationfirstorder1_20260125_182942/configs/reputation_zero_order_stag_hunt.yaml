@@ -1,0 +1,9 @@
+# Auto-generated config for game-mechanism combination
+game_config: games/stag_hunt.yaml
+mechanism_config: mechanisms/reputation_zero_order.yaml
+agents_config: agents/few_strong_llms.yaml
+evaluation_config: evaluation/no_deviation_ratings.yaml
+name: reputation_zero_order_stag_hunt
+concurrency:
+  max_workers: 3
+  tournament_workers: 9

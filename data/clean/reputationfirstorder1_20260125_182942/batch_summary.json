@@ -1,0 +1,68 @@
+{
+  "batch_start_time": "2026-01-25T23:29:42Z",
+  "batch_dir": "/marvel/home/etewolde/agent-tournament/outputs/reputationfirstorder1_20260125_182942",
+  "total_experiments": 6,
+  "completed_experiments": 6,
+  "experiments": {
+    "reputation_zero_order_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/reputation_zero_order.yaml",
+      "start_time": "2026-01-25T23:29:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/reputationfirstorder1_20260125_182942/reputation_zero_order_travellers_dilemma",
+      "end_time": "2026-01-25T23:56:49Z",
+      "duration_seconds": 1623,
+      "exit_code": 0
+    },
+    "reputation_zero_order_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/reputation_zero_order.yaml",
+      "start_time": "2026-01-25T23:29:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/reputationfirstorder1_20260125_182942/reputation_zero_order_prisoners_dilemma",
+      "end_time": "2026-01-25T23:55:06Z",
+      "duration_seconds": 1520,
+      "exit_code": 0
+    },
+    "reputation_zero_order_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/reputation_zero_order.yaml",
+      "start_time": "2026-01-25T23:29:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/reputationfirstorder1_20260125_182942/reputation_zero_order_matching_pennies",
+      "end_time": "2026-01-26T00:07:52Z",
+      "duration_seconds": 2286,
+      "exit_code": 0
+    },
+    "reputation_zero_order_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/reputation_zero_order.yaml",
+      "start_time": "2026-01-25T23:29:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/reputationfirstorder1_20260125_182942/reputation_zero_order_stag_hunt",
+      "end_time": "2026-01-25T23:46:58Z",
+      "duration_seconds": 1032,
+      "exit_code": 0
+    },
+    "reputation_zero_order_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/reputation_zero_order.yaml",
+      "start_time": "2026-01-25T23:29:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/reputationfirstorder1_20260125_182942/reputation_zero_order_trust_game",
+      "end_time": "2026-01-25T23:54:59Z",
+      "duration_seconds": 1513,
+      "exit_code": 0
+    },
+    "reputation_zero_order_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/reputation_zero_order.yaml",
+      "start_time": "2026-01-25T23:29:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/reputationfirstorder1_20260125_182942/reputation_zero_order_public_goods",
+      "end_time": "2026-01-26T00:03:04Z",
+      "duration_seconds": 1998,
+      "exit_code": 0
+    }
+  }
+}
