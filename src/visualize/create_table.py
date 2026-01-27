@@ -25,6 +25,7 @@ from typing import Dict, List, Optional, Tuple
 from src.visualize.analysis_utils import (
     NormalizeScore,
     discover_experiment_subfolders,
+    display_mechanism_name,
     load_json as load_json_file,
     simplify_model_name,
     sort_games,
@@ -60,6 +61,7 @@ class ExperimentData:
     eval_config: dict  # Store evaluation config for consistency checking
     # New fields for additional metrics
     rd_fitness: Optional[Dict[str, float]] = None  # Required (None only for reputation)
+    rd_populations: Optional[Dict[str, float]] = None  # Final population distribution from RD
     deviation_ranks: Optional[Dict[str, str]] = None  # Required (None only for reputation), store as rank strings
 
 
@@ -309,10 +311,12 @@ def parse_batch_folder(
             if is_reputation_mechanism(mechanism):
                 # Reputation mechanism: explicitly use None (will display N/A)
                 rd_fitness = None
+                rd_populations = None
                 deviation_ranks = None
             else:
                 # All other mechanisms: Load only requested metric files
                 rd_fitness = None
+                rd_populations = None
                 deviation_ranks = None
 
                 # Load RD fitness if requested
@@ -329,6 +333,10 @@ def parse_batch_folder(
                         model: data["fitness"]
                         for model, data in rd_fitness_data.items()
                     }
+                    rd_populations = {
+                        model: data["final_population"]
+                        for model, data in rd_fitness_data.items()
+                    }
 
                 # Load deviation ratings if requested
                 if "dr" in metrics:
@@ -342,10 +350,10 @@ def parse_batch_folder(
                         raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
                     deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
 
-            # Skip reputation mechanisms
-            if is_reputation_mechanism(mechanism):
-                print(f"Skipping reputation mechanism: {mechanism}_{game}")
-                continue
+            # # Skip reputation mechanisms
+            # if is_reputation_mechanism(mechanism):
+            #     print(f"Skipping reputation mechanism: {mechanism}_{game}")
+            #     continue
 
             # Create experiment data
             exp_data = ExperimentData(
@@ -356,6 +364,7 @@ def parse_batch_folder(
                 game_config=game_config,
                 eval_config=eval_config,
                 rd_fitness=rd_fitness,
+                rd_populations=rd_populations,
                 deviation_ranks=deviation_ranks,
             )
 
@@ -378,6 +387,7 @@ def build_data_structure(
 ) -> tuple[
     Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
     Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    Dict[str, Dict[str, Dict[str, Optional[float]]]],
     Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     Dict[str, dict]
 ]:
@@ -393,11 +403,13 @@ def build_data_structure(
         Tuple of:
         - payoffs[game][mechanism][model] = (mean, stderr)
         - rd_fitness[game][mechanism][model] = (mean, stderr) or None
+        - rd_populations[game][mechanism][model] = float or None
         - deviation_ranks[game][mechanism][model] = (mean, stderr) or None
         - game_configs[game] = config dict
     """
     payoffs = {}
     rd_fitness = {}
+    rd_populations = {}
     deviation_ranks = {}
     game_configs = {}
 
@@ -406,11 +418,13 @@ def build_data_structure(
         if game not in payoffs:
             payoffs[game] = {}
             rd_fitness[game] = {}
+            rd_populations[game] = {}
             deviation_ranks[game] = {}
             game_configs[game] = experiments[0].game_config
 
         payoffs[game][mechanism] = {}
         rd_fitness[game][mechanism] = {}
+        rd_populations[game][mechanism] = {}
         deviation_ranks[game][mechanism] = {}
 
         # Aggregate metrics
@@ -426,11 +440,14 @@ def build_data_structure(
                 # Reputation mechanism - all experiments have None
                 for model in models:
                     rd_fitness[game][mechanism][model] = None
+                    rd_populations[game][mechanism][model] = None
             else:
-                # All experiments have data - aggregate
-                rd_fitness[game][mechanism] = aggregate_metric_across_folders(
-                    experiments, "rd", models
+                # All experiments have data - aggregate with population data
+                fitness_dict, population_dict = aggregate_rd_fitness_across_folders(
+                    experiments, models
                 )
+                rd_fitness[game][mechanism] = fitness_dict
+                rd_populations[game][mechanism] = population_dict
 
         if "dr" in metrics:
             # Validate consistency and check if metric exists
@@ -445,7 +462,7 @@ def build_data_structure(
                     experiments, "dr", models
                 )
 
-    return payoffs, rd_fitness, deviation_ranks, game_configs
+    return payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs
 
 
 def validate_experiment_groups(
@@ -457,7 +474,7 @@ def validate_experiment_groups(
     Checks:
     1. All groups have same folder count
     2. Within each group: same models, game config, eval config
-    3. Across groups: same models, eval config
+    3. Across groups: same models (eval config can differ for reputation mechanisms)
 
     Args:
         grouped_experiments: Dict mapping (game, mechanism) → List[ExperimentData]
@@ -514,12 +531,8 @@ def validate_experiment_groups(
                     f"  Expected: {canonical_models}\n"
                     f"  Got in {group_key}: {validated_models}"
                 )
-            if eval_configs[0] != canonical_eval_config:
-                raise ValueError(
-                    f"Eval config mismatch across groups:\n"
-                    f"  Expected: {canonical_eval_config}\n"
-                    f"  Got in {group_key}: {eval_configs[0]}"
-                )
+            # Note: We do NOT validate eval_config cross-group because reputation
+            # mechanisms legitimately have different eval configs (no deviation_rating)
 
     # Sort and return
     return (
@@ -634,12 +647,159 @@ def compute_summary_statistic(
             return f"{avg:.{precision}f}"
 
 
+def aggregate_rd_fitness_across_folders(
+    experiments: List[ExperimentData],
+    models: List[str]
+) -> Tuple[
+    Dict[str, Tuple[float, float]],  # model → (mean_fitness, stderr)
+    Dict[str, float]                  # model → mean_population
+]:
+    """
+    Aggregate RD fitness across folders with population data.
+
+    For each model:
+    1. Compute mean fitness ± stderr across runs
+    2. Compute mean population across runs
+
+    Returns both because summary rows need population weights for averaging.
+
+    Args:
+        experiments: List of ExperimentData for same (game, mechanism)
+        models: Expected model list
+
+    Returns:
+        (fitness_dict, population_dict)
+        - fitness_dict: model → (mean_fitness, stderr_fitness)
+        - population_dict: model → mean_population
+    """
+    # Collect fitness and population values for each model
+    model_fitness_values: Dict[str, List[float]] = {model: [] for model in models}
+    model_population_values: Dict[str, List[float]] = {model: [] for model in models}
+
+    for exp in experiments:
+        # Validate data exists
+        if exp.rd_fitness is None:
+            raise ValueError(
+                f"Missing RD fitness in {exp.folder_path} "
+                f"for {exp.mechanism}_{exp.game}"
+            )
+        if exp.rd_populations is None:
+            raise ValueError(
+                f"Missing RD populations in {exp.folder_path} "
+                f"for {exp.mechanism}_{exp.game}"
+            )
+
+        # Validate population sums to ~1.0
+        total_pop = sum(exp.rd_populations.values())
+        if not (0.99 <= total_pop <= 1.01):
+            raise ValueError(
+                f"Population sum is {total_pop} (expected ~1.0) "
+                f"in {exp.folder_path} for {exp.mechanism}_{exp.game}"
+            )
+
+        # Collect values
+        for model in models:
+            if model not in exp.rd_fitness:
+                raise ValueError(
+                    f"Missing {model} fitness in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            if model not in exp.rd_populations:
+                raise ValueError(
+                    f"Missing {model} population in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+
+            fitness_value = exp.rd_fitness[model]
+            population_value = exp.rd_populations[model]
+
+            if fitness_value is None or population_value is None:
+                raise ValueError(
+                    f"None value for {model} in {exp.folder_path}"
+                )
+
+            model_fitness_values[model].append(fitness_value)
+            model_population_values[model].append(population_value)
+
+    # Compute means and stderr for fitness
+    fitness_results = {}
+    for model, fitness_values in model_fitness_values.items():
+        mean_fitness, stderr_fitness = compute_mean_stderr(fitness_values)
+        fitness_results[model] = (mean_fitness, stderr_fitness)
+
+    # Compute mean populations (no stderr needed)
+    population_results = {}
+    for model, population_values in model_population_values.items():
+        mean_population = sum(population_values) / len(population_values)
+        population_results[model] = mean_population
+
+    return fitness_results, population_results
+
+
+def compute_population_weighted_summary(
+    fitness_tuples: List[Tuple[float, float]],
+    populations: List[float],
+    precision: int,
+    show_stderr: bool
+) -> str:
+    """
+    Compute population-weighted average of RD fitness values.
+
+    Args:
+        fitness_tuples: List of (mean_fitness, stderr_fitness) for each model
+        populations: List of mean_population for each model
+        precision: Number of decimal places
+        show_stderr: Whether to show stderr
+
+    Returns:
+        Formatted string with weighted average (± stderr if requested)
+    """
+    if not fitness_tuples or not populations:
+        return "N/A"
+
+    if len(fitness_tuples) != len(populations):
+        raise ValueError(
+            f"Mismatch: {len(fitness_tuples)} fitness values "
+            f"but {len(populations)} populations"
+        )
+
+    # Normalize populations to sum to 1.0 (handle numerical errors)
+    total_pop = sum(populations)
+    if total_pop == 0:
+        raise ValueError("Total population is zero")
+    normalized_pops = [p / total_pop for p in populations]
+
+    # Compute weighted average of mean fitness values
+    fitness_means = [t[0] for t in fitness_tuples]
+    weighted_avg = sum(
+        fitness * pop
+        for fitness, pop in zip(fitness_means, normalized_pops)
+    )
+
+    if show_stderr:
+        # Propagate stderr using weighted variance
+        # Var(weighted_sum) = sum(weight_i^2 * stderr_i^2)
+        fitness_stderrs = [t[1] for t in fitness_tuples]
+        weighted_variance = sum(
+            (pop ** 2) * (stderr ** 2)
+            for pop, stderr in zip(normalized_pops, fitness_stderrs)
+        )
+        weighted_stderr = math.sqrt(weighted_variance)
+
+        return format_score_with_stderr(
+            (weighted_avg, weighted_stderr), precision
+        )
+    else:
+        return format_score(weighted_avg, precision)
+
+
 def generate_game_table(
     game: str,
     mechanisms: List[str],
     models: List[str],
     payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
     rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    rd_populations: Dict[str, Dict[str, Dict[str, Optional[float]]]],
     deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     precision: int = 3,
     metrics: List[str] | None = None,
@@ -655,6 +815,7 @@ def generate_game_table(
         models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
+        rd_populations: Nested dictionary with RD population distributions
         deviation_ranks: Nested dictionary with deviation ranks
         precision: Number of decimal places
         metrics: List of metrics to include (subset of ["mean", "rd", "dr"])
@@ -706,11 +867,12 @@ def generate_game_table(
     # First header row: Mechanism names with multicolumn
     header_parts = ["\\textbf{Model}"]
     for mech in mechanisms:
+        display_name = display_mechanism_name(mech)
         num_cols = len(mech_metrics[mech])
         if num_cols > 1:
-            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
+            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{display_name}}}}}")
         elif num_cols == 1:
-            header_parts.append(f"\\textbf{{{mech}}}")
+            header_parts.append(f"\\textbf{{{display_name}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
     # Second header row: Sub-column labels (only if needed)
@@ -745,11 +907,23 @@ def generate_game_table(
                         tuples, precision, show_stderr, is_rank=False
                     )
                 elif metric == "rd":
-                    tuples = [rd_fitness[game][mech][model] for model in models
-                              if rd_fitness[game][mech][model] is not None]
-                    metric_averages[metric] = compute_summary_statistic(
-                        tuples, precision, show_stderr, is_rank=False
-                    )
+                    # Get fitness tuples and populations for all models
+                    fitness_tuples = []
+                    populations = []
+                    for model in models:
+                        fitness_tuple = rd_fitness[game][mech][model]
+                        if fitness_tuple is not None:
+                            population = rd_populations[game][mech][model]
+                            fitness_tuples.append(fitness_tuple)
+                            populations.append(population)
+
+                    if fitness_tuples:
+                        # Use population-weighted averaging
+                        metric_averages[metric] = compute_population_weighted_summary(
+                            fitness_tuples, populations, precision, show_stderr
+                        )
+                    else:
+                        metric_averages[metric] = "N/A"
                 elif metric == "dr":
                     tuples = [deviation_ranks[game][mech][model] for model in models
                               if deviation_ranks[game][mech][model] is not None]
@@ -909,6 +1083,7 @@ def generate_aggregate_table(
     models: List[str],
     payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
     rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    rd_populations: Dict[str, Dict[str, Dict[str, Optional[float]]]],
     deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     game_configs: Dict[str, dict],
     precision: int,
@@ -924,6 +1099,7 @@ def generate_aggregate_table(
         models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
+        rd_populations: Nested dictionary with RD population distributions
         deviation_ranks: Nested dictionary with deviation ranks
         game_configs: Game configuration dictionaries for normalization
         precision: Number of decimal places
@@ -997,11 +1173,12 @@ def generate_aggregate_table(
     # First header row: Mechanism names with multicolumn
     header_parts = ["\\textbf{Model}"]
     for mech in mechanisms:
+        display_name = display_mechanism_name(mech)
         num_cols = len(mech_metrics[mech])
         if num_cols > 1:
-            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
+            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{display_name}}}}}")
         elif num_cols == 1:
-            header_parts.append(f"\\textbf{{{mech}}}")
+            header_parts.append(f"\\textbf{{{display_name}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
     # Second header row: Sub-column labels (only if needed)
@@ -1035,11 +1212,36 @@ def generate_aggregate_table(
                     tuples, precision, show_stderr, is_rank=False
                 )
             elif metric == "rd":
-                tuples = [aggregate_rd[mech][model] for model in models
-                          if aggregate_rd[mech][model] is not None]
-                metric_averages[metric] = compute_summary_statistic(
-                    tuples, precision, show_stderr, is_rank=False
-                )
+                # Get fitness tuples and populations for all models
+                fitness_tuples = []
+                populations = []
+                for model in models:
+                    fitness_tuple = aggregate_rd[mech][model]
+                    if fitness_tuple is not None:
+                        # Get population from FIRST game that has RD data
+                        # (populations should be consistent across games for same mechanism)
+                        found_population = False
+                        for game in game_configs.keys():
+                            if game in rd_populations and mech in rd_populations[game]:
+                                pop = rd_populations[game][mech][model]
+                                if pop is not None:
+                                    populations.append(pop)
+                                    fitness_tuples.append(fitness_tuple)
+                                    found_population = True
+                                    break
+
+                        if not found_population:
+                            raise ValueError(
+                                f"No population data found for {model} in {mech}"
+                            )
+
+                if fitness_tuples:
+                    # Use population-weighted averaging
+                    metric_averages[metric] = compute_population_weighted_summary(
+                        fitness_tuples, populations, precision, show_stderr
+                    )
+                else:
+                    metric_averages[metric] = "N/A"
             elif metric == "dr":
                 tuples = [aggregate_dr[mech][model] for model in models
                           if aggregate_dr[mech][model] is not None]
@@ -1223,7 +1425,7 @@ Examples:
     print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models\n")
 
     # Build data structures
-    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(
+    payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs = build_data_structure(
         all_grouped_experiments, models, args.metrics
     )
 
@@ -1240,7 +1442,7 @@ Examples:
 
     # Generate and save aggregate table FIRST (social dilemmas only)
     aggregate_table_latex = generate_aggregate_table(
-        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
+        mechanisms, models, payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
     )
 
     output_path = output_dir / "table_aggregate.tex"
@@ -1257,7 +1459,7 @@ Examples:
     # Generate and save per-game tables
     for game in games:
         table_latex = generate_game_table(
-            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics, args.batch_paths, show_stderr=args.show_stderr_games
+            game, mechanisms, models, payoffs, rd_fitness, rd_populations, deviation_ranks, args.precision, args.metrics, args.batch_paths, show_stderr=args.show_stderr_games
         )
 
         output_path = output_dir / f"table_{game}.tex"
