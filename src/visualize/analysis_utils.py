@@ -256,7 +256,7 @@ def sort_models(models: list[str]) -> list[str]:
     Sort models in the preferred order.
 
     Preferred order: claude, gemini-reasoning, gemini-base, gpt-5.2, gpt-4o, qwen
-    
+
     Args:
         models: List of model names (full names with provider prefixes)
 
@@ -267,7 +267,7 @@ def sort_models(models: list[str]) -> list[str]:
     # Order: claude, gemini with reasoning, gemini without reasoning, gpt 5.2, gpt 4o, qwen
     def sort_key(model):
         model_lower = model.lower()
-        
+
         # Claude models
         if "claude" in model_lower:
             return (0, model)
@@ -289,5 +289,139 @@ def sort_models(models: list[str]) -> list[str]:
         # Unknown models go last, sorted alphabetically
         else:
             return (6, model)
-    
+
     return sorted(models, key=sort_key)
+
+
+# Validation utilities for multi-folder experiment processing
+
+
+def validate_folder_count_consistency(
+    grouped_data: dict[tuple[str, str], Any]
+) -> int:
+    """Validate all game+mechanism combinations have same number of folders.
+
+    Args:
+        grouped_data: Dictionary mapping (game_type, mechanism_type) to either:
+            - dict with 'folders' key (plot_payoff_tensors.py style)
+            - list of items (create_table.py style)
+
+    Returns:
+        The consistent folder count per group
+
+    Raises:
+        ValueError: If no groups to validate
+        AssertionError: If groups have different folder counts
+    """
+    if not grouped_data:
+        raise ValueError("No groups to validate")
+
+    # Get folder counts for all groups
+    folder_counts = {}
+    for group_key, group_data in grouped_data.items():
+        if isinstance(group_data, dict) and 'folders' in group_data:
+            # plot_payoff_tensors.py style
+            folder_counts[group_key] = len(group_data['folders'])
+        elif isinstance(group_data, list):
+            # create_table.py style
+            folder_counts[group_key] = len(group_data)
+        else:
+            raise ValueError(f"Unexpected group_data type for {group_key}: {type(group_data)}")
+
+    unique_counts = set(folder_counts.values())
+
+    if len(unique_counts) != 1:
+        # Build detailed error message showing which groups have which counts
+        counts_by_group = {}
+        for group_key, count in folder_counts.items():
+            if count not in counts_by_group:
+                counts_by_group[count] = []
+            game_type, mechanism_type = group_key
+            counts_by_group[count].append(f"{mechanism_type}_{game_type}")
+
+        error_msg = "Folder count mismatch across groups:\n"
+        for count in sorted(counts_by_group.keys()):
+            groups = counts_by_group[count]
+            error_msg += f"  {count} folder(s): {', '.join(groups)}\n"
+        error_msg += "All game+mechanism combinations must have the same number of folders."
+
+        raise AssertionError(error_msg)
+
+    return list(unique_counts)[0]
+
+
+def validate_list_consistency(
+    value_lists: list[list[str]],
+    identifiers: list[str],
+    group_key: tuple[str, str],
+    list_name: str
+) -> list[str]:
+    """Validate all entries have same list in same order.
+
+    Args:
+        value_lists: List of lists to validate (e.g., model lists)
+        identifiers: Identifiers for each list (e.g., folder paths) for error messages
+        group_key: (game_type, mechanism_type) for error messages
+        list_name: Descriptive name (e.g., "model list") for error messages
+
+    Returns:
+        The validated list (from first entry)
+
+    Raises:
+        ValueError: If inputs are empty
+        AssertionError: If lists differ in content or order
+    """
+    if not value_lists or not identifiers:
+        raise ValueError(f"Empty inputs for validation of {group_key}")
+
+    reference_list = value_lists[0]
+    reference_id = identifiers[0]
+
+    for i, (value_list, identifier) in enumerate(zip(value_lists[1:], identifiers[1:]), start=1):
+        if value_list != reference_list:
+            raise AssertionError(
+                f"{list_name.capitalize()} mismatch in {group_key}:\n"
+                f"  Entry 0 ({reference_id}):\n    {reference_list}\n"
+                f"  Entry {i} ({identifier}):\n    {value_list}\n"
+                f"  Note: Both content AND order must match."
+            )
+
+    return reference_list
+
+
+def validate_dict_consistency(
+    value_dicts: list[dict],
+    identifiers: list[str],
+    group_key: tuple[str, str],
+    dict_name: str
+) -> dict:
+    """Validate all entries have identical dictionary content.
+
+    Args:
+        value_dicts: List of dicts to validate (e.g., game configs)
+        identifiers: Identifiers for each dict (e.g., folder paths) for error messages
+        group_key: (game_type, mechanism_type) for error messages
+        dict_name: Descriptive name (e.g., "game config") for error messages
+
+    Returns:
+        The validated dict (from first entry)
+
+    Raises:
+        ValueError: If inputs are empty
+        AssertionError: If dicts differ in content
+    """
+    if not value_dicts or not identifiers:
+        raise ValueError(f"Empty inputs for validation of {group_key}")
+
+    reference_dict = value_dicts[0]
+    reference_id = identifiers[0]
+
+    for i, (value_dict, identifier) in enumerate(zip(value_dicts[1:], identifiers[1:]), start=1):
+        if value_dict != reference_dict:
+            raise AssertionError(
+                f"{dict_name.capitalize()} mismatch in {group_key}:\n"
+                f"  Entry 0 ({reference_id}):\n    {reference_dict}\n"
+                f"  Entry {i} ({identifier}):\n    {value_dict}"
+            )
+
+    return reference_dict

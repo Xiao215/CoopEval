@@ -18,10 +18,14 @@ from src.visualize.analysis_utils import (NormalizeScore,
                                             simplify_model_name,
                                             sort_games,
                                             sort_mechanisms,
+                                            validate_dict_consistency,
+                                            validate_folder_count_consistency,
+                                            validate_list_consistency,
                                             )
 
 # Styling constants
-PALETTE_BASE = ["#355070", "#6D597A", "#B56576", "#E56B6F", "#EAAC8B", "#5C7AEA"]
+# High contrast: deep purple (bad) -> dark red (NE) -> orange-red -> bright yellow (cooperative) -> bright cyan
+PALETTE_BASE = ["#2E0854", "#B30000", "#FF5722", "#FFEB3B", "#00E5FF", "#00BCD4"]
 COLOR_PALETTE = {
     "primary": "#355070",
     "secondary": "#6D597A",
@@ -68,10 +72,10 @@ def to_snake_case(text: str) -> str:
 
 
 def get_output_path(output_dir: Path, mechanism: str, game: str) -> Path:
-    """Create output path: {output_dir}/{mechanism}_{game}_payoff_tensor.png"""
+    """Create output path: {output_dir}/{mechanism}_{game}_payoff_tensor.pdf"""
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = f"{to_snake_case(mechanism)}_{to_snake_case(game)}_payoff_tensor.png"
+    filename = f"{to_snake_case(mechanism)}_{to_snake_case(game)}_payoff_tensor.pdf"
     return output_dir / filename
 
 
@@ -131,83 +135,36 @@ def validate_group_consistency(
     if not agent_labels_list or not configs or not folders:
         raise ValueError(f"Empty inputs for validation of {group_key}")
 
-    # Validate agent labels (same models in same order)
-    reference_labels = agent_labels_list[0]
-    reference_folder = folders[0]
+    # Convert folder paths to strings for identifiers
+    folder_identifiers = [f.name for f in folders]
 
-    for i, (labels, folder) in enumerate(zip(agent_labels_list[1:], folders[1:]), start=1):
-        if labels != reference_labels:
-            raise AssertionError(
-                f"Agent labels mismatch in {group_key}:\n"
-                f"  Folder 0 ({reference_folder.name}):\n    {reference_labels}\n"
-                f"  Folder {i} ({folder.name}):\n    {labels}\n"
-                f"  Note: Both agents AND order must match for valid averaging."
-            )
+    # Validate agent labels (same models in same order)
+    validated_labels = validate_list_consistency(
+        agent_labels_list,
+        folder_identifiers,
+        group_key,
+        "agent labels"
+    )
 
     # Validate game configs (identical game parameters)
-    reference_game_config = configs[0]["game"]
-    for i, (config, folder) in enumerate(zip(configs[1:], folders[1:]), start=1):
-        game_config = config["game"]
-        if game_config != reference_game_config:
-            raise AssertionError(
-                f"Game config mismatch in {group_key}:\n"
-                f"  Folder 0 ({reference_folder.name}):\n    {reference_game_config}\n"
-                f"  Folder {i} ({folder.name}):\n    {game_config}"
-            )
+    game_configs = [config["game"] for config in configs]
+    validated_game_config = validate_dict_consistency(
+        game_configs,
+        folder_identifiers,
+        group_key,
+        "game config"
+    )
 
     # Validate mechanism configs (identical mechanism parameters)
-    reference_mechanism_config = configs[0]["mechanism"]
-    for i, (config, folder) in enumerate(zip(configs[1:], folders[1:]), start=1):
-        mechanism_config = config["mechanism"]
-        if mechanism_config != reference_mechanism_config:
-            raise AssertionError(
-                f"Mechanism config mismatch in {group_key}:\n"
-                f"  Folder 0 ({reference_folder.name}):\n    {reference_mechanism_config}\n"
-                f"  Folder {i} ({folder.name}):\n    {mechanism_config}"
-            )
+    mechanism_configs = [config["mechanism"] for config in configs]
+    validated_mechanism_config = validate_dict_consistency(
+        mechanism_configs,
+        folder_identifiers,
+        group_key,
+        "mechanism config"
+    )
 
-    return reference_labels, reference_game_config, reference_mechanism_config
-
-
-def validate_folder_count_consistency(grouped_folders: dict[tuple[str, str], dict]) -> int:
-    """Validate all game+mechanism combinations have same number of folders.
-
-    Args:
-        grouped_folders: Dictionary mapping (game_type, mechanism_type) to group data
-
-    Returns:
-        The expected folder count per group
-
-    Raises:
-        AssertionError: If groups have different folder counts
-    """
-    if not grouped_folders:
-        raise ValueError("No groups to validate")
-
-    # Get folder counts for all groups
-    folder_counts = {group_key: len(group_data['folders'])
-                     for group_key, group_data in grouped_folders.items()}
-
-    unique_counts = set(folder_counts.values())
-
-    if len(unique_counts) != 1:
-        # Build detailed error message showing which groups have which counts
-        counts_by_group = {}
-        for group_key, count in folder_counts.items():
-            if count not in counts_by_group:
-                counts_by_group[count] = []
-            game_type, mechanism_type = group_key
-            counts_by_group[count].append(f"{mechanism_type}_{game_type}")
-
-        error_msg = "Folder count mismatch across groups:\n"
-        for count in sorted(counts_by_group.keys()):
-            groups = counts_by_group[count]
-            error_msg += f"  {count} folder(s): {', '.join(groups)}\n"
-        error_msg += "All game+mechanism combinations must have the same number of folders."
-
-        raise AssertionError(error_msg)
-
-    return list(unique_counts)[0]
+    return validated_labels, validated_game_config, validated_mechanism_config
 
 
 def generate_latex_file(output_dir: Path, created_plots: list[tuple[str, str, Path]]) -> None:
@@ -245,7 +202,7 @@ def generate_latex_file(output_dir: Path, created_plots: list[tuple[str, str, Pa
                 f.write(f"\n% {game_title}\n")
                 f.write("\\begin{figure}[htbp]\n")
                 f.write("    \\centering\n")
-                f.write(f"    \\includegraphics[width=0.8\\textwidth]{{{filename}}}\n")
+                f.write(f"    \\includegraphics[width=0.8\\textwidth]{{payoff_tensors/{filename}}}\n")
                 f.write(f"    \\caption{{{game_title} - {mechanism.replace('_', ' ').title()}}}\n")
                 f.write(f"    \\label{{fig:{to_snake_case(mechanism)}_{to_snake_case(game)}}}\n")
                 f.write("\\end{figure}\n")

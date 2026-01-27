@@ -17,6 +17,7 @@ Required LaTeX packages:
 import argparse
 import math
 import sys
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -29,6 +30,9 @@ from src.visualize.analysis_utils import (
     sort_games,
     sort_mechanisms,
     sort_models,
+    validate_dict_consistency,
+    validate_folder_count_consistency,
+    validate_list_consistency,
 )
 
 # Map metric names to LaTeX display labels
@@ -109,26 +113,111 @@ def compute_deviation_ranks(ratings: Dict[str, float]) -> Dict[str, str]:
     return ranks
 
 
-def parse_batch_folder(batch_path: Path, metrics: List[str]) -> tuple[List[ExperimentData], List[tuple[Path, Exception]]]:
+def aggregate_metric_across_folders(
+    experiments: List[ExperimentData],
+    metric_name: str,
+    models: List[str]
+) -> Dict[str, Tuple[float, float]]:
     """
-    Parse batch folder and extract experiment data.
+    Aggregate metric across multiple experiment folders.
+
+    Args:
+        experiments: List of ExperimentData for same (game, mechanism)
+        metric_name: "mean", "rd", or "dr"
+        models: Expected model list
+
+    Returns:
+        Dict mapping model → (mean, stderr)
+
+    Raises:
+        ValueError: If data is missing or inconsistent
+    """
+    # Collect values for each model
+    model_values: Dict[str, List[float]] = {model: [] for model in models}
+
+    for exp in experiments:
+        # Extract metric data
+        if metric_name == "mean":
+            data_dict = exp.model_scores
+        elif metric_name == "rd":
+            if exp.rd_fitness is None:
+                raise ValueError(
+                    f"Missing RD fitness in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            data_dict = exp.rd_fitness
+        else:  # "dr"
+            if exp.deviation_ranks is None:
+                raise ValueError(
+                    f"Missing deviation ranks in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            # Convert rank strings to floats
+            data_dict = {
+                m: float(rank_str)
+                for m, rank_str in exp.deviation_ranks.items()
+            }
+
+        # Collect values
+        for model in models:
+            if model not in data_dict:
+                raise ValueError(
+                    f"Missing {model} in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            value = data_dict[model]
+            if value is None:
+                raise ValueError(
+                    f"None value for {model} in {exp.folder_path}"
+                )
+            model_values[model].append(value)
+
+    # Compute mean and stderr
+    results = {}
+    for model, values in model_values.items():
+        n = len(values)
+        mean = sum(values) / n
+
+        if n == 1:
+            stderr = 0.0
+        else:
+            variance = sum((x - mean) ** 2 for x in values) / (n - 1)
+            stderr = math.sqrt(variance / n)
+
+        results[model] = (mean, stderr)
+
+    return results
+
+
+def parse_batch_folder(
+    batch_path: Path,
+    metrics: List[str]
+) -> tuple[
+    Dict[Tuple[str, str], List[ExperimentData]],
+    List[Tuple[Path, Exception]]
+]:
+    """
+    Parse batch folder and group experiment data by (game, mechanism).
 
     Args:
         batch_path: Path to batch experiment folder
         metrics: List of metrics to load (subset of ["mean", "rd", "dr"])
 
     Returns:
-        Tuple of (list of ExperimentData objects, list of (failed_path, error) tuples)
+        Tuple of:
+        - Dict mapping (game, mechanism) → List[ExperimentData]
+        - List of (failed_path, error) tuples
 
     Raises:
-        ValueError: If no valid experiments found
+        FileNotFoundError: If batch folder doesn't exist
+        NotADirectoryError: If path is not a directory
     """
     if not batch_path.exists():
         raise FileNotFoundError(f"Batch folder not found: {batch_path}")
     if not batch_path.is_dir():
         raise NotADirectoryError(f"Path is not a directory: {batch_path}")
 
-    experiments = []
+    grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]] = defaultdict(list)
     failed_experiments = []
 
     # Scan for subdirectories (skip configs and other non-experiment folders)
@@ -194,172 +283,186 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> tuple[List[Exper
                         raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
                     deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
 
-            # Create experiment data with new fields
-            experiments.append(
-                ExperimentData(
-                    mechanism=mechanism,
-                    game=game,
-                    model_scores=payoffs,
-                    folder_path=subdir,
-                    game_config=game_config,
-                    eval_config=eval_config,
-                    rd_fitness=rd_fitness,
-                    deviation_ranks=deviation_ranks,
-                )
+            # Skip reputation mechanisms
+            if is_reputation_mechanism(mechanism):
+                print(f"Skipping reputation mechanism: {mechanism}_{game}")
+                continue
+
+            # Create experiment data
+            exp_data = ExperimentData(
+                mechanism=mechanism,
+                game=game,
+                model_scores=payoffs,
+                folder_path=subdir,
+                game_config=game_config,
+                eval_config=eval_config,
+                rd_fitness=rd_fitness,
+                deviation_ranks=deviation_ranks,
             )
+
+            # Group by (game, mechanism)
+            group_key = (game, mechanism)
+            grouped_experiments[group_key].append(exp_data)
 
         except Exception as e:
             print(f"WARNING: Failed to parse experiment in {subdir}")
             print(f"  Error: {type(e).__name__}: {e}")
             failed_experiments.append((subdir, e))
 
-    if not experiments:
-        raise ValueError(f"No valid experiments found in {batch_path}")
-
-    return experiments, failed_experiments
+    return grouped_experiments, failed_experiments
 
 
 def build_data_structure(
-    experiments: List[ExperimentData],
+    grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]],
+    models: List[str],
+    metrics: List[str]
 ) -> tuple[
-    Dict[str, Dict[str, Dict[str, float]]],
-    Dict[str, Dict[str, Dict[str, Optional[float]]]],
-    Dict[str, Dict[str, Dict[str, Optional[str]]]],
+    Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
+    Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     Dict[str, dict]
 ]:
     """
-    Build nested data structures from experiments.
+    Build nested data structures with aggregated metrics.
 
     Args:
-        experiments: List of ExperimentData objects
+        grouped_experiments: Dict mapping (game, mechanism) → List[ExperimentData]
+        models: Expected model list
+        metrics: List of metrics to aggregate
 
     Returns:
         Tuple of:
-        - Nested dict: payoffs[game][mechanism][model] = score
-        - Nested dict: rd_fitness[game][mechanism][model] = fitness or None
-        - Nested dict: deviation_ranks[game][mechanism][model] = rank_str or None
-        - Game configs: game_configs[game] = config dict
+        - payoffs[game][mechanism][model] = (mean, stderr)
+        - rd_fitness[game][mechanism][model] = (mean, stderr) or None
+        - deviation_ranks[game][mechanism][model] = (mean, stderr) or None
+        - game_configs[game] = config dict
     """
-    payoffs: Dict[str, Dict[str, Dict[str, float]]] = {}
-    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[float]]]] = {}
-    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]] = {}
-    game_configs: Dict[str, dict] = {}
+    payoffs = {}
+    rd_fitness = {}
+    deviation_ranks = {}
+    game_configs = {}
 
-    for exp in experiments:
-        if exp.game not in payoffs:
-            payoffs[exp.game] = {}
-            rd_fitness[exp.game] = {}
-            deviation_ranks[exp.game] = {}
-            game_configs[exp.game] = exp.game_config
+    for (game, mechanism), experiments in grouped_experiments.items():
+        # Initialize
+        if game not in payoffs:
+            payoffs[game] = {}
+            rd_fitness[game] = {}
+            deviation_ranks[game] = {}
+            game_configs[game] = experiments[0].game_config
 
-        if exp.mechanism not in payoffs[exp.game]:
-            payoffs[exp.game][exp.mechanism] = {}
-            rd_fitness[exp.game][exp.mechanism] = {}
-            deviation_ranks[exp.game][exp.mechanism] = {}
+        payoffs[game][mechanism] = {}
+        rd_fitness[game][mechanism] = {}
+        deviation_ranks[game][mechanism] = {}
 
-        # Update payoffs
-        payoffs[exp.game][exp.mechanism].update(exp.model_scores)
+        # Aggregate metrics
+        if "mean" in metrics:
+            payoffs[game][mechanism] = aggregate_metric_across_folders(
+                experiments, "mean", models
+            )
 
-        # Update rd_fitness and deviation_ranks
-        for model in exp.model_scores.keys():
-            rd_fitness[exp.game][exp.mechanism][model] = exp.rd_fitness[model] if exp.rd_fitness else None
-            deviation_ranks[exp.game][exp.mechanism][model] = exp.deviation_ranks[model] if exp.deviation_ranks else None
+        if "rd" in metrics:
+            if experiments[0].rd_fitness is None:
+                # Reputation mechanism
+                for model in models:
+                    rd_fitness[game][mechanism][model] = None
+            else:
+                rd_fitness[game][mechanism] = aggregate_metric_across_folders(
+                    experiments, "rd", models
+                )
+
+        if "dr" in metrics:
+            if experiments[0].deviation_ranks is None:
+                # Reputation mechanism
+                for model in models:
+                    deviation_ranks[game][mechanism][model] = None
+            else:
+                deviation_ranks[game][mechanism] = aggregate_metric_across_folders(
+                    experiments, "dr", models
+                )
 
     return payoffs, rd_fitness, deviation_ranks, game_configs
 
 
-def validate_experiments(
-    experiments: List[ExperimentData],
-) -> tuple[List[str], List[str], List[str], dict]:
+def validate_experiment_groups(
+    grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]]
+) -> Tuple[List[str], List[str], List[str], dict]:
     """
-    Validate experiments and extract canonical lists.
+    Validate experiment groups.
 
     Checks:
-    1. No duplicate (mechanism, game) combinations
-    2. All experiments have identical model lists
-    3. All experiments have identical evaluation configs
-    4. Complete mechanism×game grid coverage
+    1. All groups have same folder count
+    2. Within each group: same models, game config, eval config
+    3. Across groups: same models, eval config
 
     Args:
-        experiments: List of ExperimentData objects
+        grouped_experiments: Dict mapping (game, mechanism) → List[ExperimentData]
 
     Returns:
         Tuple of (mechanisms, games, models, eval_config)
 
     Raises:
+        AssertionError: If validation fails
         ValueError: If validation fails
     """
-    # Check for duplicate (mechanism, game) combinations
-    exp_map: Dict[tuple[str, str], ExperimentData] = {}
-    duplicates = []
-    for exp in experiments:
-        key = (exp.mechanism, exp.game)
-        if key in exp_map:
-            duplicates.append((
-                key,
-                exp_map[key].folder_path,
-                exp.folder_path
-            ))
+    # Cross-group validation: folder count
+    expected_folder_count = validate_folder_count_consistency(grouped_experiments)
+    print(f"All groups have {expected_folder_count} folder(s) - validation passed")
+
+    # Validate each group and extract canonical values
+    canonical_mechanisms = set()
+    canonical_games = set()
+    canonical_models = None
+    canonical_eval_config = None
+
+    for group_key, experiments in grouped_experiments.items():
+        game, mechanism = group_key
+        canonical_mechanisms.add(mechanism)
+        canonical_games.add(game)
+
+        # Extract data for validation
+        folder_paths = [str(exp.folder_path) for exp in experiments]
+        model_lists = [sorted(exp.model_scores.keys()) for exp in experiments]
+        eval_configs = [exp.eval_config for exp in experiments]
+        game_configs = [exp.game_config for exp in experiments]
+
+        # Within-group validation
+        validated_models = validate_list_consistency(
+            model_lists, folder_paths, group_key, "model list"
+        )
+
+        validate_dict_consistency(
+            eval_configs, folder_paths, group_key, "evaluation config"
+        )
+
+        validate_dict_consistency(
+            game_configs, folder_paths, group_key, "game config"
+        )
+
+        # Cross-group validation
+        if canonical_models is None:
+            canonical_models = validated_models
+            canonical_eval_config = eval_configs[0]
         else:
-            exp_map[key] = exp
+            if validated_models != canonical_models:
+                raise ValueError(
+                    f"Model list mismatch across groups:\n"
+                    f"  Expected: {canonical_models}\n"
+                    f"  Got in {group_key}: {validated_models}"
+                )
+            if eval_configs[0] != canonical_eval_config:
+                raise ValueError(
+                    f"Eval config mismatch across groups:\n"
+                    f"  Expected: {canonical_eval_config}\n"
+                    f"  Got in {group_key}: {eval_configs[0]}"
+                )
 
-    if duplicates:
-        error_msg = f"Duplicate experiments detected! Found {len(duplicates)} duplicate(s):\n"
-        for (mech, game), path1, path2 in duplicates:
-            error_msg += f"  - {mech} × {game}: {path1} and {path2}\n"
-        error_msg += "\nEach (mechanism, game) combination must appear exactly once across all folders."
-        raise ValueError(error_msg)
-
-    # Validate non-empty experiments
-    if not experiments:
-        raise ValueError("No experiments provided")
-
-    # Extract canonical sets and validate consistency on the fly
-    mechanisms = set()
-    games = set()
-    canonical_models = sorted(experiments[0].model_scores.keys())
-    canonical_eval = experiments[0].eval_config
-
-    for i, exp in enumerate(experiments):
-        mechanisms.add(exp.mechanism)
-        games.add(exp.game)
-        
-        # Check model list matches
-        exp_models = sorted(exp.model_scores.keys())
-        if exp_models != canonical_models:
-            error_msg = f"Model list mismatch detected!\n"
-            error_msg += f"  Experiment 0: {canonical_models}\n"
-            error_msg += f"  Experiment {i}: {exp_models}\n"
-            error_msg += "\nAll experiments must test the same set of models."
-            raise ValueError(error_msg)
-        
-        # Check eval config matches
-        if exp.eval_config != canonical_eval:
-            error_msg = f"Evaluation config mismatch detected!\n"
-            error_msg += f"  Experiment 0: {canonical_eval}\n"
-            error_msg += f"  Experiment {i}: {exp.eval_config}\n"
-            error_msg += "\nAll experiments must use identical evaluation configurations."
-            raise ValueError(error_msg)
-
-    # Sort canonical lists
-    canonical_mechanisms = sort_mechanisms(list(mechanisms))
-    canonical_games = sort_games(list(games))
-    canonical_models = sort_models(canonical_models)
-
-    # Check for complete grid coverage (warn if incomplete)
-    missing_combinations = []
-    for mech in canonical_mechanisms:
-        for game in canonical_games:
-            if (mech, game) not in exp_map:
-                missing_combinations.append((mech, game))
-
-    if missing_combinations:
-        print(f"\nWARNING: Incomplete mechanism×game grid! Missing {len(missing_combinations)} combination(s):")
-        for mech, game in missing_combinations:
-            print(f"  - {mech} × {game}")
-        print("Tables will show 'Unav.' for missing data.\n")
-
-    return canonical_mechanisms, canonical_games, canonical_models, canonical_eval, missing_combinations
+    # Sort and return
+    return (
+        sort_mechanisms(list(canonical_mechanisms)),
+        sort_games(list(canonical_games)),
+        sort_models(canonical_models),
+        canonical_eval_config
+    )
 
 
 def validate_data_consistency(
@@ -433,12 +536,13 @@ def generate_game_table(
     game: str,
     mechanisms: List[str],
     models: List[str],
-    payoffs: Dict[str, Dict[str, Dict[str, float]]],
-    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[float]]]],
-    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]],
+    payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
+    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     precision: int = 3,
     metrics: List[str] | None = None,
     source_folders: List[Path] | None = None,
+    show_stderr: bool = False,
 ) -> str:
     """
     Generate LaTeX table for a single game with multicolumn headers.
@@ -534,21 +638,46 @@ def generate_game_table(
             # Calculate average for each metric this mechanism supports
             for metric in mech_metric_list:
                 if metric == "mean":
-                    values = [payoffs[game][mech][model] for model in models]
-                    avg = sum(values) / len(values)
-                    metric_averages[metric] = format_score(avg, precision)
-                elif metric == "rd":
-                    values = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
-                    if values:
-                        avg = sum(values) / len(values)
+                    # Extract means from (mean, stderr) tuples
+                    tuples = [payoffs[game][mech][model] for model in models]
+                    means = [t[0] for t in tuples]
+                    avg = sum(means) / len(means)
+
+                    if show_stderr and len(means) > 1:
+                        # Compute stderr across models
+                        variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
+                        std = math.sqrt(variance)
+                        metric_averages[metric] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
+                    else:
                         metric_averages[metric] = format_score(avg, precision)
+
+                elif metric == "rd":
+                    tuples = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
+                    if tuples:
+                        means = [t[0] for t in tuples]
+                        avg = sum(means) / len(means)
+
+                        if show_stderr and len(means) > 1:
+                            variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
+                            std = math.sqrt(variance)
+                            metric_averages[metric] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
+                        else:
+                            metric_averages[metric] = format_score(avg, precision)
                     else:
                         metric_averages[metric] = "N/A"
+
                 elif metric == "dr":
-                    values = [float(deviation_ranks[game][mech][model]) for model in models if deviation_ranks[game][mech][model] is not None]
-                    if values:
-                        avg = sum(values) / len(values)
-                        metric_averages[metric] = f"{avg:.1f}"
+                    tuples = [deviation_ranks[game][mech][model] for model in models if deviation_ranks[game][mech][model] is not None]
+                    if tuples:
+                        means = [t[0] for t in tuples]
+                        avg = sum(means) / len(means)
+
+                        if show_stderr and len(means) > 1:
+                            variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
+                            std = math.sqrt(variance)
+                            metric_averages[metric] = f"{avg:.1f} $\\pm$ {std:.1f}"
+                        else:
+                            metric_averages[metric] = f"{avg:.1f}"
                     else:
                         metric_averages[metric] = "N/A"
         else:
@@ -571,15 +700,38 @@ def generate_game_table(
 
             # Safely access nested dictionaries - use "Unav." for missing data
             if game in payoffs and mech in payoffs[game]:
-                payoff_score = payoffs[game][mech][model]
-                rd_val = rd_fitness[game][mech][model]
-                dr_val = deviation_ranks[game][mech][model]
+                payoff_tuple = payoffs[game][mech][model]
+                rd_tuple = rd_fitness[game][mech][model]
+                dr_tuple = deviation_ranks[game][mech][model]
 
-                metric_data = {
-                    "mean": format_score(payoff_score, precision),
-                    "rd": format_score(rd_val, precision) if rd_val is not None else "N/A",
-                    "dr": dr_val if dr_val is not None else "N/A",
-                }
+                metric_data = {}
+
+                # Mean payoff
+                if show_stderr:
+                    metric_data["mean"] = format_score_with_stderr(payoff_tuple, precision)
+                else:
+                    payoff_mean, _ = payoff_tuple
+                    metric_data["mean"] = format_score(payoff_mean, precision)
+
+                # RD fitness
+                if rd_tuple is not None:
+                    if show_stderr:
+                        metric_data["rd"] = format_score_with_stderr(rd_tuple, precision)
+                    else:
+                        rd_mean, _ = rd_tuple
+                        metric_data["rd"] = format_score(rd_mean, precision)
+                else:
+                    metric_data["rd"] = "N/A"
+
+                # Deviation ranks
+                if dr_tuple is not None:
+                    dr_mean, dr_stderr = dr_tuple
+                    if show_stderr:
+                        metric_data["dr"] = f"{dr_mean:.1f} $\\pm$ {dr_stderr:.1f}"
+                    else:
+                        metric_data["dr"] = f"{dr_mean:.1f}"
+                else:
+                    metric_data["dr"] = "N/A"
             else:
                 # Missing data - use "Unav." for all metrics
                 metric_data = {
@@ -604,29 +756,28 @@ def generate_game_table(
 
 
 def compute_aggregate_metric(
-    data,
+    data: Dict[str, Dict[str, Dict[str, Tuple[float, float] | None]]],
     game_configs: Dict[str, dict],
     mechanism: str,
     model: str,
     metric_type: str,
-) -> Optional[Tuple[float, float]] | Optional[str]:
+) -> Optional[Tuple[float, float]]:
     """
     Unified function to compute aggregate metrics across social dilemmas.
 
-    Handles three metric types:
+    Handles two metric types:
     - "numeric": For payoffs and RD fitness (returns mean ± stderr, with normalization)
-    - "rank": For deviation ranks (returns average rank as string, no normalization)
+    - "rank": For deviation ranks (returns mean ± stderr, no normalization)
 
     Args:
-        data: Nested dictionary with metric values
+        data: Nested dictionary with (mean, stderr) tuples for each metric
         game_configs: Game configuration dictionaries
         mechanism: Mechanism name
         model: Model name
         metric_type: Type of metric ("numeric" or "rank")
 
     Returns:
-        For "numeric": Tuple of (mean, stderr) or None if no data
-        For "rank": Average rank string or None if no data
+        Tuple of (mean, stderr) or None if no data
     """
     social_dilemmas = {
         "PrisonersDilemma",
@@ -651,21 +802,23 @@ def compute_aggregate_metric(
         if mechanism not in data[game]:
             continue
 
-        value = data[game][mechanism][model]
+        value_tuple = data[game][mechanism][model]
 
         # Skip None values (RD/DR for reputation mechanism)
-        if value is None:
+        if value_tuple is None:
             continue
+
+        # Extract mean from (mean, stderr) tuple (ignore within-game stderr)
+        mean_value, _ = value_tuple
 
         if metric_type == "numeric":
             # Apply normalization using precomputed normalizer
-            normalized_value = normalizers[game].normalize(value)
+            normalized_value = normalizers[game].normalize(mean_value)
             values.append(normalized_value)
         else:
             assert metric_type == "rank"
-            # Parse rank string to float
-            rank_value = float(value)
-            values.append(rank_value)
+            # Use rank mean directly
+            values.append(mean_value)
 
     # If no values collected (e.g., all None for reputation RD/DR), return None
     if not values:
@@ -674,11 +827,7 @@ def compute_aggregate_metric(
     n = len(values)
     mean = sum(values) / n
 
-    if metric_type == "rank":
-        # Return formatted rank string
-        return f"{mean:.1f}"
-
-    # For numeric metrics, compute stderr
+    # Compute stderr for cross-game variation
     if n == 1:
         stderr = 0.0
     else:
@@ -691,9 +840,9 @@ def compute_aggregate_metric(
 def generate_aggregate_table(
     mechanisms: List[str],
     models: List[str],
-    payoffs: Dict[str, Dict[str, Dict[str, float]]],
-    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[float]]]],
-    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]],
+    payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
+    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     game_configs: Dict[str, dict],
     precision: int,
     metrics: List[str],
@@ -845,10 +994,22 @@ def generate_aggregate_table(
                     metric_averages["rd"] = "N/A"
 
             elif metric == "dr":
-                values = [float(aggregate_dr[mech][model]) for model in models if aggregate_dr[mech][model] is not None]
-                if values:
-                    avg = sum(values) / len(values)
-                    metric_averages["dr"] = f"{avg:.1f}"
+                # aggregate_dr[mech][model] now returns (mean, stderr) or None
+                tuples = [aggregate_dr[mech][model] for model in models
+                          if aggregate_dr[mech][model] is not None]
+                if tuples:
+                    means = [t[0] for t in tuples]
+                    avg = sum(means) / len(means)
+                    if len(means) > 1:
+                        variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
+                        std = math.sqrt(variance)
+                    else:
+                        std = 0.0
+
+                    if show_stderr:
+                        metric_averages["dr"] = f"{avg:.1f} $\\pm$ {std:.1f}"
+                    else:
+                        metric_averages["dr"] = f"{avg:.1f}"
                 else:
                     metric_averages["dr"] = "N/A"
 
@@ -886,8 +1047,16 @@ def generate_aggregate_table(
                         metric_data["rd"] = "N/A"
 
                 elif metric == "dr":
-                    dr_val = aggregate_dr[mech][model]
-                    metric_data["dr"] = dr_val if dr_val is not None else "N/A"
+                    dr_result = aggregate_dr[mech][model]
+                    if dr_result is not None:
+                        if show_stderr:
+                            dr_mean, dr_stderr = dr_result
+                            metric_data["dr"] = f"{dr_mean:.1f} $\\pm$ {dr_stderr:.1f}"
+                        else:
+                            dr_mean, _ = dr_result
+                            metric_data["dr"] = f"{dr_mean:.1f}"
+                    else:
+                        metric_data["dr"] = "N/A"
 
             # Extract only metrics this mechanism supports
             metric_values = [metric_data[m] for m in mech_metric_list]
@@ -980,36 +1149,49 @@ Examples:
         help="Hide standard errors in aggregate table (default: show stderr)",
     )
 
+    parser.add_argument(
+        "--show-stderr-games",
+        action="store_true",
+        default=False,
+        help="Show standard errors in per-game tables (from variation across runs)",
+    )
+
     args = parser.parse_args()
 
-    # Parse all batch folders
-    all_experiments = []
+    # Parse all batch folders and group
+    all_grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]] = defaultdict(list)
     all_failed = []
+
     for batch_path in args.batch_paths:
         try:
-            experiments, failed_experiments = parse_batch_folder(batch_path, args.metrics)
-            all_experiments.extend(experiments)
-            all_failed.extend(failed_experiments)
-            print(f"Parsed {len(experiments)} experiments from {batch_path} ({len(failed_experiments)} failed)")
-        except (FileNotFoundError, NotADirectoryError, ValueError) as e:
+            grouped, failed = parse_batch_folder(batch_path, args.metrics)
+            all_failed.extend(failed)
+
+            # Merge groups
+            for group_key, experiments in grouped.items():
+                all_grouped_experiments[group_key].extend(experiments)
+
+            print(f"Parsed {sum(len(exps) for exps in grouped.values())} experiments from {batch_path}")
+        except (FileNotFoundError, NotADirectoryError) as e:
             print(f"Error parsing {batch_path}: {e}", file=sys.stderr)
             sys.exit(1)
 
-    print(f"\nTotal experiments: {len(all_experiments)} successful, {len(all_failed)} failed")
+    print(f"\nTotal: {sum(len(exps) for exps in all_grouped_experiments.values())} successful, {len(all_failed)} failed")
+    print(f"Grouped into {len(all_grouped_experiments)} game-mechanism combinations")
 
-    # Validate experiments and extract canonical lists
+    # Validate experiment groups
     try:
-        mechanisms, games, models, eval_config, missing_combinations = validate_experiments(all_experiments)
-    except ValueError as e:
+        mechanisms, games, models, eval_config = validate_experiment_groups(all_grouped_experiments)
+    except (ValueError, AssertionError) as e:
         print(f"Validation error: {e}", file=sys.stderr)
-        print(f"NOTE: This may be due to incomplete experiments (still running)")
         sys.exit(1)
 
-    print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models")
-    print(f"Grid completeness: {len(mechanisms)} × {len(games)} = {len(all_experiments)} experiments\n")
+    print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models\n")
 
     # Build data structures
-    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(all_experiments)
+    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(
+        all_grouped_experiments, models, args.metrics
+    )
 
     # Determine output directory
     if args.output:
@@ -1041,7 +1223,7 @@ Examples:
     # Generate and save per-game tables
     for game in games:
         table_latex = generate_game_table(
-            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics, args.batch_paths
+            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics, args.batch_paths, show_stderr=args.show_stderr_games
         )
 
         output_path = output_dir / f"table_{game}.tex"
