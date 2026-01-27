@@ -113,6 +113,74 @@ def compute_deviation_ranks(ratings: Dict[str, float]) -> Dict[str, str]:
     return ranks
 
 
+def compute_mean_stderr(values: List[float]) -> Tuple[float, float]:
+    """
+    Compute mean and standard error from a list of values.
+
+    Args:
+        values: List of numeric values
+
+    Returns:
+        Tuple of (mean, stderr)
+    """
+    n = len(values)
+    mean = sum(values) / n
+
+    if n == 1:
+        stderr = 0.0
+    else:
+        variance = sum((x - mean) ** 2 for x in values) / (n - 1)
+        stderr = math.sqrt(variance / n)
+
+    return mean, stderr
+
+
+def validate_metric_consistency(
+    experiments: List[ExperimentData],
+    metric_name: str,
+    group_key: Tuple[str, str]
+) -> bool:
+    """
+    Validate that all experiments have consistent None/non-None pattern for a metric.
+
+    Args:
+        experiments: List of experiments to validate
+        metric_name: "rd_fitness" or "deviation_ranks"
+        group_key: (game, mechanism) for error messages
+
+    Returns:
+        True if metric exists (non-None), False if all are None
+
+    Raises:
+        ValueError: If experiments have inconsistent None patterns
+    """
+    if metric_name == "rd_fitness":
+        values = [exp.rd_fitness for exp in experiments]
+    else:  # "deviation_ranks"
+        assert metric_name == "deviation_ranks"
+        values = [exp.deviation_ranks for exp in experiments]
+
+    none_count = sum(1 for v in values if v is None)
+
+    if none_count == len(values):
+        # All None - this is expected for reputation mechanisms
+        return False
+    elif none_count == 0:
+        # All have data - expected for non-reputation mechanisms
+        return True
+    else:
+        # Mixed - this is an error
+        folder_paths = [str(exp.folder_path.name) for exp in experiments]
+        none_indices = [i for i, v in enumerate(values) if v is None]
+        non_none_indices = [i for i, v in enumerate(values) if v is not None]
+        raise ValueError(
+            f"Inconsistent {metric_name} data in {group_key}:\n"
+            f"  Folders with None: {[folder_paths[i] for i in none_indices]}\n"
+            f"  Folders with data: {[folder_paths[i] for i in non_none_indices]}\n"
+            f"  All experiments in a group must consistently have or lack this metric."
+        )
+
+
 def aggregate_metric_across_folders(
     experiments: List[ExperimentData],
     metric_name: str,
@@ -172,19 +240,10 @@ def aggregate_metric_across_folders(
                 )
             model_values[model].append(value)
 
-    # Compute mean and stderr
+    # Compute mean and stderr for each model
     results = {}
     for model, values in model_values.items():
-        n = len(values)
-        mean = sum(values) / n
-
-        if n == 1:
-            stderr = 0.0
-        else:
-            variance = sum((x - mean) ** 2 for x in values) / (n - 1)
-            stderr = math.sqrt(variance / n)
-
-        results[model] = (mean, stderr)
+        results[model] = compute_mean_stderr(values)
 
     return results
 
@@ -361,21 +420,27 @@ def build_data_structure(
             )
 
         if "rd" in metrics:
-            if experiments[0].rd_fitness is None:
-                # Reputation mechanism
+            # Validate consistency and check if metric exists
+            has_rd_data = validate_metric_consistency(experiments, "rd_fitness", (game, mechanism))
+            if not has_rd_data:
+                # Reputation mechanism - all experiments have None
                 for model in models:
                     rd_fitness[game][mechanism][model] = None
             else:
+                # All experiments have data - aggregate
                 rd_fitness[game][mechanism] = aggregate_metric_across_folders(
                     experiments, "rd", models
                 )
 
         if "dr" in metrics:
-            if experiments[0].deviation_ranks is None:
-                # Reputation mechanism
+            # Validate consistency and check if metric exists
+            has_dr_data = validate_metric_consistency(experiments, "deviation_ranks", (game, mechanism))
+            if not has_dr_data:
+                # Reputation mechanism - all experiments have None
                 for model in models:
                     deviation_ranks[game][mechanism][model] = None
             else:
+                # All experiments have data - aggregate
                 deviation_ranks[game][mechanism] = aggregate_metric_across_folders(
                     experiments, "dr", models
                 )
@@ -532,6 +597,43 @@ def format_score_with_stderr(
     return f"{mean:.{precision}f} $\\pm$ {stderr:.{precision}f}"
 
 
+def compute_summary_statistic(
+    data_tuples: List[Tuple[float, float]],
+    precision: int,
+    show_stderr: bool,
+    is_rank: bool = False
+) -> str:
+    """
+    Compute summary statistic (mean ± stderr) from list of (mean, stderr) tuples.
+
+    Args:
+        data_tuples: List of (mean, stderr) tuples from individual data points
+        precision: Decimal places for formatting
+        show_stderr: Whether to include stderr in output
+        is_rank: If True, uses rank formatting (.1f), otherwise uses given precision
+
+    Returns:
+        Formatted string with mean or mean ± stderr
+    """
+    if not data_tuples:
+        return "N/A"
+
+    # Extract means from tuples (ignore within-group stderr)
+    means = [t[0] for t in data_tuples]
+    avg, std = compute_mean_stderr(means)
+
+    if is_rank:
+        if show_stderr and len(means) > 1:
+            return f"{avg:.1f} $\\pm$ {std:.1f}"
+        else:
+            return f"{avg:.1f}"
+    else:
+        if show_stderr and len(means) > 1:
+            return f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
+        else:
+            return f"{avg:.{precision}f}"
+
+
 def generate_game_table(
     game: str,
     mechanisms: List[str],
@@ -638,48 +740,22 @@ def generate_game_table(
             # Calculate average for each metric this mechanism supports
             for metric in mech_metric_list:
                 if metric == "mean":
-                    # Extract means from (mean, stderr) tuples
                     tuples = [payoffs[game][mech][model] for model in models]
-                    means = [t[0] for t in tuples]
-                    avg = sum(means) / len(means)
-
-                    if show_stderr and len(means) > 1:
-                        # Compute stderr across models
-                        variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
-                        std = math.sqrt(variance)
-                        metric_averages[metric] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
-                    else:
-                        metric_averages[metric] = format_score(avg, precision)
-
+                    metric_averages[metric] = compute_summary_statistic(
+                        tuples, precision, show_stderr, is_rank=False
+                    )
                 elif metric == "rd":
-                    tuples = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
-                    if tuples:
-                        means = [t[0] for t in tuples]
-                        avg = sum(means) / len(means)
-
-                        if show_stderr and len(means) > 1:
-                            variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
-                            std = math.sqrt(variance)
-                            metric_averages[metric] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
-                        else:
-                            metric_averages[metric] = format_score(avg, precision)
-                    else:
-                        metric_averages[metric] = "N/A"
-
+                    tuples = [rd_fitness[game][mech][model] for model in models
+                              if rd_fitness[game][mech][model] is not None]
+                    metric_averages[metric] = compute_summary_statistic(
+                        tuples, precision, show_stderr, is_rank=False
+                    )
                 elif metric == "dr":
-                    tuples = [deviation_ranks[game][mech][model] for model in models if deviation_ranks[game][mech][model] is not None]
-                    if tuples:
-                        means = [t[0] for t in tuples]
-                        avg = sum(means) / len(means)
-
-                        if show_stderr and len(means) > 1:
-                            variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
-                            std = math.sqrt(variance)
-                            metric_averages[metric] = f"{avg:.1f} $\\pm$ {std:.1f}"
-                        else:
-                            metric_averages[metric] = f"{avg:.1f}"
-                    else:
-                        metric_averages[metric] = "N/A"
+                    tuples = [deviation_ranks[game][mech][model] for model in models
+                              if deviation_ranks[game][mech][model] is not None]
+                    metric_averages[metric] = compute_summary_statistic(
+                        tuples, precision, show_stderr, is_rank=True
+                    )
         else:
             # Missing data - use "Unav." for all metrics
             for metric in mech_metric_list:
@@ -824,17 +900,8 @@ def compute_aggregate_metric(
     if not values:
         return None
 
-    n = len(values)
-    mean = sum(values) / n
-
-    # Compute stderr for cross-game variation
-    if n == 1:
-        stderr = 0.0
-    else:
-        variance = sum((x - mean) ** 2 for x in values) / (n - 1)
-        stderr = math.sqrt(variance / n)
-
-    return mean, stderr
+    # Compute mean and stderr for cross-game variation
+    return compute_mean_stderr(values)
 
 
 def generate_aggregate_table(
@@ -963,55 +1030,22 @@ def generate_aggregate_table(
         # Calculate average for each metric this mechanism supports
         for metric in mech_metric_list:
             if metric == "mean":
-                values = [aggregate_payoffs[mech][model][0] for model in models]
-                avg = sum(values) / len(values)
-                if len(values) > 1:
-                    variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
-                    std = math.sqrt(variance)
-                else:
-                    std = 0.0
-
-                if show_stderr:
-                    metric_averages["mean"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
-                else:
-                    metric_averages["mean"] = f"{avg:.{precision}f}"
-
+                tuples = [aggregate_payoffs[mech][model] for model in models]
+                metric_averages[metric] = compute_summary_statistic(
+                    tuples, precision, show_stderr, is_rank=False
+                )
             elif metric == "rd":
-                values = [aggregate_rd[mech][model][0] for model in models if aggregate_rd[mech][model] is not None]
-                if values:
-                    avg = sum(values) / len(values)
-                    if len(values) > 1:
-                        variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
-                        std = math.sqrt(variance)
-                    else:
-                        std = 0.0
-
-                    if show_stderr:
-                        metric_averages["rd"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
-                    else:
-                        metric_averages["rd"] = f"{avg:.{precision}f}"
-                else:
-                    metric_averages["rd"] = "N/A"
-
+                tuples = [aggregate_rd[mech][model] for model in models
+                          if aggregate_rd[mech][model] is not None]
+                metric_averages[metric] = compute_summary_statistic(
+                    tuples, precision, show_stderr, is_rank=False
+                )
             elif metric == "dr":
-                # aggregate_dr[mech][model] now returns (mean, stderr) or None
                 tuples = [aggregate_dr[mech][model] for model in models
                           if aggregate_dr[mech][model] is not None]
-                if tuples:
-                    means = [t[0] for t in tuples]
-                    avg = sum(means) / len(means)
-                    if len(means) > 1:
-                        variance = sum((x - avg) ** 2 for x in means) / (len(means) - 1)
-                        std = math.sqrt(variance)
-                    else:
-                        std = 0.0
-
-                    if show_stderr:
-                        metric_averages["dr"] = f"{avg:.1f} $\\pm$ {std:.1f}"
-                    else:
-                        metric_averages["dr"] = f"{avg:.1f}"
-                else:
-                    metric_averages["dr"] = "N/A"
+                metric_averages[metric] = compute_summary_statistic(
+                    tuples, precision, show_stderr, is_rank=True
+                )
 
         metric_values = [metric_averages[m] for m in mech_metric_list]
         if metric_values:
