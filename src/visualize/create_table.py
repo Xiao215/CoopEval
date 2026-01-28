@@ -1093,6 +1093,7 @@ def generate_aggregate_table(
     models: List[str],
     payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
     rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    rd_populations: Dict[str, Dict[str, Dict[str, Optional[float]]]],
     deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     game_configs: Dict[str, dict],
     precision: int,
@@ -1108,6 +1109,7 @@ def generate_aggregate_table(
         models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
+        rd_populations: Nested dictionary with RD population distributions
         deviation_ranks: Nested dictionary with deviation ranks
         game_configs: Game configuration dictionaries for normalization
         precision: Number of decimal places
@@ -1221,15 +1223,57 @@ def generate_aggregate_table(
                     tuples, precision, show_stderr, is_rank=False
                 )
             elif metric == "rd":
-                # For aggregate table: use simple arithmetic mean (no population weighting)
-                # Rationale: aggregate_rd already averages across games with equal weights.
-                # Population distributions are game-specific; weighting by one game's
-                # population doesn't make theoretical sense for cross-game aggregates.
-                tuples = [aggregate_rd[mech][model] for model in models
-                          if aggregate_rd[mech][model] is not None]
-                metric_averages[metric] = compute_summary_statistic(
-                    tuples, precision, show_stderr, is_rank=False
+                # For aggregate table: compute population-weighted average for each game,
+                # then average those across games (consistent with per-game tables)
+                # This gives "average expected fitness at equilibrium across games"
+                game_weighted_averages = []
+
+                for game in game_configs.keys():
+                    # Get fitness tuples and populations for all models in this game
+                    fitness_tuples = []
+                    populations = []
+                    for model in models:
+                        fitness_tuple = rd_fitness[game][mech][model]
+                        population = rd_populations[game][mech][model]
+                        fitness_tuples.append(fitness_tuple)
+                        populations.append(population)
+
+                    # Compute population-weighted average for this game
+                    # Extract mean fitness values (ignore stderr for weighting)
+                    fitness_means = [t[0] for t in fitness_tuples]
+
+                    # Validate and normalize populations
+                    total_pop = sum(populations)
+                    if not (0.99 <= total_pop <= 1.01):
+                        raise ValueError(
+                            f"Population sum is {total_pop} in {game}_{mech} "
+                            f"(expected ~1.0)"
+                        )
+                    normalized_pops = [p / total_pop for p in populations]
+
+                    # Compute weighted average
+                    weighted_avg = sum(
+                        fitness * pop
+                        for fitness, pop in zip(fitness_means, normalized_pops)
+                    )
+
+                    # Normalize the weighted average for this game
+                    normalizer = NormalizeScore(game, game_configs[game])
+                    normalized_weighted_avg = normalizer.normalize(weighted_avg)
+                    game_weighted_averages.append(normalized_weighted_avg)
+
+                # Average the normalized, weighted values across games
+                mean_across_games, stderr_across_games = compute_mean_stderr(
+                    game_weighted_averages
                 )
+                if show_stderr and len(game_weighted_averages) > 1:
+                    metric_averages[metric] = format_score_with_stderr(
+                        (mean_across_games, stderr_across_games), precision
+                    )
+                else:
+                    metric_averages[metric] = format_score(
+                        mean_across_games, precision
+                    )
             elif metric == "dr":
                 tuples = [aggregate_dr[mech][model] for model in models
                           if aggregate_dr[mech][model] is not None]
@@ -1431,7 +1475,7 @@ Examples:
 
     # Generate and save aggregate table FIRST (social dilemmas only)
     aggregate_table_latex = generate_aggregate_table(
-        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
+        mechanisms, models, payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
     )
 
     output_path = output_dir / "table_aggregate.tex"
