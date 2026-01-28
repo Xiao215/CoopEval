@@ -13,6 +13,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from src.ranking_evaluations.matchup_payoffs import MatchupPayoffs
 from src.visualize.analysis_utils import (NormalizeScore,
                                             discover_experiment_subfolders,
+                                            display_mechanism_name,
                                             get_num_players_from_matchup,
                                             load_json,
                                             simplify_model_name,
@@ -189,22 +190,23 @@ def generate_latex_file(output_dir: Path, created_plots: list[tuple[str, str, Pa
         
         # Write organized by mechanism
         for mechanism in sort_mechanisms(list(mechanisms.keys())):
-            f.write(f"\n% {mechanism.replace('_', ' ').title()}\n")
+            display_mech = display_mechanism_name(mechanism)
+            f.write(f"\n% {display_mech.replace('_', ' ').title()}\n")
             # Sort games within each mechanism
             game_list = [game for game, _ in mechanisms[mechanism]]
             sorted_games = sort_games(game_list)
             game_filepath_map = {game: filepath for game, filepath in mechanisms[mechanism]}
-            
+
             for game in sorted_games:
                 filepath = game_filepath_map[game]
                 filename = filepath.name
                 game_title = game.replace('_', ' ').title()
                 f.write(f"\n% {game_title}\n")
-                f.write("\\begin{figure}[htbp]\n")
+                f.write("\\begin{figure}[t]\n")
                 f.write("    \\centering\n")
                 f.write(f"    \\includegraphics[width=0.8\\textwidth]{{payoff_tensors/{filename}}}\n")
-                f.write(f"    \\caption{{{game_title} - {mechanism.replace('_', ' ').title()}}}\n")
-                f.write(f"    \\label{{fig:{to_snake_case(mechanism)}_{to_snake_case(game)}}}\n")
+                f.write(f"    \\caption{{{game_title} - {display_mech}}}\n")
+                f.write(f"    \\label{{payoff:{to_snake_case(mechanism)}_{to_snake_case(game)}}}\n")
                 f.write("\\end{figure}\n")
     
     print(f"\nGenerated LaTeX file: {latex_path}")
@@ -272,7 +274,7 @@ def plot_2player_payoff_tensor(
 
     ax.set_xlabel("Player 2 Model", fontsize=12, fontweight='semibold')
     ax.set_ylabel("Player 1 Model", fontsize=12, fontweight='semibold')
-    ax.set_title(f"{game_name} - {mechanism_name}", fontsize=16, fontweight='bold')
+    ax.set_title(f"{game_name} - {display_mechanism_name(mechanism_name)}", fontsize=16, fontweight='bold')
 
     plt.tight_layout()
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
@@ -365,7 +367,7 @@ def plot_3player_payoff_tensor(
         label='Normalized Score (0=NE, 1=Cooperative)',
     )
 
-    fig.suptitle(f"{game_name} - {mechanism_name}", fontsize=18, fontweight='bold', y=0.98)
+    fig.suptitle(f"{game_name} - {display_mechanism_name(mechanism_name)}", fontsize=18, fontweight='bold', y=0.98)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 

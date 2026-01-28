@@ -39,7 +39,7 @@ from src.visualize.analysis_utils import (
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {
     "mean": "Mean",
-    "rd": "RD",
+    "rd": "Fitness",
     "dr": "DR",
 }
 
@@ -763,10 +763,18 @@ def compute_population_weighted_summary(
             f"but {len(populations)} populations"
         )
 
-    # Normalize populations to sum to 1.0 (handle numerical errors)
+    # Validate populations sum to approximately 1.0
     total_pop = sum(populations)
     if total_pop == 0:
         raise ValueError("Total population is zero")
+    if not (0.99 <= total_pop <= 1.01):
+        raise ValueError(
+            f"Population distribution does not sum to ~1.0: sum = {total_pop:.6f}. "
+            f"Expected sum to be in range [0.99, 1.01]. "
+            f"Populations: {populations}"
+        )
+
+    # Normalize populations to sum to 1.0 (handle numerical errors)
     normalized_pops = [p / total_pop for p in populations]
 
     # Compute weighted average of mean fitness values
@@ -836,7 +844,7 @@ def generate_game_table(
         for folder in source_folders:
             lines.append(f"%   {folder}")
 
-    lines.append(r"\begin{table}[t]")
+    lines.append(r"\begin{table*}[t]")
     lines.append(r"\centering")
     lines.append(f"\\caption{{Results for {game}}}")
     game_slug = game.lower().replace(" ", "_")
@@ -861,6 +869,7 @@ def generate_game_table(
         if num_cols > 0:
             col_spec_parts.append("r" * num_cols)
     col_spec = "|".join(col_spec_parts)
+    lines.append(r"\scalebox{0.8}{")
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
@@ -892,7 +901,7 @@ def generate_game_table(
     lines.append(r"\midrule")
 
     # Summary row (average across all models)
-    row_parts = ["\\textbf{Average}"]
+    row_parts = ["\\textbf{LLM Averaged}"]
     for mech in mechanisms:
         metric_averages = {}
         mech_metric_list = mech_metrics[mech]
@@ -1000,7 +1009,8 @@ def generate_game_table(
     # Table footer
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
-    lines.append(r"\end{table}")
+    lines.append(r"}")
+    lines.append(r"\end{table*}")
 
     return "\n".join(lines)
 
@@ -1083,7 +1093,6 @@ def generate_aggregate_table(
     models: List[str],
     payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
     rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
-    rd_populations: Dict[str, Dict[str, Dict[str, Optional[float]]]],
     deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     game_configs: Dict[str, dict],
     precision: int,
@@ -1099,7 +1108,6 @@ def generate_aggregate_table(
         models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
-        rd_populations: Nested dictionary with RD population distributions
         deviation_ranks: Nested dictionary with deviation ranks
         game_configs: Game configuration dictionaries for normalization
         precision: Number of decimal places
@@ -1141,10 +1149,10 @@ def generate_aggregate_table(
         for folder in source_folders:
             lines.append(f"%   {folder}")
 
-    lines.append(r"\begin{table}[t]")
+    lines.append(r"\begin{table*}[t]")
     lines.append(r"\centering")
     lines.append(
-        r"\caption{Aggregate Results Across Social Dilemmas (Normalized)}"
+        r"\caption{Results aggregated from all four social dilemmas. Before aggregation, payoffs have been shifted and rescaled such that $0$ and $1$ reflect the payoff from everyone defecting and everyone playing their (most) cooperative action respectively. `\mean{}' and `\rd{}': Payoffs in uniform population or after replicator dynamics, `\dr{}': Rank obtained from deviation rankings. \et{Add maximize or minimize.} The latter two are not compatible with \REPU{}, since we cannot sensible construct a metagame from \REPU{}.}"
     )
     lines.append(r"\label{tab:aggregate_results}")
 
@@ -1167,6 +1175,7 @@ def generate_aggregate_table(
         if num_cols > 0:
             col_spec_parts.append("r" * num_cols)
     col_spec = "|".join(col_spec_parts)
+    lines.append(r"\scalebox{0.8}{")
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
@@ -1198,7 +1207,7 @@ def generate_aggregate_table(
     lines.append(r"\midrule")
 
     # Summary row (average across all models)
-    row_parts = ["\\textbf{Average}"]
+    row_parts = ["\\textbf{LLM Averaged}"]
     for mech in mechanisms:
         is_reputation = is_reputation_mechanism(mech)
         mech_metric_list = mech_metrics[mech]
@@ -1212,36 +1221,15 @@ def generate_aggregate_table(
                     tuples, precision, show_stderr, is_rank=False
                 )
             elif metric == "rd":
-                # Get fitness tuples and populations for all models
-                fitness_tuples = []
-                populations = []
-                for model in models:
-                    fitness_tuple = aggregate_rd[mech][model]
-                    if fitness_tuple is not None:
-                        # Get population from FIRST game that has RD data
-                        # (populations should be consistent across games for same mechanism)
-                        found_population = False
-                        for game in game_configs.keys():
-                            if game in rd_populations and mech in rd_populations[game]:
-                                pop = rd_populations[game][mech][model]
-                                if pop is not None:
-                                    populations.append(pop)
-                                    fitness_tuples.append(fitness_tuple)
-                                    found_population = True
-                                    break
-
-                        if not found_population:
-                            raise ValueError(
-                                f"No population data found for {model} in {mech}"
-                            )
-
-                if fitness_tuples:
-                    # Use population-weighted averaging
-                    metric_averages[metric] = compute_population_weighted_summary(
-                        fitness_tuples, populations, precision, show_stderr
-                    )
-                else:
-                    metric_averages[metric] = "N/A"
+                # For aggregate table: use simple arithmetic mean (no population weighting)
+                # Rationale: aggregate_rd already averages across games with equal weights.
+                # Population distributions are game-specific; weighting by one game's
+                # population doesn't make theoretical sense for cross-game aggregates.
+                tuples = [aggregate_rd[mech][model] for model in models
+                          if aggregate_rd[mech][model] is not None]
+                metric_averages[metric] = compute_summary_statistic(
+                    tuples, precision, show_stderr, is_rank=False
+                )
             elif metric == "dr":
                 tuples = [aggregate_dr[mech][model] for model in models
                           if aggregate_dr[mech][model] is not None]
@@ -1304,7 +1292,8 @@ def generate_aggregate_table(
     # Table footer
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
-    lines.append(r"\end{table}")
+    lines.append(r"}")
+    lines.append(r"\end{table*}")
 
     return "\n".join(lines)
 
@@ -1437,12 +1426,12 @@ Examples:
     else:
         output_dir = args.batch_paths[0].parent
 
-    # Store all table LaTeX for combined file
-    all_tables = []
+    # Store per-game tables for combined file
+    per_game_tables = []
 
     # Generate and save aggregate table FIRST (social dilemmas only)
     aggregate_table_latex = generate_aggregate_table(
-        mechanisms, models, payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
+        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
     )
 
     output_path = output_dir / "table_aggregate.tex"
@@ -1453,33 +1442,25 @@ Examples:
 
     print(f"Saved: {output_path}")
 
-    # Add aggregate table to combined list FIRST
-    all_tables.append(aggregate_table_latex)
-
-    # Generate and save per-game tables
+    # Generate per-game tables (don't save individually, just collect for combined file)
     for game in games:
         table_latex = generate_game_table(
             game, mechanisms, models, payoffs, rd_fitness, rd_populations, deviation_ranks, args.precision, args.metrics, args.batch_paths, show_stderr=args.show_stderr_games
         )
 
-        output_path = output_dir / f"table_{game}.tex"
-        save_table(table_latex, output_path)
-
         if not args.quiet:
             print_table(table_latex, f"Table for {game}")
 
-        print(f"Saved: {output_path}")
+        # Add to per-game tables list
+        per_game_tables.append(table_latex)
 
-        # Add to combined list
-        all_tables.append(table_latex)
-
-    # Generate and save combined table file
-    combined_latex = "\n\n".join(all_tables)
-    combined_output_path = output_dir / "table_all_combined.tex"
+    # Generate and save combined per-game tables file (excluding aggregate)
+    combined_latex = "\n\n".join(per_game_tables)
+    combined_output_path = output_dir / "table_all_games.tex"
     save_table(combined_latex, combined_output_path)
-    print(f"Saved combined table: {combined_output_path}")
+    print(f"Saved combined per-game tables: {combined_output_path}")
 
-    print(f"\nTotal tables generated: {len(games) + 1} (plus 1 combined file)")
+    print(f"\nTotal tables generated: 2 files (1 aggregate + 1 combined per-game)")
 
     # Print summary of failed experiments
     if all_failed:

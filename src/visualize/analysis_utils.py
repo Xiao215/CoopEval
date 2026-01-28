@@ -118,6 +118,27 @@ def clean_model_name(model_name: str, max_length: int = 25) -> str:
     return model_name
 
 
+def display_mechanism_name(mechanism: str) -> str:
+    """Convert internal mechanism name to display name for tables and plots.
+
+    Args:
+        mechanism: Internal mechanism name
+
+    Returns:
+        Display name for mechanism
+
+    Examples:
+        "Reputation" -> "Reputation+"
+        "ReputationFirstOrder" -> "Reputation-"
+        "NoMechanism" -> "NoMechanism"
+    """
+    if mechanism == "Reputation":
+        return "Reputation+"
+    elif mechanism == "ReputationFirstOrder":
+        return "Reputation-"
+    return mechanism
+
+
 def simplify_model_name(model_name: str) -> str:
     """
     Simplify model name to a short, canonical version.
@@ -140,15 +161,26 @@ def simplify_model_name(model_name: str) -> str:
         "qwen/qwen3-30b-a3b-instruct-2507(CoT)" -> "qwen3-30b-a3b"
     """
     # Define mappings for specific models
+    # model_mappings = {
+    #     "google/gemini-3-flash-preview": {
+    #         "with_cot": "gemini-3-f-reasoning",
+    #         "without_cot": "gemini-3-f-base"
+    #     },
+    #     "openai/gpt-5.2": "gpt-5.2",
+    #     "openai/gpt-4o-2024-05-13": "gpt-4o",
+    #     "anthropic/claude-sonnet-4.5": "claude-sonnet-4.5",
+    #     "qwen/qwen3-30b-a3b-instruct-2507": "qwen3-30b-a3b"
+    # }
+
     model_mappings = {
         "google/gemini-3-flash-preview": {
-            "with_cot": "gemini-3-f-reasoning",
-            "without_cot": "gemini-3-f-base"
+            "with_cot": "Gemini-R",
+            "without_cot": "Gemini-B"
         },
-        "openai/gpt-5.2": "gpt-5.2",
-        "openai/gpt-4o-2024-05-13": "gpt-4o",
-        "anthropic/claude-sonnet-4.5": "claude-sonnet-4.5",
-        "qwen/qwen3-30b-a3b-instruct-2507": "qwen3-30b-a3b"
+        "openai/gpt-5.2": "GPT-5.2",
+        "openai/gpt-4o-2024-05-13": "GPT-4o",
+        "anthropic/claude-sonnet-4.5": "Claude",
+        "qwen/qwen3-30b-a3b-instruct-2507": "Qwen-30b"
     }
 
     # Check if model has CoT suffix
