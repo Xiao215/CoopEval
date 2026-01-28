@@ -137,6 +137,113 @@ def compute_mean_stderr(values: List[float]) -> Tuple[float, float]:
     return mean, stderr
 
 
+def apply_ranking_format(
+    model_values: List[Tuple[int, Optional[float], Optional[float], str, Optional[str]]],
+    metric_type: str,
+    tolerance: float = 0.05
+) -> List[str]:
+    """
+    Apply ranking-based formatting to model values with tie handling.
+
+    Ranks 1-2 (best): Bold
+    Ranks 3-4 (middle): Normal
+    Ranks 5-6 (worst): Gray
+
+    Ties are detected when values are within tolerance of each other.
+    Tied values receive the same rank.
+
+    Note: stderr_str is always shown in gray, independent of ranking.
+
+    Args:
+        model_values: List of (index, value, stderr, mean_str, stderr_str) tuples
+        metric_type: 'maximize' for Mean/Fitness, 'minimize' for DR
+        tolerance: Relative tolerance for tie detection (default 0.05 = 5%)
+
+    Returns:
+        List of formatted strings in original order
+    """
+    # Filter out N/A values
+    valid_entries = [(idx, val, stderr, mean_s, stderr_s) for idx, val, stderr, mean_s, stderr_s in model_values if val is not None]
+
+    if not valid_entries:
+        # All N/A, return as-is
+        return [mean_s if stderr_s is None else f"{mean_s} {stderr_s}" for _, _, _, mean_s, stderr_s in model_values]
+
+    # Sort by value (descending for maximize, ascending for minimize)
+    reverse = (metric_type == "maximize")
+    sorted_entries = sorted(valid_entries, key=lambda x: x[1], reverse=reverse)
+
+    # Assign ranks with tie handling
+    ranks: Dict[int, int] = {}
+    current_rank = 1
+    i = 0
+
+    while i < len(sorted_entries):
+        # Get current value
+        _, current_val, current_stderr, _, _ = sorted_entries[i]
+
+        # Find all entries within tolerance (tied)
+        tied_indices = [sorted_entries[i][0]]
+        j = i + 1
+
+        # Check for ties using tolerance
+        while j < len(sorted_entries):
+            _, next_val, next_stderr, _, _ = sorted_entries[j]
+
+            # Check if values are "close enough" to be considered tied
+            # Use relative tolerance based on the magnitude of values
+            if current_val != 0:
+                rel_diff = abs(next_val - current_val) / abs(current_val)
+            else:
+                rel_diff = abs(next_val - current_val)
+
+            is_tied = rel_diff <= tolerance
+
+            if is_tied:
+                tied_indices.append(sorted_entries[j][0])
+                j += 1
+            else:
+                break
+
+        # Assign rank to all tied entries
+        for idx in tied_indices:
+            ranks[idx] = current_rank
+
+        # Move to next group
+        current_rank += len(tied_indices)
+        i = j
+
+    # Apply formatting based on ranks
+    result: List[str] = [""] * len(model_values)
+
+    for idx, val, _stderr, mean_str, stderr_str in model_values:
+        if val is None:
+            # N/A values - no formatting
+            result[idx] = mean_str if stderr_str is None else f"{mean_str} {stderr_str}"
+        else:
+            rank = ranks[idx]
+
+            # Format the mean value based on rank
+            if rank <= 2:
+                # Top 2: Bold mean
+                formatted_mean = f"\\textbf{{{mean_str}}}"
+            elif rank >= len(valid_entries) - 1 and len(valid_entries) >= 5:
+                # Bottom 2 (only if we have at least 5 valid entries): Gray mean
+                # ranks >= (n-1) means the last 2 ranks
+                formatted_mean = f"\\textcolor{{gray}}{{{mean_str}}}"
+            else:
+                # Middle: Normal mean
+                formatted_mean = mean_str
+
+            # Always make stderr gray if present
+            if stderr_str is not None:
+                result[idx] = f"{formatted_mean} {{\\color{{gray}}{stderr_str}}}"
+            else:
+                result[idx] = formatted_mean
+
+    return result
+
+
 def validate_metric_consistency(
     experiments: List[ExperimentData],
     metric_name: str,
@@ -869,7 +976,7 @@ def generate_game_table(
         if num_cols > 0:
             col_spec_parts.append("r" * num_cols)
     col_spec = "|".join(col_spec_parts)
-    lines.append(r"\scalebox{0.8}{")
+    lines.append(r"\scalebox{0.78}{")
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
@@ -1169,67 +1276,69 @@ def generate_aggregate_table(
             # All other mechanisms support all requested metrics
             mech_metrics[mech] = metrics
 
-    # Table header with vertical bars
-    # Each mechanism has different number of sub-columns based on supported metrics
-    col_spec_parts = ["l"]
-    for mech in mechanisms:
-        num_cols = len(mech_metrics[mech])
-        if num_cols > 0:
-            col_spec_parts.append("r" * num_cols)
-    col_spec = "|".join(col_spec_parts)
-    lines.append(r"\scalebox{0.8}{")
+    # TRANSPOSED TABLE WITH SUBROWS: Columns are models, rows are mechanisms with metric subrows
+    # Structure: Mechanism | Metric | LLM Average | Model1 | Model2 | ...
+    # Each mechanism has 3 metric subrows (Mean, Fitness, DR), except reputation (only Mean)
+
+    # Table column spec: mechanism name, metric label, LLM Average (with double bars before, single bar after), then models
+    num_data_cols = len(models)  # Individual models
+    col_spec = "ll" + "||" + "r" + "|" + "r" * num_data_cols  # mechanism, metric || LLM Average | models
+    lines.append(r"\scalebox{0.78}{")
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
-    # First header row: Mechanism names with multicolumn
-    header_parts = ["\\textbf{Model}"]
-    for mech in mechanisms:
-        display_name = display_mechanism_name(mech)
-        num_cols = len(mech_metrics[mech])
-        if num_cols > 1:
-            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{display_name}}}}}")
-        elif num_cols == 1:
-            header_parts.append(f"\\textbf{{{display_name}}}")
+    # Header row: Column names
+    header_parts = ["\\textbf{Mechanism}", "\\textbf{Metric}", "\\textbf{LLM Average}"]
+    # Individual model columns (not bold)
+    for model in models:
+        display_name = simplify_model_name(model)
+        header_parts.append(display_name)
     lines.append(" & ".join(header_parts) + " \\\\")
-
-    # Second header row: Sub-column labels (only if needed)
-    show_subheaders = any(len(mech_metrics[mech]) > 1 for mech in mechanisms)
-    if show_subheaders:
-        subheader_parts = [""]  # Empty for model column
-        for mech in mechanisms:
-            mech_metric_list = mech_metrics[mech]
-            if len(mech_metric_list) > 1:
-                metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in mech_metric_list])
-                subheader_parts.append(metric_cols)
-            elif len(mech_metric_list) == 1:
-                # Single column - show the metric label
-                subheader_parts.append(f"\\textbf{{{METRIC_LABELS[mech_metric_list[0]]}}}")
-        lines.append(" & ".join(subheader_parts) + " \\\\")
 
     lines.append(r"\midrule")
 
-    # Summary row (average across all models)
-    row_parts = ["\\textbf{LLM Averaged}"]
-    for mech in mechanisms:
+    # Data rows (mechanism blocks with metric subrows)
+    for mech_idx, mech in enumerate(mechanisms):
         is_reputation = is_reputation_mechanism(mech)
-        mech_metric_list = mech_metrics[mech]
-        metric_averages = {}
+        display_name = display_mechanism_name(mech)
 
-        # Calculate average for each metric this mechanism supports
-        for metric in mech_metric_list:
+        # Determine which metrics to show for this mechanism
+        if is_reputation:
+            metric_list = ["mean"]  # Only mean for reputation
+        else:
+            metric_list = metrics  # All metrics for other mechanisms
+
+        # Create subrows for each metric
+        for metric_idx, metric in enumerate(metric_list):
+            row_parts = []
+
+            # First column: mechanism name
+            # For 3-metric mechanisms: use multirow on first row to center vertically
+            # For 1-metric mechanisms (reputation): show on the only row
+            if len(metric_list) == 3:
+                if metric_idx == 0:
+                    # Use multirow to center mechanism name vertically across 3 rows
+                    row_parts.append(f"\\multirow{{3}}{{*}}{{\\textbf{{{display_name}}}}}")
+                else:
+                    row_parts.append("")  # Empty for rows 2 and 3
+            else:
+                # Single row (reputation) - just show the name
+                row_parts.append(f"\\textbf{{{display_name}}}")
+
+            # Second column: metric label (not bold)
+            row_parts.append(METRIC_LABELS[metric])
+
+            # LLM Average column
             if metric == "mean":
                 tuples = [aggregate_payoffs[mech][model] for model in models]
-                metric_averages[metric] = compute_summary_statistic(
+                avg_val = compute_summary_statistic(
                     tuples, precision, show_stderr, is_rank=False
                 )
+                row_parts.append(avg_val)
             elif metric == "rd":
-                # For aggregate table: compute population-weighted average for each game,
-                # then average those across games (consistent with per-game tables)
-                # This gives "average expected fitness at equilibrium across games"
+                # Compute population-weighted average for each game, then average
                 game_weighted_averages = []
-
                 for game in game_configs.keys():
-                    # Get fitness tuples and populations for all models in this game
                     fitness_tuples = []
                     populations = []
                     for model in models:
@@ -1239,10 +1348,7 @@ def generate_aggregate_table(
                         populations.append(population)
 
                     # Compute population-weighted average for this game
-                    # Extract mean fitness values (ignore stderr for weighting)
                     fitness_means = [t[0] for t in fitness_tuples]
-
-                    # Validate and normalize populations
                     total_pop = sum(populations)
                     if not (0.99 <= total_pop <= 1.01):
                         raise ValueError(
@@ -1250,88 +1356,96 @@ def generate_aggregate_table(
                             f"(expected ~1.0)"
                         )
                     normalized_pops = [p / total_pop for p in populations]
-
-                    # Compute weighted average
                     weighted_avg = sum(
                         fitness * pop
                         for fitness, pop in zip(fitness_means, normalized_pops)
                     )
-
-                    # Normalize the weighted average for this game
                     normalizer = NormalizeScore(game, game_configs[game])
                     normalized_weighted_avg = normalizer.normalize(weighted_avg)
                     game_weighted_averages.append(normalized_weighted_avg)
 
-                # Average the normalized, weighted values across games
                 mean_across_games, stderr_across_games = compute_mean_stderr(
                     game_weighted_averages
                 )
                 if show_stderr and len(game_weighted_averages) > 1:
-                    metric_averages[metric] = format_score_with_stderr(
+                    avg_val = format_score_with_stderr(
                         (mean_across_games, stderr_across_games), precision
                     )
                 else:
-                    metric_averages[metric] = format_score(
-                        mean_across_games, precision
-                    )
+                    avg_val = format_score(mean_across_games, precision)
+                row_parts.append(avg_val)
             elif metric == "dr":
+                # Average DR across all models
                 tuples = [aggregate_dr[mech][model] for model in models
                           if aggregate_dr[mech][model] is not None]
-                metric_averages[metric] = compute_summary_statistic(
+                avg_val = compute_summary_statistic(
                     tuples, precision, show_stderr, is_rank=True
                 )
+                row_parts.append(avg_val)
 
-        metric_values = [metric_averages[m] for m in mech_metric_list]
-        if metric_values:
-            row_parts.append(" & ".join(metric_values))
+            # Individual model columns - collect values for ranking
+            model_values: List[Tuple[int, Optional[float], Optional[float], str, Optional[str]]] = []
 
-    lines.append(" & ".join(row_parts) + " \\\\")
-    lines.append(r"\midrule")
-
-    # Data rows (one per model)
-    for model in models:
-        row_parts = [simplify_model_name(model)]
-        for mech in mechanisms:
-            is_reputation = is_reputation_mechanism(mech)
-            mech_metric_list = mech_metrics[mech]
-            metric_data = {}
-
-            for metric in mech_metric_list:
+            for idx, model in enumerate(models):
                 if metric == "mean":
                     payoff_result = aggregate_payoffs[mech][model]
+                    mean_val = payoff_result[0]
+                    stderr_val = payoff_result[1] if show_stderr else None
+                    mean_str = format_score(payoff_result[0], precision)
                     if show_stderr:
-                        metric_data["mean"] = format_score_with_stderr(payoff_result, precision)
+                        stderr_str = f"$\\pm$ {payoff_result[1]:.{precision}f}"
                     else:
-                        metric_data["mean"] = format_score(payoff_result[0], precision)
+                        stderr_str = None
+                    model_values.append((idx, mean_val, stderr_val, mean_str, stderr_str))
 
                 elif metric == "rd":
                     rd_result = aggregate_rd[mech][model]
                     if rd_result is not None:
+                        mean_val = rd_result[0]
+                        stderr_val = rd_result[1] if show_stderr else None
+                        mean_str = format_score(rd_result[0], precision)
                         if show_stderr:
-                            metric_data["rd"] = format_score_with_stderr(rd_result, precision)
+                            stderr_str = f"$\\pm$ {rd_result[1]:.{precision}f}"
                         else:
-                            metric_data["rd"] = format_score(rd_result[0], precision)
+                            stderr_str = None
+                        model_values.append((idx, mean_val, stderr_val, mean_str, stderr_str))
                     else:
-                        metric_data["rd"] = "N/A"
+                        model_values.append((idx, None, None, "N/A", None))
 
                 elif metric == "dr":
                     dr_result = aggregate_dr[mech][model]
                     if dr_result is not None:
+                        dr_mean, dr_stderr = dr_result
+                        mean_str = f"{dr_mean:.1f}"
                         if show_stderr:
-                            dr_mean, dr_stderr = dr_result
-                            metric_data["dr"] = f"{dr_mean:.1f} $\\pm$ {dr_stderr:.1f}"
+                            stderr_str = f"$\\pm$ {dr_stderr:.1f}"
                         else:
-                            dr_mean, _ = dr_result
-                            metric_data["dr"] = f"{dr_mean:.1f}"
+                            stderr_str = None
+                        stderr_val = dr_stderr if show_stderr else None
+                        model_values.append((idx, dr_mean, stderr_val, mean_str, stderr_str))
                     else:
-                        metric_data["dr"] = "N/A"
+                        model_values.append((idx, None, None, "N/A", None))
 
-            # Extract only metrics this mechanism supports
-            metric_values = [metric_data[m] for m in mech_metric_list]
-            if metric_values:
-                row_parts.append(" & ".join(metric_values))
+            # Apply ranking-based formatting
+            if metric == "mean" or metric == "rd":
+                # Higher is better for mean and rd
+                formatted_values = apply_ranking_format(model_values, "maximize")
+            elif metric == "dr":
+                # Lower is better for DR
+                formatted_values = apply_ranking_format(model_values, "minimize")
+            else:
+                # Fallback (shouldn't happen)
+                formatted_values = [mean_s if stderr_s is None else f"{mean_s} {stderr_s}"
+                                   for _, _, _, mean_s, stderr_s in model_values]
 
-        lines.append(" & ".join(row_parts) + " \\\\")
+            # Add formatted values to row
+            row_parts.extend(formatted_values)
+
+            lines.append(" & ".join(row_parts) + " \\\\")
+
+        # Add midrule after each mechanism block (except the last one)
+        if mech_idx < len(mechanisms) - 1:
+            lines.append(r"\midrule")
 
     # Table footer
     lines.append(r"\bottomrule")
