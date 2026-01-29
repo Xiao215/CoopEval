@@ -1,5 +1,4 @@
-# CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents
-
+# CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas
 This repository contains the official implementation for the paper **"CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas"**.
 
 It serves as a research framework for simulating societies of Large Language Model (LLM) agents interacting in mixed-motive games. The codebase enables the evaluation of how game-theoretic mechanisms—such as repetition, reputation, mediation, and contracts—can enforce cooperation among selfish, rational agents.
