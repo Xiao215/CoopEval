@@ -1,0 +1,68 @@
+{
+  "batch_start_time": "2026-01-21T22:23:29Z",
+  "batch_dir": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329",
+  "total_experiments": 6,
+  "completed_experiments": 6,
+  "experiments": {
+    "contracting_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-22T04:23:41Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/contracting_trust_game",
+      "end_time": "2026-01-22T04:44:45Z",
+      "duration_seconds": 1264,
+      "exit_code": 0
+    },
+    "contracting_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-22T04:23:41Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/contracting_matching_pennies",
+      "end_time": "2026-01-22T04:48:38Z",
+      "duration_seconds": 1497,
+      "exit_code": 0
+    },
+    "contracting_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-22T04:23:41Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/contracting_travellers_dilemma",
+      "end_time": "2026-01-22T04:55:11Z",
+      "duration_seconds": 1890,
+      "exit_code": 0
+    },
+    "contracting_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-22T04:23:41Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/contracting_stag_hunt",
+      "end_time": "2026-01-22T04:46:05Z",
+      "duration_seconds": 1344,
+      "exit_code": 0
+    },
+    "contracting_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-22T04:23:41Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/contracting_public_goods",
+      "end_time": "2026-01-22T06:17:23Z",
+      "duration_seconds": 6822,
+      "exit_code": 0
+    },
+    "contracting_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-22T04:23:41Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/contracting_prisoners_dilemma",
+      "end_time": "2026-01-22T04:47:34Z",
+      "duration_seconds": 1433,
+      "exit_code": 0
+    }
+  }
+}

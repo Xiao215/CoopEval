@@ -1,0 +1,46 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/contracting_trust_game
+Running TrustGame with mechanism Contracting.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in the response 'Let’s go through this step by step, carefully analyzing the game before and after the contract, and then decide whether to sign it.\n\n---\n\n### **Step 1: Understand the base game (without contract)**\n\nWe are Player 2 (the other player is Player 1). The payof...[truncated due to length]...1:A0, P2:A1 → (base: 2,6) → P1 gets +11 from contract → 2+11=13; P2 loses 11→6−11=−5 → (13, -5)\n- (A1, A0): P1:A1, P2:A0 → base: (20,0) → P2 gets +11 → 0+11=11; P1 loses 11 → 20−11=9 → (9,11)\n- (A1, A1): (4,4)\n\nSo corrected matrix:\n\n|       | P1:A0 | P1:A1 |\n|-------|-------|-------|\n| P2:A' from response 'Let’s go through this step by step, carefully analyzing the game before and after the contract, and then decide whether to sign it.\n\n---\n\n### **Step 1: Understand the base game (without contract)**\n\nWe are Player 2 (the other player is Player 1). The payoff matrix (Player 1 × Player 2) is:\n\n|       ...[truncated due to length]...0, A1): P1:A0, P2:A1 → (base: 2,6) → P1 gets +11 from contract → 2+11=13; P2 loses 11→6−11=−5 → (13, -5)\n- (A1, A0): P1:A1, P2:A0 → base: (20,0) → P2 gets +11 → 0+11=11; P1 loses 11 → 20−11=9 → (9,11)\n- (A1, A1): (4,4)\n\nSo corrected matrix:\n\n|       | P1:A0 | P1:A1 |\n|-------|-------|-------|\n| P2:A'
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in response 'Let\'s go through this step by step.\n\n---\n\n### **Step 1: Understand the original game (without contracts)**\n\nWe are Player 1. Our actions: A0 or A1.  \nThe other player (Player 2) chooses A0 or A1 simultaneously.  \nThe payoff matrix (for Player 1, then Player...[truncated due to length]...gets 5 (A0) vs 4 (A1) → prefers A0\n\nSo **P1 always prefers A0**?\n\nWait:\n- P1: A0 → A0: 10, A1: 5 → so A0 better\n- So **P1’s dominant strategy is A0**\n\nNow P2: if P1 plays A0 → P2’s best response is A1\n\nSo in equilibrium: P1 plays A0, P2 plays A1 → outcome is (A0, A1)\n\nPayoff: P1 gets 5,' from response "Let's go through this step by step.\n\n---\n\n### **Step 1: Understand the original game (without contracts)**\n\nWe are Player 1. Our actions: A0 or A1.  \nThe other player (Player 2) chooses A0 or A1 simultaneously.  \nThe payoff matrix (for Player 1, then Player 2) is:\n\n|               | P2: A0 | P2: A1 ...[truncated due to length]...plays A1: P1 gets 5 (A0) vs 4 (A1) → prefers A0\n\nSo **P1 always prefers A0**?\n\nWait:\n- P1: A0 → A0: 10, A1: 5 → so A0 better\n- So **P1’s dominant strategy is A0**\n\nNow P2: if P1 plays A0 → P2’s best response is A1\n\nSo in equilibrium: P1 plays A0, P2 plays A1 → outcome is (A0, A1)\n\nPayoff: P1 gets 5,"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 9.5000
+  google/gemini-3-flash-preview(CoT): 11.2500
+  google/gemini-3-flash-preview(IO): 11.2500
+  openai/gpt-4o-2024-05-13(CoT): 6.2500
+  openai/gpt-5.2(CoT): 7.8333
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 5.9167
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 9.5, 'google/gemini-3-flash-preview(CoT)': 11.249999999999998, 'google/gemini-3-flash-preview(IO)': 11.25, 'openai/gpt-5.2(CoT)': 7.833333333333333, 'openai/gpt-4o-2024-05-13(CoT)': 6.25, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.916666666666666}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 9.999999999999648, 'google/gemini-3-flash-preview(CoT)': 10.000000001034955, 'google/gemini-3-flash-preview(IO)': 10.000000001034312, 'openai/gpt-5.2(CoT)': 7.987441838758314, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311282150878, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.2056688899728485}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 10.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-5.2(CoT)': 7.987441840186159, 'openai/gpt-4o-2024-05-13(CoT)': 4.652311281251474, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 7.205668891736595}
+
+============================================================
+
+
+======================================================================
+RE-EVALUATION SCRIPT EXECUTED
+Timestamp: 2026-01-26T17:37:55.195906
+Evaluation methods applied: evolutionary_dynamics, deviation_rating
+Previous evaluation results have been overwritten.
+
+======================================================================

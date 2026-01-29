@@ -1,0 +1,368 @@
+{
+  "batch_start_time": "2026-01-24T07:58:42Z",
+  "batch_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842",
+  "total_experiments": 36,
+  "completed_experiments": 36,
+  "experiments": {
+    "no_mechanism_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/no_mechanism.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/no_mechanism_prisoners_dilemma",
+      "end_time": "2026-01-24T08:03:16Z",
+      "duration_seconds": 270,
+      "exit_code": 0
+    },
+    "no_mechanism_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/no_mechanism.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/no_mechanism_matching_pennies",
+      "end_time": "2026-01-24T08:01:39Z",
+      "duration_seconds": 173,
+      "exit_code": 0
+    },
+    "repetition_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/repetition_matching_pennies",
+      "end_time": "2026-01-24T09:09:55Z",
+      "duration_seconds": 4269,
+      "exit_code": 0
+    },
+    "mediation_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/mediation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/mediation_prisoners_dilemma",
+      "end_time": "2026-01-24T08:12:53Z",
+      "duration_seconds": 847,
+      "exit_code": 0
+    },
+    "contracting_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/contracting_matching_pennies",
+      "end_time": "2026-01-24T08:20:58Z",
+      "duration_seconds": 1332,
+      "exit_code": 0
+    },
+    "reputation_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/reputation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_prisoners_dilemma",
+      "end_time": "2026-01-24T08:19:12Z",
+      "duration_seconds": 1226,
+      "exit_code": 0
+    },
+    "reputation_first_order_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/reputation_first_order.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_first_order_matching_pennies",
+      "end_time": "2026-01-24T08:30:05Z",
+      "duration_seconds": 1879,
+      "exit_code": 0
+    },
+    "reputation_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/reputation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_matching_pennies",
+      "end_time": "2026-01-24T08:41:29Z",
+      "duration_seconds": 2563,
+      "exit_code": 0
+    },
+    "mediation_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/mediation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/mediation_matching_pennies",
+      "end_time": "2026-01-24T08:14:07Z",
+      "duration_seconds": 921,
+      "exit_code": 0
+    },
+    "contracting_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/contracting_prisoners_dilemma",
+      "end_time": "2026-01-24T08:17:07Z",
+      "duration_seconds": 1101,
+      "exit_code": 0
+    },
+    "reputation_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/reputation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_trust_game",
+      "end_time": "2026-01-24T08:26:26Z",
+      "duration_seconds": 1660,
+      "exit_code": 0
+    },
+    "contracting_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/contracting_trust_game",
+      "end_time": "2026-01-24T08:20:54Z",
+      "duration_seconds": 1328,
+      "exit_code": 0
+    },
+    "no_mechanism_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/no_mechanism.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/no_mechanism_trust_game",
+      "end_time": "2026-01-24T08:07:55Z",
+      "duration_seconds": 549,
+      "exit_code": 0
+    },
+    "mediation_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/mediation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/mediation_trust_game",
+      "end_time": "2026-01-24T08:15:56Z",
+      "duration_seconds": 1030,
+      "exit_code": 0
+    },
+    "repetition_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/repetition_trust_game",
+      "end_time": "2026-01-24T08:57:51Z",
+      "duration_seconds": 3545,
+      "exit_code": 0
+    },
+    "reputation_first_order_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/reputation_first_order.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_first_order_trust_game",
+      "end_time": "2026-01-24T08:26:37Z",
+      "duration_seconds": 1671,
+      "exit_code": 0
+    },
+    "repetition_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-25T09:50:04Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/repetition_public_goods",
+      "end_time": "2026-01-25T16:02:57Z",
+      "duration_seconds": 22373,
+      "exit_code": 0
+    },
+    "reputation_first_order_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/reputation_first_order.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_first_order_prisoners_dilemma",
+      "end_time": "2026-01-24T08:19:12Z",
+      "duration_seconds": 1226,
+      "exit_code": 0
+    },
+    "contracting_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/contracting_public_goods",
+      "end_time": "2026-01-24T09:48:47Z",
+      "duration_seconds": 6601,
+      "exit_code": 0
+    },
+    "no_mechanism_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/no_mechanism.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/no_mechanism_stag_hunt",
+      "end_time": "2026-01-24T08:05:43Z",
+      "duration_seconds": 417,
+      "exit_code": 0
+    },
+    "mediation_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/mediation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/mediation_public_goods",
+      "end_time": "2026-01-24T09:20:41Z",
+      "duration_seconds": 4915,
+      "exit_code": 0
+    },
+    "reputation_first_order_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/reputation_first_order.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_first_order_public_goods",
+      "end_time": "2026-01-24T08:18:12Z",
+      "duration_seconds": 1166,
+      "exit_code": 0
+    },
+    "no_mechanism_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/no_mechanism.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/no_mechanism_public_goods",
+      "end_time": "2026-01-24T08:18:44Z",
+      "duration_seconds": 1198,
+      "exit_code": 0
+    },
+    "contracting_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/contracting_stag_hunt",
+      "end_time": "2026-01-24T08:19:08Z",
+      "duration_seconds": 1222,
+      "exit_code": 0
+    },
+    "repetition_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/repetition_stag_hunt",
+      "end_time": "2026-01-24T08:39:03Z",
+      "duration_seconds": 2417,
+      "exit_code": 0
+    },
+    "reputation_first_order_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/reputation_first_order.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_first_order_stag_hunt",
+      "end_time": "2026-01-24T08:13:57Z",
+      "duration_seconds": 911,
+      "exit_code": 0
+    },
+    "reputation_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/reputation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_stag_hunt",
+      "end_time": "2026-01-24T08:14:38Z",
+      "duration_seconds": 952,
+      "exit_code": 0
+    },
+    "mediation_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/mediation.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/mediation_travellers_dilemma",
+      "end_time": "2026-01-24T08:17:22Z",
+      "duration_seconds": 1116,
+      "exit_code": 0
+    },
+    "no_mechanism_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/no_mechanism.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/no_mechanism_travellers_dilemma",
+      "end_time": "2026-01-24T08:06:27Z",
+      "duration_seconds": 461,
+      "exit_code": 0
+    },
+    "contracting_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/contracting.yaml",
+      "start_time": "2026-01-24T07:58:46Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/contracting_travellers_dilemma",
+      "end_time": "2026-01-24T08:24:41Z",
+      "duration_seconds": 1555,
+      "exit_code": 0
+    },
+    "repetition_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-24T07:58:47Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/repetition_travellers_dilemma",
+      "end_time": "2026-01-24T09:13:30Z",
+      "duration_seconds": 4483,
+      "exit_code": 0
+    },
+    "mediation_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/mediation.yaml",
+      "start_time": "2026-01-24T07:58:47Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/mediation_stag_hunt",
+      "end_time": "2026-01-24T08:16:39Z",
+      "duration_seconds": 1072,
+      "exit_code": 0
+    },
+    "reputation_first_order_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/reputation_first_order.yaml",
+      "start_time": "2026-01-24T07:58:47Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_first_order_travellers_dilemma",
+      "end_time": "2026-01-24T08:19:15Z",
+      "duration_seconds": 1228,
+      "exit_code": 0
+    },
+    "reputation_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/reputation.yaml",
+      "start_time": "2026-01-24T07:58:47Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_travellers_dilemma",
+      "end_time": "2026-01-24T08:23:30Z",
+      "duration_seconds": 1483,
+      "exit_code": 0
+    },
+    "repetition_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-24T07:58:47Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/repetition_prisoners_dilemma",
+      "end_time": "2026-01-24T08:53:54Z",
+      "duration_seconds": 3307,
+      "exit_code": 0
+    },
+    "reputation_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/reputation.yaml",
+      "start_time": "2026-01-24T07:58:47Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/reputation_public_goods",
+      "end_time": "2026-01-24T08:19:36Z",
+      "duration_seconds": 1249,
+      "exit_code": 0
+    }
+  }
+}

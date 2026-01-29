@@ -1,0 +1,50 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run2_20260124_025842/no_mechanism_stag_hunt
+Running StagHunt with mechanism NoMechanism.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of google/gemini-3-flash-preview(CoT)#P2 to parse response failed: No JSON object found in the response '' from response ''
+Attempt 1 of openai/gpt-4o-2024-05-13(CoT)#P2 to parse response failed: Expecting property name enclosed in double quotes: line 2 column 1 (char 2) from response '## Step-by-Step Analysis of the Game\n\n### Step 1: Define the Goals and Constraints\n- Aim: Maximize total points in the game.\n- Constraints: Must choose a probability distribution over two actions (A0 and A1) which sums to 100%.\n\n### Step 2: Understand the Payoff Matrix\n- **You choose A0, Other choos...[truncated due to length]... indifferent:\n- \\(5 * P1(A0) + 0 * P1(A1) = 3 * P1(A0) + 3 * P1(A1)\\)\n\\(\\Rightarrow P1(A0) = \\frac{3}{5}\\), \\(P1(A1) = \\frac{2}{5}\\)\n\nSimilarly setting probabilities to be equally mixed for both players’ varied payoffs.\n\nTo maximize your payoff reliably as Player 2:\n\\[\n\\boxed{\n{"A0": 40, "A1": 60}\n}'
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in the response "Let's analyze the game step by step.\n\n---\n\n### Step 1: Understand the Payoff Matrix\n\nWe are Player 2 in this game. Let’s define the payoff matrix from **Player 2’s** perspective.\n\nThe actions are:\n- A0\n- A1\n\nThe payoffs are given as (Player 1's point...[truncated due to length]...q > 0\n- Play A1 if q = 0\n\nNow, Player 2 chooses q.\n\nIf q > 0 → Player 1 plays A0 → then Player 2’s payoff:\n- If Player 2 plays A0: 5\n- If Player 2 plays A1: 0\n\nSo best response for Player 2 is A0 → payoff 5\n\nBut since q > 0, and Player 2 is choosing q, the equilibrium is when both play A" from response "Let's analyze the game step by step.\n\n---\n\n### Step 1: Understand the Payoff Matrix\n\nWe are Player 2 in this game. Let’s define the payoff matrix from **Player 2’s** perspective.\n\nThe actions are:\n- A0\n- A1\n\nThe payoffs are given as (Player 1's points, Player 2's points).\n\nSo the full payoff matrix ...[truncated due to length]... Play A0 if q > 0\n- Play A1 if q = 0\n\nNow, Player 2 chooses q.\n\nIf q > 0 → Player 1 plays A0 → then Player 2’s payoff:\n- If Player 2 plays A0: 5\n- If Player 2 plays A1: 0\n\nSo best response for Player 2 is A0 → payoff 5\n\nBut since q > 0, and Player 2 is choosing q, the equilibrium is when both play A"
+API call failed (attempt 1/8): JSONDecodeError: Expecting value: line 309 column 1 (char 1694)
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: Expecting property name enclosed in double quotes: line 1 column 3 (char 2) from response "Let's analyze this decision-making game step by step.\n\n---\n\n### Step 1: Understand the payoff matrix\n\nWe are Player 2. The game is symmetric in structure but we are told to play in **Player 2’s position**.\n\nLet’s denote:\n- Your action: Player 2 (you)\n- Opponent’s action: Player 1\n\nThe payoff matrix ...[truncated due to length]...d\n- If you play A0 and other plays A1: you get 0\n- If you play A1 and other plays A0: you get 3\n\nThis is **not symmetrical in incentive** — the asymmetry is in the cost of being mismatched.\n\nBut in fact, from your perspective:\n- A0 is great if opponent plays A0 (5), terrible if they play A1 (0)\n- A1"
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in the response "Let's analyze this game step by step.\n\nWe are playing a simultaneous-move game with two players (Player 1 and Player 2). Each chooses an action: A0 or A1. We are Player 1.\n\n### Step 1: Payoff Matrix\n\nLet’s write out the payoff matrix from Player 1's perspe...[truncated due to length]... A0): both get 5\n2. (A1, A1): both get 3\n3. Mixed: p = 0.6, q = 0.6: both get 3\n\nSo (A0, A0) is a pure NE giving 5 points.\n\nBut if we play A0 (p=1), and the other player plays A0 (q=1), we get 5.\n\nBut if they don’t, we get less.\n\nBut in the game, we don't know what they will do.\n\nBut if" from response "Let's analyze this game step by step.\n\nWe are playing a simultaneous-move game with two players (Player 1 and Player 2). Each chooses an action: A0 or A1. We are Player 1.\n\n### Step 1: Payoff Matrix\n\nLet’s write out the payoff matrix from Player 1's perspective.\n\n|               | Player 2: A0 | Pla...[truncated due to length]...bria:\n1. (A0, A0): both get 5\n2. (A1, A1): both get 3\n3. Mixed: p = 0.6, q = 0.6: both get 3\n\nSo (A0, A0) is a pure NE giving 5 points.\n\nBut if we play A0 (p=1), and the other player plays A0 (q=1), we get 5.\n\nBut if they don’t, we get less.\n\nBut in the game, we don't know what they will do.\n\nBut if"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 4.0000
+  google/gemini-3-flash-preview(CoT): 4.0000
+  google/gemini-3-flash-preview(IO): 4.5833
+  openai/gpt-4o-2024-05-13(CoT): 3.5000
+  openai/gpt-5.2(CoT): 3.4167
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 3.6667
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 3.9999999999999996, 'google/gemini-3-flash-preview(CoT)': 3.9999999999999996, 'google/gemini-3-flash-preview(IO)': 4.583333333333333, 'openai/gpt-5.2(CoT)': 3.4166666666666665, 'openai/gpt-4o-2024-05-13(CoT)': 3.5, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.666666666666666}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.861277144006955, 'google/gemini-3-flash-preview(CoT)': 4.997796560843777, 'google/gemini-3-flash-preview(IO)': 4.999834009360574, 'openai/gpt-5.2(CoT)': 4.440726712262681, 'openai/gpt-4o-2024-05-13(CoT)': 4.044256643888524, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.889917052300355}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.937760542277323, 'google/gemini-3-flash-preview(CoT)': 4.9999903801225445, 'google/gemini-3-flash-preview(IO)': 4.999999989493481, 'openai/gpt-5.2(CoT)': 4.4740964733102935, 'openai/gpt-4o-2024-05-13(CoT)': 4.021229357611546, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.948495681400196}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.960217033052192, 'google/gemini-3-flash-preview(CoT)': 4.99999994659853, 'google/gemini-3-flash-preview(IO)': 4.99999999999943, 'openai/gpt-5.2(CoT)': 4.484537072889499, 'openai/gpt-4o-2024-05-13(CoT)': 4.013667333782356, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.966200264549818}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.970853904433209, 'google/gemini-3-flash-preview(CoT)': 4.999999999681666, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-5.2(CoT)': 4.489790536478552, 'openai/gpt-4o-2024-05-13(CoT)': 4.010053702780127, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.97484163294526}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.977037684390234, 'google/gemini-3-flash-preview(CoT)': 4.9999999999980265, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-5.2(CoT)': 4.492960613252391, 'openai/gpt-4o-2024-05-13(CoT)': 4.007943004853763, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.979961491676249}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.981073726016866, 'google/gemini-3-flash-preview(CoT)': 4.999999999999988, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-5.2(CoT)': 4.495083962837527, 'openai/gpt-4o-2024-05-13(CoT)': 4.006560771407976, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.983348163729917}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.983912428413136, 'google/gemini-3-flash-preview(CoT)': 4.999999999999999, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-5.2(CoT)': 4.4966067189611785, 'openai/gpt-4o-2024-05-13(CoT)': 4.005586099451589, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.985754459314162}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.986016326489101, 'google/gemini-3-flash-preview(CoT)': 5.0, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-5.2(CoT)': 4.497752754135838, 'openai/gpt-4o-2024-05-13(CoT)': 4.004862239296386, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.98755235063748}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.9876372483122084, 'google/gemini-3-flash-preview(CoT)': 5.0, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-5.2(CoT)': 4.498646840514009, 'openai/gpt-4o-2024-05-13(CoT)': 4.004303602907685, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.98894675086955}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.988923920044475, 'google/gemini-3-flash-preview(CoT)': 5.0, 'google/gemini-3-flash-preview(IO)': 5.0, 'openai/gpt-5.2(CoT)': 4.499364057652735, 'openai/gpt-4o-2024-05-13(CoT)': 4.003859524869354, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.99005983241261}
+
+============================================================
+
+
+======================================================================
+RE-EVALUATION SCRIPT EXECUTED
+Timestamp: 2026-01-26T17:37:54.552091
+Evaluation methods applied: evolutionary_dynamics, deviation_rating
+Previous evaluation results have been overwritten.
+
+======================================================================

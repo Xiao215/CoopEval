@@ -1,0 +1,47 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/contracting1_20260121_172329/contracting_trust_game
+Running TrustGame with mechanism Contracting.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: Expecting property name enclosed in double quotes: line 1 column 2 (char 1) from response 'Let\'s break this down step by step.\n\n---\n\n### **Step 1: Understand the original game**\n\nWe are Player 2 in a simultaneous-move game with the following payoff matrix (Player 1 rows, Player 2 columns):\n\n|               | P1: A0       | P1: A1       |\n|---------------|--------------|--------------|\n| *...[truncated due to length]...qually from other players" → this is a transfer: the other player pays you 11 if you play A0.\n\nBut it says: "drawn equally from the other players" → both players are affected.\n\nWait: "If a player chooses A0, they receive an additional payment of 11 point(s), drawn equally from the other players."\n\n"'
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in response "Let's solve this step by step.\n\n---\n\n### **Step 1: Understand the Base Game (Without Contracts)**\n\nWe are Player 1. The game is symmetric in structure but not in payoffs.\n\nPayoff matrix (Player 1's payoff, Player 2's payoff):\n\n|          | P2: A0 | P2: A1 ...[truncated due to length]...1, P2: A0):\n- P1 chooses A1 → pays 9 → gets 6 - 9 = -3\n- P2 chooses A0 → gets +2 → gets 10 + 2 = 12\n\nWait — that can't be right: if P2 chooses A0, P2 gets +2, paid by P1.\n\nYes — only the player who chooses A0 gets the +2.\n\nSo correct (P1: A1, P2: A0): P1 pays 9 → gets -3; P2 gets +2 → gets " from response "Let's solve this step by step.\n\n---\n\n### **Step 1: Understand the Base Game (Without Contracts)**\n\nWe are Player 1. The game is symmetric in structure but not in payoffs.\n\nPayoff matrix (Player 1's payoff, Player 2's payoff):\n\n|          | P2: A0 | P2: A1 |\n|----------|--------|--------|\n| **P1: A0*...[truncated due to length]...y, (P1: A1, P2: A0):\n- P1 chooses A1 → pays 9 → gets 6 - 9 = -3\n- P2 chooses A0 → gets +2 → gets 10 + 2 = 12\n\nWait — that can't be right: if P2 chooses A0, P2 gets +2, paid by P1.\n\nYes — only the player who chooses A0 gets the +2.\n\nSo correct (P1: A1, P2: A0): P1 pays 9 → gets -3; P2 gets +2 → gets "
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in response 'Let\'s break this down step by step:\n\n---\n\n### **Step 1: Understand the Base Game (Before Contracts)**\n\nWe are Player 1. The payoff matrix is as follows (rows = our action, columns = opponent\'s action):\n\n|          | Opponent A0 | Opponent A1 |\n|----------...[truncated due to length]...ove C2**.\n\nNow, **what about C1?** As we saw, C1 leads to (A0,A0) → Player 2 gets 12 → good, but less than 17 in C2.\n\nSo **Player 2 prefers C2 over C1**.\n\nThus, **Player 2 will approve both, but prefer C2**.\n\nBut they can approve both.\n\nSo likely, Player 2 approves **both C1 and C2**.\n\n' from response "Let's break this down step by step:\n\n---\n\n### **Step 1: Understand the Base Game (Before Contracts)**\n\nWe are Player 1. The payoff matrix is as follows (rows = our action, columns = opponent's action):\n\n|          | Opponent A0 | Opponent A1 |\n|----------|-------------|-------------|\n| **A0**   | (1...[truncated due to length]... 2 would approve C2**.\n\nNow, **what about C1?** As we saw, C1 leads to (A0,A0) → Player 2 gets 12 → good, but less than 17 in C2.\n\nSo **Player 2 prefers C2 over C1**.\n\nThus, **Player 2 will approve both, but prefer C2**.\n\nBut they can approve both.\n\nSo likely, Player 2 approves **both C1 and C2**.\n\n"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 8.0000
+  google/gemini-3-flash-preview(CoT): 10.7500
+  google/gemini-3-flash-preview(IO): 11.0833
+  openai/gpt-4o-2024-05-13(CoT): 9.2500
+  openai/gpt-5.2(CoT): 8.5833
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 5.3333
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 7.999999999999999, 'google/gemini-3-flash-preview(CoT)': 10.75, 'google/gemini-3-flash-preview(IO)': 11.083333333333332, 'openai/gpt-4o-2024-05-13(CoT)': 9.25, 'openai/gpt-5.2(CoT)': 8.583333333333332, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.333333333333332}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.000000038561835, 'google/gemini-3-flash-preview(CoT)': 10.000000001559432, 'google/gemini-3-flash-preview(IO)': 10.000000113000706, 'openai/gpt-4o-2024-05-13(CoT)': 8.26227325539107, 'openai/gpt-5.2(CoT)': 8.262273253831637, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727850152407}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.000000000000004, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997617, 'openai/gpt-5.2(CoT)': 8.262273137997617, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.41472776559714}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 8.0, 'google/gemini-3-flash-preview(CoT)': 10.0, 'google/gemini-3-flash-preview(IO)': 10.0, 'openai/gpt-4o-2024-05-13(CoT)': 8.262273137997614, 'openai/gpt-5.2(CoT)': 8.262273137997614, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 5.414727765597137}
+
+============================================================
+
+
+======================================================================
+RE-EVALUATION SCRIPT EXECUTED
+Timestamp: 2026-01-26T17:37:53.741855
+Evaluation methods applied: evolutionary_dynamics, deviation_rating
+Previous evaluation results have been overwritten.
+
+======================================================================

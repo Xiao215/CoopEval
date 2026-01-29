@@ -1,0 +1,8 @@
+game_config: games/trust_game.yaml
+mechanism_config: mechanisms/repetition.yaml
+agents_config: agents/few_strong_llms.yaml
+evaluation_config: evaluation/default_evaluation.yaml
+name: repetition_trust_game
+concurrency:
+  max_workers: 3
+  tournament_workers: 9

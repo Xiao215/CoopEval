@@ -1,0 +1,48 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/repetition_stag_hunt
+Running StagHunt with mechanism Repetition.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+API call failed (attempt 1/8): TypeError: 'NoneType' object is not subscriptable
+API call failed (attempt 1/8): JSONDecodeError: Expecting value: line 159 column 1 (char 869)
+API call failed (attempt 1/8): OpenAIError: API error (code 502): Network connection lost.
+API call failed (attempt 1/8): TypeError: 'NoneType' object is not subscriptable
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 4.6088
+  google/gemini-3-flash-preview(CoT): 5.0000
+  google/gemini-3-flash-preview(IO): 4.9734
+  openai/gpt-4o-2024-05-13(CoT): 4.5124
+  openai/gpt-5.2(CoT): 4.6158
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 4.8900
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.6087514215355725, 'google/gemini-3-flash-preview(CoT)': 4.999999999999999, 'google/gemini-3-flash-preview(IO)': 4.973361136435199, 'openai/gpt-5.2(CoT)': 4.615836330625706, 'openai/gpt-4o-2024-05-13(CoT)': 4.512389889761279, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.889999999999999}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.935841792791403, 'google/gemini-3-flash-preview(CoT)': 5.0, 'google/gemini-3-flash-preview(IO)': 4.995386687682264, 'openai/gpt-5.2(CoT)': 4.7878110803908145, 'openai/gpt-4o-2024-05-13(CoT)': 4.8611529092663766, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.984631146412851}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.981076750447592, 'google/gemini-3-flash-preview(CoT)': 5.0, 'google/gemini-3-flash-preview(IO)': 4.9984414329915605, 'openai/gpt-5.2(CoT)': 4.81461100038922, 'openai/gpt-4o-2024-05-13(CoT)': 4.9108679601333405, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.997623125870902}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.9923220388035485, 'google/gemini-3-flash-preview(CoT)': 4.999999999999999, 'google/gemini-3-flash-preview(IO)': 4.9993151893858405, 'openai/gpt-5.2(CoT)': 4.820136997792581, 'openai/gpt-4o-2024-05-13(CoT)': 4.9264884124552095, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999606912297307}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.996337718994916, 'google/gemini-3-flash-preview(CoT)': 4.999999999999998, 'google/gemini-3-flash-preview(IO)': 4.999662219284504, 'openai/gpt-5.2(CoT)': 4.821747137445515, 'openai/gpt-4o-2024-05-13(CoT)': 4.933101643587178, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999933832941286}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.998117694759304, 'google/gemini-3-flash-preview(CoT)': 5.0, 'google/gemini-3-flash-preview(IO)': 4.999824297943371, 'openai/gpt-5.2(CoT)': 4.822380489561565, 'openai/gpt-4o-2024-05-13(CoT)': 4.936289445638112, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999988793151651}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.998999774321577, 'google/gemini-3-flash-preview(CoT)': 4.999999999999999, 'google/gemini-3-flash-preview(IO)': 4.99990626298779, 'openai/gpt-5.2(CoT)': 4.822680396705794, 'openai/gpt-4o-2024-05-13(CoT)': 4.93792424931135, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999998096603684}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.9994603252237955, 'google/gemini-3-flash-preview(CoT)': 4.999999999999998, 'google/gemini-3-flash-preview(IO)': 4.999949359369283, 'openai/gpt-5.2(CoT)': 4.8228350960477995, 'openai/gpt-4o-2024-05-13(CoT)': 4.938789104623311, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999999676268181}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.999706676269356, 'google/gemini-3-flash-preview(CoT)': 4.999999999999998, 'google/gemini-3-flash-preview(IO)': 4.999972464741183, 'openai/gpt-5.2(CoT)': 4.822917718187593, 'openai/gpt-4o-2024-05-13(CoT)': 4.939254082005901, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999999944898101}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.999839985840891, 'google/gemini-3-flash-preview(CoT)': 4.999999999999998, 'google/gemini-3-flash-preview(IO)': 4.9999849770493885, 'openai/gpt-5.2(CoT)': 4.822962468316417, 'openai/gpt-4o-2024-05-13(CoT)': 4.939506220945945, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999999990617384}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.999912542422125, 'google/gemini-3-flash-preview(CoT)': 5.0, 'google/gemini-3-flash-preview(IO)': 4.999991788709674, 'openai/gpt-5.2(CoT)': 4.822986850265663, 'openai/gpt-4o-2024-05-13(CoT)': 4.939643577169187, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 4.999999998401998}
+
+============================================================
+
+
+======================================================================
+RE-EVALUATION SCRIPT EXECUTED
+Timestamp: 2026-01-26T17:37:55.928274
+Evaluation methods applied: evolutionary_dynamics, deviation_rating
+Previous evaluation results have been overwritten.
+
+======================================================================

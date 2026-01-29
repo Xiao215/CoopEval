@@ -17,20 +17,36 @@ Required LaTeX packages:
 import argparse
 import math
 import sys
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from src.utils.score_normalization import NormalizeScore
-from src.visualize.analysis_utils import discover_experiment_subfolders
-from src.visualize.analysis_utils import load_json as load_json_file
+from src.visualize.analysis_utils import (
+    NormalizeScore,
+    discover_experiment_subfolders,
+    display_mechanism_name,
+    load_json as load_json_file,
+    simplify_model_name,
+    sort_games,
+    sort_mechanisms,
+    sort_models,
+    validate_dict_consistency,
+    validate_folder_count_consistency,
+    validate_list_consistency,
+)
 
 # Map metric names to LaTeX display labels
 METRIC_LABELS = {
     "mean": "Mean",
-    "rd": "RD",
+    "rd": "Fitness",
     "dr": "DR",
 }
+
+
+def is_reputation_mechanism(mechanism_type: str) -> bool:
+    """Check if mechanism is any variant of Reputation."""
+    return mechanism_type.lower() in ["reputation", "reputationfirstorder"]
 
 
 @dataclass
@@ -45,6 +61,7 @@ class ExperimentData:
     eval_config: dict  # Store evaluation config for consistency checking
     # New fields for additional metrics
     rd_fitness: Optional[Dict[str, float]] = None  # Required (None only for reputation)
+    rd_populations: Optional[Dict[str, float]] = None  # Final population distribution from RD
     deviation_ranks: Optional[Dict[str, str]] = None  # Required (None only for reputation), store as rank strings
 
 
@@ -98,92 +115,355 @@ def compute_deviation_ranks(ratings: Dict[str, float]) -> Dict[str, str]:
     return ranks
 
 
-def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentData]:
+def compute_mean_stderr(values: List[float]) -> Tuple[float, float]:
     """
-    Parse batch folder and extract experiment data.
+    Compute mean and standard error from a list of values.
+
+    Args:
+        values: List of numeric values
+
+    Returns:
+        Tuple of (mean, stderr)
+    """
+    n = len(values)
+    mean = sum(values) / n
+
+    if n == 1:
+        stderr = 0.0
+    else:
+        variance = sum((x - mean) ** 2 for x in values) / (n - 1)
+        stderr = math.sqrt(variance / n)
+
+    return mean, stderr
+
+
+def apply_ranking_format(
+    model_values: List[Tuple[int, Optional[float], Optional[float], str, Optional[str]]],
+    metric_type: str,
+    tolerance: float = 0.05
+) -> List[str]:
+    """
+    Apply ranking-based formatting to model values with tie handling.
+
+    Ranks 1-2 (best): Bold
+    Ranks 3-4 (middle): Normal
+    Ranks 5-6 (worst): Gray
+
+    Ties are detected when values are within tolerance of each other.
+    Tied values receive the same rank.
+
+    Note: stderr_str is always shown in gray, independent of ranking.
+
+    Args:
+        model_values: List of (index, value, stderr, mean_str, stderr_str) tuples
+        metric_type: 'maximize' for Mean/Fitness, 'minimize' for DR
+        tolerance: Relative tolerance for tie detection (default 0.05 = 5%)
+
+    Returns:
+        List of formatted strings in original order
+    """
+    # Filter out N/A values
+    valid_entries = [(idx, val, stderr, mean_s, stderr_s) for idx, val, stderr, mean_s, stderr_s in model_values if val is not None]
+
+    if not valid_entries:
+        # All N/A, return as-is
+        return [mean_s if stderr_s is None else f"{mean_s} {stderr_s}" for _, _, _, mean_s, stderr_s in model_values]
+
+    # Sort by value (descending for maximize, ascending for minimize)
+    reverse = (metric_type == "maximize")
+    sorted_entries = sorted(valid_entries, key=lambda x: x[1], reverse=reverse)
+
+    # Assign ranks with tie handling
+    ranks: Dict[int, int] = {}
+    current_rank = 1
+    i = 0
+
+    while i < len(sorted_entries):
+        # Get current value
+        _, current_val, current_stderr, _, _ = sorted_entries[i]
+
+        # Find all entries within tolerance (tied)
+        tied_indices = [sorted_entries[i][0]]
+        j = i + 1
+
+        # Check for ties using tolerance
+        while j < len(sorted_entries):
+            _, next_val, next_stderr, _, _ = sorted_entries[j]
+
+            # Check if values are "close enough" to be considered tied
+            # Use relative tolerance based on the magnitude of values
+            if current_val != 0:
+                rel_diff = abs(next_val - current_val) / abs(current_val)
+            else:
+                rel_diff = abs(next_val - current_val)
+
+            is_tied = rel_diff <= tolerance
+
+            if is_tied:
+                tied_indices.append(sorted_entries[j][0])
+                j += 1
+            else:
+                break
+
+        # Assign rank to all tied entries
+        for idx in tied_indices:
+            ranks[idx] = current_rank
+
+        # Move to next group
+        current_rank += len(tied_indices)
+        i = j
+
+    # Apply formatting based on ranks
+    result: List[str] = [""] * len(model_values)
+
+    for idx, val, _stderr, mean_str, stderr_str in model_values:
+        if val is None:
+            # N/A values - no formatting
+            result[idx] = mean_str if stderr_str is None else f"{mean_str} {stderr_str}"
+        else:
+            rank = ranks[idx]
+
+            # Format the mean value based on rank
+            if rank <= 2:
+                # Top 2: Bold mean
+                formatted_mean = f"\\textbf{{{mean_str}}}"
+            elif rank >= len(valid_entries) - 1 and len(valid_entries) >= 5:
+                # Bottom 2 (only if we have at least 5 valid entries): Gray mean
+                # ranks >= (n-1) means the last 2 ranks
+                formatted_mean = f"\\textcolor{{gray}}{{{mean_str}}}"
+            else:
+                # Middle: Normal mean
+                formatted_mean = mean_str
+
+            # Always make stderr gray if present
+            if stderr_str is not None:
+                result[idx] = f"{formatted_mean} {{\\color{{gray}}{stderr_str}}}"
+            else:
+                result[idx] = formatted_mean
+
+    return result
+
+
+def validate_metric_consistency(
+    experiments: List[ExperimentData],
+    metric_name: str,
+    group_key: Tuple[str, str]
+) -> bool:
+    """
+    Validate that all experiments have consistent None/non-None pattern for a metric.
+
+    Args:
+        experiments: List of experiments to validate
+        metric_name: "rd_fitness" or "deviation_ranks"
+        group_key: (game, mechanism) for error messages
+
+    Returns:
+        True if metric exists (non-None), False if all are None
+
+    Raises:
+        ValueError: If experiments have inconsistent None patterns
+    """
+    if metric_name == "rd_fitness":
+        values = [exp.rd_fitness for exp in experiments]
+    else:  # "deviation_ranks"
+        assert metric_name == "deviation_ranks"
+        values = [exp.deviation_ranks for exp in experiments]
+
+    none_count = sum(1 for v in values if v is None)
+
+    if none_count == len(values):
+        # All None - this is expected for reputation mechanisms
+        return False
+    elif none_count == 0:
+        # All have data - expected for non-reputation mechanisms
+        return True
+    else:
+        # Mixed - this is an error
+        folder_paths = [str(exp.folder_path.name) for exp in experiments]
+        none_indices = [i for i, v in enumerate(values) if v is None]
+        non_none_indices = [i for i, v in enumerate(values) if v is not None]
+        raise ValueError(
+            f"Inconsistent {metric_name} data in {group_key}:\n"
+            f"  Folders with None: {[folder_paths[i] for i in none_indices]}\n"
+            f"  Folders with data: {[folder_paths[i] for i in non_none_indices]}\n"
+            f"  All experiments in a group must consistently have or lack this metric."
+        )
+
+
+def aggregate_metric_across_folders(
+    experiments: List[ExperimentData],
+    metric_name: str,
+    models: List[str]
+) -> Dict[str, Tuple[float, float]]:
+    """
+    Aggregate metric across multiple experiment folders.
+
+    Args:
+        experiments: List of ExperimentData for same (game, mechanism)
+        metric_name: "mean", "rd", or "dr"
+        models: Expected model list
+
+    Returns:
+        Dict mapping model → (mean, stderr)
+
+    Raises:
+        ValueError: If data is missing or inconsistent
+    """
+    # Collect values for each model
+    model_values: Dict[str, List[float]] = {model: [] for model in models}
+
+    for exp in experiments:
+        # Extract metric data
+        if metric_name == "mean":
+            data_dict = exp.model_scores
+        elif metric_name == "rd":
+            if exp.rd_fitness is None:
+                raise ValueError(
+                    f"Missing RD fitness in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            data_dict = exp.rd_fitness
+        else:  # "dr"
+            if exp.deviation_ranks is None:
+                raise ValueError(
+                    f"Missing deviation ranks in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            # Convert rank strings to floats
+            data_dict = {
+                m: float(rank_str)
+                for m, rank_str in exp.deviation_ranks.items()
+            }
+
+        # Collect values
+        for model in models:
+            if model not in data_dict:
+                raise ValueError(
+                    f"Missing {model} in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            value = data_dict[model]
+            if value is None:
+                raise ValueError(
+                    f"None value for {model} in {exp.folder_path}"
+                )
+            model_values[model].append(value)
+
+    # Compute mean and stderr for each model
+    results = {}
+    for model, values in model_values.items():
+        results[model] = compute_mean_stderr(values)
+
+    return results
+
+
+def parse_batch_folder(
+    batch_path: Path,
+    metrics: List[str]
+) -> tuple[
+    Dict[Tuple[str, str], List[ExperimentData]],
+    List[Tuple[Path, Exception]]
+]:
+    """
+    Parse batch folder and group experiment data by (game, mechanism).
 
     Args:
         batch_path: Path to batch experiment folder
         metrics: List of metrics to load (subset of ["mean", "rd", "dr"])
 
     Returns:
-        List of ExperimentData objects
+        Tuple of:
+        - Dict mapping (game, mechanism) → List[ExperimentData]
+        - List of (failed_path, error) tuples
 
     Raises:
-        ValueError: If no valid experiments found
+        FileNotFoundError: If batch folder doesn't exist
+        NotADirectoryError: If path is not a directory
     """
     if not batch_path.exists():
         raise FileNotFoundError(f"Batch folder not found: {batch_path}")
     if not batch_path.is_dir():
         raise NotADirectoryError(f"Path is not a directory: {batch_path}")
 
-    experiments = []
+    grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]] = defaultdict(list)
+    failed_experiments = []
 
     # Scan for subdirectories (skip configs and other non-experiment folders)
     subdirs = discover_experiment_subfolders(batch_path)
 
     for subdir in subdirs:
-        # Check for required files
-        config_path = subdir / "config.json"
-        payoff_path = subdir / "agent_average_payoff.json"
+        try:
+            # Check for required files
+            config_path = subdir / "config.json"
+            payoff_path = subdir / "agent_average_payoff.json"
 
-        if not config_path.exists() or not payoff_path.exists():
-            raise FileNotFoundError(
-                f"Missing required files in {subdir}"
-            )
+            if not config_path.exists() or not payoff_path.exists():
+                raise FileNotFoundError(
+                    f"Missing required files in {subdir}"
+                )
 
-        # Load config
-        config = load_json(config_path)
+            # Load config
+            config = load_json(config_path)
 
-        # Load payoffs
-        payoffs = load_json(payoff_path)
+            # Load payoffs
+            payoffs = load_json(payoff_path)
 
-        # Extract mechanism and game from config
-        mechanism = config["mechanism"]["type"]
-        game = config["game"]["type"]
-        game_config = config["game"]
-        eval_config = config["evaluation"]
+            # Extract mechanism and game from config
+            mechanism = config["mechanism"]["type"]
+            game = config["game"]["type"]
+            game_config = config["game"]
+            eval_config = config["evaluation"]
 
-        # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
-        if mechanism.lower() == "reputation":
-            # Reputation mechanism: explicitly use None (will display N/A)
-            rd_fitness = None
-            deviation_ranks = None
-        else:
-            # All other mechanisms: Load only requested metric files
-            rd_fitness = None
-            deviation_ranks = None
-            
-            # Load RD fitness if requested
-            if "rd" in metrics:
-                rd_fitness_path = subdir / "replicator_dynamics_fitness.json"
-                if not rd_fitness_path.exists():
-                    raise FileNotFoundError(
-                        f"Missing replicator_dynamics_fitness.json in {subdir} for mechanism {mechanism}"
-                    )
-                rd_fitness_data = load_json(rd_fitness_path)
-                if rd_fitness_data is None:
-                    raise ValueError(f"Failed to parse replicator_dynamics_fitness.json in {subdir}")
-                rd_fitness = {
-                    model: data["fitness"]
-                    for model, data in rd_fitness_data.items()
-                }
+            # Load metrics (REQUIRED for non-reputation mechanisms, based on requested metrics)
+            if is_reputation_mechanism(mechanism):
+                # Reputation mechanism: explicitly use None (will display N/A)
+                rd_fitness = None
+                rd_populations = None
+                deviation_ranks = None
+            else:
+                # All other mechanisms: Load only requested metric files
+                rd_fitness = None
+                rd_populations = None
+                deviation_ranks = None
 
-            # Load deviation ratings if requested
-            if "dr" in metrics:
-                deviation_ratings_path = subdir / "deviation_ratings.json"
-                if not deviation_ratings_path.exists():
-                    raise FileNotFoundError(
-                        f"Missing deviation_ratings.json in {subdir} for mechanism {mechanism}"
-                    )
-                deviation_ratings_data = load_json(deviation_ratings_path)
-                if deviation_ratings_data is None:
-                    raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
-                deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
+                # Load RD fitness if requested
+                if "rd" in metrics:
+                    rd_fitness_path = subdir / "replicator_dynamics_fitness.json"
+                    if not rd_fitness_path.exists():
+                        raise FileNotFoundError(
+                            f"Missing replicator_dynamics_fitness.json in {subdir} for mechanism {mechanism}"
+                        )
+                    rd_fitness_data = load_json(rd_fitness_path)
+                    if rd_fitness_data is None:
+                        raise ValueError(f"Failed to parse replicator_dynamics_fitness.json in {subdir}")
+                    rd_fitness = {
+                        model: data["fitness"]
+                        for model, data in rd_fitness_data.items()
+                    }
+                    rd_populations = {
+                        model: data["final_population"]
+                        for model, data in rd_fitness_data.items()
+                    }
 
-        # Create experiment data with new fields
-        experiments.append(
-            ExperimentData(
+                # Load deviation ratings if requested
+                if "dr" in metrics:
+                    deviation_ratings_path = subdir / "deviation_ratings.json"
+                    if not deviation_ratings_path.exists():
+                        raise FileNotFoundError(
+                            f"Missing deviation_ratings.json in {subdir} for mechanism {mechanism}"
+                        )
+                    deviation_ratings_data = load_json(deviation_ratings_path)
+                    if deviation_ratings_data is None:
+                        raise ValueError(f"Failed to parse deviation_ratings.json in {subdir}")
+                    deviation_ranks = compute_deviation_ranks(deviation_ratings_data)
+
+            # # Skip reputation mechanisms
+            # if is_reputation_mechanism(mechanism):
+            #     print(f"Skipping reputation mechanism: {mechanism}_{game}")
+            #     continue
+
+            # Create experiment data
+            exp_data = ExperimentData(
                 mechanism=mechanism,
                 game=game,
                 model_scores=payoffs,
@@ -191,191 +471,183 @@ def parse_batch_folder(batch_path: Path, metrics: List[str]) -> List[ExperimentD
                 game_config=game_config,
                 eval_config=eval_config,
                 rd_fitness=rd_fitness,
+                rd_populations=rd_populations,
                 deviation_ranks=deviation_ranks,
             )
-        )
 
-    if not experiments:
-        raise ValueError(f"No valid experiments found in {batch_path}")
+            # Group by (game, mechanism)
+            group_key = (game, mechanism)
+            grouped_experiments[group_key].append(exp_data)
 
-    return experiments
+        except Exception as e:
+            print(f"WARNING: Failed to parse experiment in {subdir}")
+            print(f"  Error: {type(e).__name__}: {e}")
+            failed_experiments.append((subdir, e))
+
+    return grouped_experiments, failed_experiments
 
 
 def build_data_structure(
-    experiments: List[ExperimentData],
+    grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]],
+    models: List[str],
+    metrics: List[str]
 ) -> tuple[
-    Dict[str, Dict[str, Dict[str, float]]],
+    Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
+    Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     Dict[str, Dict[str, Dict[str, Optional[float]]]],
-    Dict[str, Dict[str, Dict[str, Optional[str]]]],
+    Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     Dict[str, dict]
 ]:
     """
-    Build nested data structures from experiments.
+    Build nested data structures with aggregated metrics.
 
     Args:
-        experiments: List of ExperimentData objects
+        grouped_experiments: Dict mapping (game, mechanism) → List[ExperimentData]
+        models: Expected model list
+        metrics: List of metrics to aggregate
 
     Returns:
         Tuple of:
-        - Nested dict: payoffs[game][mechanism][model] = score
-        - Nested dict: rd_fitness[game][mechanism][model] = fitness or None
-        - Nested dict: deviation_ranks[game][mechanism][model] = rank_str or None
-        - Game configs: game_configs[game] = config dict
+        - payoffs[game][mechanism][model] = (mean, stderr)
+        - rd_fitness[game][mechanism][model] = (mean, stderr) or None
+        - rd_populations[game][mechanism][model] = float or None
+        - deviation_ranks[game][mechanism][model] = (mean, stderr) or None
+        - game_configs[game] = config dict
     """
-    payoffs: Dict[str, Dict[str, Dict[str, float]]] = {}
-    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[float]]]] = {}
-    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]] = {}
-    game_configs: Dict[str, dict] = {}
+    payoffs = {}
+    rd_fitness = {}
+    rd_populations = {}
+    deviation_ranks = {}
+    game_configs = {}
 
-    for exp in experiments:
-        if exp.game not in payoffs:
-            payoffs[exp.game] = {}
-            rd_fitness[exp.game] = {}
-            deviation_ranks[exp.game] = {}
-            game_configs[exp.game] = exp.game_config
+    for (game, mechanism), experiments in grouped_experiments.items():
+        # Initialize
+        if game not in payoffs:
+            payoffs[game] = {}
+            rd_fitness[game] = {}
+            rd_populations[game] = {}
+            deviation_ranks[game] = {}
+            game_configs[game] = experiments[0].game_config
 
-        if exp.mechanism not in payoffs[exp.game]:
-            payoffs[exp.game][exp.mechanism] = {}
-            rd_fitness[exp.game][exp.mechanism] = {}
-            deviation_ranks[exp.game][exp.mechanism] = {}
+        payoffs[game][mechanism] = {}
+        rd_fitness[game][mechanism] = {}
+        rd_populations[game][mechanism] = {}
+        deviation_ranks[game][mechanism] = {}
 
-        # Update payoffs
-        payoffs[exp.game][exp.mechanism].update(exp.model_scores)
+        # Aggregate metrics
+        if "mean" in metrics:
+            payoffs[game][mechanism] = aggregate_metric_across_folders(
+                experiments, "mean", models
+            )
 
-        # Update rd_fitness and deviation_ranks
-        for model in exp.model_scores.keys():
-            rd_fitness[exp.game][exp.mechanism][model] = exp.rd_fitness[model] if exp.rd_fitness else None
-            deviation_ranks[exp.game][exp.mechanism][model] = exp.deviation_ranks[model] if exp.deviation_ranks else None
+        if "rd" in metrics:
+            # Validate consistency and check if metric exists
+            has_rd_data = validate_metric_consistency(experiments, "rd_fitness", (game, mechanism))
+            if not has_rd_data:
+                # Reputation mechanism - all experiments have None
+                for model in models:
+                    rd_fitness[game][mechanism][model] = None
+                    rd_populations[game][mechanism][model] = None
+            else:
+                # All experiments have data - aggregate with population data
+                fitness_dict, population_dict = aggregate_rd_fitness_across_folders(
+                    experiments, models
+                )
+                rd_fitness[game][mechanism] = fitness_dict
+                rd_populations[game][mechanism] = population_dict
 
-    return payoffs, rd_fitness, deviation_ranks, game_configs
+        if "dr" in metrics:
+            # Validate consistency and check if metric exists
+            has_dr_data = validate_metric_consistency(experiments, "deviation_ranks", (game, mechanism))
+            if not has_dr_data:
+                # Reputation mechanism - all experiments have None
+                for model in models:
+                    deviation_ranks[game][mechanism][model] = None
+            else:
+                # All experiments have data - aggregate
+                deviation_ranks[game][mechanism] = aggregate_metric_across_folders(
+                    experiments, "dr", models
+                )
+
+    return payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs
 
 
-def sort_mechanisms(mechanisms: List[str]) -> List[str]:
+def validate_experiment_groups(
+    grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]]
+) -> Tuple[List[str], List[str], List[str], dict]:
     """
-    Sort mechanisms in the preferred order.
-
-    Args:
-        mechanisms: List of mechanism names
-
-    Returns:
-        Sorted list of mechanism names
-    """
-    # Define preferred order (case-insensitive matching)
-    preferred_order = [
-        "NoMechanism",
-        "Repetition",
-        "Reputation",
-        "Disarmament",
-        "Mediation",
-        "Contracting"
-    ]
-
-    # Create a mapping for case-insensitive lookup
-    order_map = {name.lower(): i for i, name in enumerate(preferred_order)}
-
-    # Sort mechanisms by preferred order, alphabetically for any not in the list
-    def sort_key(mech):
-        mech_lower = mech.lower()
-        if mech_lower in order_map:
-            return (0, order_map[mech_lower])
-        else:
-            return (1, mech)  # Unknown mechanisms go last, sorted alphabetically
-
-    return sorted(mechanisms, key=sort_key)
-
-
-def validate_experiments(
-    experiments: List[ExperimentData],
-) -> tuple[List[str], List[str], List[str], dict]:
-    """
-    Validate experiments and extract canonical lists.
+    Validate experiment groups.
 
     Checks:
-    1. No duplicate (mechanism, game) combinations
-    2. All experiments have identical model lists
-    3. All experiments have identical evaluation configs
-    4. Complete mechanism×game grid coverage
+    1. All groups have same folder count
+    2. Within each group: same models, game config, eval config
+    3. Across groups: same models (eval config can differ for reputation mechanisms)
 
     Args:
-        experiments: List of ExperimentData objects
+        grouped_experiments: Dict mapping (game, mechanism) → List[ExperimentData]
 
     Returns:
         Tuple of (mechanisms, games, models, eval_config)
 
     Raises:
+        AssertionError: If validation fails
         ValueError: If validation fails
     """
-    # Check for duplicate (mechanism, game) combinations
-    exp_map: Dict[tuple[str, str], ExperimentData] = {}
-    duplicates = []
-    for exp in experiments:
-        key = (exp.mechanism, exp.game)
-        if key in exp_map:
-            duplicates.append((
-                key,
-                exp_map[key].folder_path,
-                exp.folder_path
-            ))
+    # Cross-group validation: folder count
+    expected_folder_count = validate_folder_count_consistency(grouped_experiments)
+    print(f"All groups have {expected_folder_count} folder(s) - validation passed")
+
+    # Validate each group and extract canonical values
+    canonical_mechanisms = set()
+    canonical_games = set()
+    canonical_models = None
+    canonical_eval_config = None
+
+    for group_key, experiments in grouped_experiments.items():
+        game, mechanism = group_key
+        canonical_mechanisms.add(mechanism)
+        canonical_games.add(game)
+
+        # Extract data for validation
+        folder_paths = [str(exp.folder_path) for exp in experiments]
+        model_lists = [sorted(exp.model_scores.keys()) for exp in experiments]
+        eval_configs = [exp.eval_config for exp in experiments]
+        game_configs = [exp.game_config for exp in experiments]
+
+        # Within-group validation
+        validated_models = validate_list_consistency(
+            model_lists, folder_paths, group_key, "model list"
+        )
+
+        validate_dict_consistency(
+            eval_configs, folder_paths, group_key, "evaluation config"
+        )
+
+        validate_dict_consistency(
+            game_configs, folder_paths, group_key, "game config"
+        )
+
+        # Cross-group validation
+        if canonical_models is None:
+            canonical_models = validated_models
+            canonical_eval_config = eval_configs[0]
         else:
-            exp_map[key] = exp
+            if validated_models != canonical_models:
+                raise ValueError(
+                    f"Model list mismatch across groups:\n"
+                    f"  Expected: {canonical_models}\n"
+                    f"  Got in {group_key}: {validated_models}"
+                )
+            # Note: We do NOT validate eval_config cross-group because reputation
+            # mechanisms legitimately have different eval configs (no deviation_rating)
 
-    if duplicates:
-        error_msg = f"Duplicate experiments detected! Found {len(duplicates)} duplicate(s):\n"
-        for (mech, game), path1, path2 in duplicates:
-            error_msg += f"  - {mech} × {game}: {path1} and {path2}\n"
-        error_msg += "\nEach (mechanism, game) combination must appear exactly once across all folders."
-        raise ValueError(error_msg)
-
-    # Validate non-empty experiments
-    if not experiments:
-        raise ValueError("No experiments provided")
-
-    # Extract canonical sets and validate consistency on the fly
-    mechanisms = set()
-    games = set()
-    canonical_models = sorted(experiments[0].model_scores.keys())
-    canonical_eval = experiments[0].eval_config
-
-    for i, exp in enumerate(experiments):
-        mechanisms.add(exp.mechanism)
-        games.add(exp.game)
-        
-        # Check model list matches
-        exp_models = sorted(exp.model_scores.keys())
-        if exp_models != canonical_models:
-            error_msg = f"Model list mismatch detected!\n"
-            error_msg += f"  Experiment 0: {canonical_models}\n"
-            error_msg += f"  Experiment {i}: {exp_models}\n"
-            error_msg += "\nAll experiments must test the same set of models."
-            raise ValueError(error_msg)
-        
-        # Check eval config matches
-        if exp.eval_config != canonical_eval:
-            error_msg = f"Evaluation config mismatch detected!\n"
-            error_msg += f"  Experiment 0: {canonical_eval}\n"
-            error_msg += f"  Experiment {i}: {exp.eval_config}\n"
-            error_msg += "\nAll experiments must use identical evaluation configurations."
-            raise ValueError(error_msg)
-
-    # Sort canonical lists
-    canonical_mechanisms = sort_mechanisms(list(mechanisms))
-    canonical_games = sorted(games)
-
-    # Validate complete grid coverage
-    missing_combinations = []
-    for mech in canonical_mechanisms:
-        for game in canonical_games:
-            if (mech, game) not in exp_map:
-                missing_combinations.append((mech, game))
-
-    if missing_combinations:
-        error_msg = f"Incomplete mechanism×game grid! Missing {len(missing_combinations)} combination(s):\n"
-        for mech, game in missing_combinations:
-            error_msg += f"  - {mech} × {game}\n"
-        error_msg += "\nAll mechanism×game combinations must be present."
-        raise ValueError(error_msg)
-
-    return canonical_mechanisms, canonical_games, canonical_models, canonical_eval
+    # Sort and return
+    return (
+        sort_mechanisms(list(canonical_mechanisms)),
+        sort_games(list(canonical_games)),
+        sort_models(canonical_models),
+        canonical_eval_config
+    )
 
 
 def validate_data_consistency(
@@ -393,37 +665,39 @@ def validate_data_consistency(
         canonical_games: Expected list of games
         canonical_models: Expected list of models
 
-    Raises:
-        ValueError: If any combinations are missing
+    Note:
+        Missing data will be handled gracefully by showing "Unav." in tables
     """
-    missing_combinations = []
-
-    for game in canonical_games:
-        if game not in data:
-            for mechanism in canonical_mechanisms:
-                for model in canonical_models:
-                    missing_combinations.append((game, mechanism, model))
-            continue
-
-        for mechanism in canonical_mechanisms:
-            if mechanism not in data[game]:
-                for model in canonical_models:
-                    missing_combinations.append((game, mechanism, model))
-                continue
-
-            for model in canonical_models:
-                if model not in data[game][mechanism]:
-                    missing_combinations.append((game, mechanism, model))
-
-    if missing_combinations:
-        error_msg = f"Data inconsistency detected! Missing {len(missing_combinations)} combinations:\n"
-        # Show first 10 missing combinations
-        for game, mechanism, model in missing_combinations[:10]:
-            error_msg += f"  - {game} × {mechanism} × {model}\n"
-        if len(missing_combinations) > 10:
-            error_msg += f"  ... and {len(missing_combinations) - 10} more\n"
-        error_msg += "\nAll mechanism×game×model combinations must be present in batch experiments."
-        raise ValueError(error_msg)
+    # Validation disabled - we now handle missing data gracefully in table generation
+    # missing_combinations = []
+    #
+    # for game in canonical_games:
+    #     if game not in data:
+    #         for mechanism in canonical_mechanisms:
+    #             for model in canonical_models:
+    #                 missing_combinations.append((game, mechanism, model))
+    #         continue
+    #
+    #     for mechanism in canonical_mechanisms:
+    #         if mechanism not in data[game]:
+    #             for model in canonical_models:
+    #                 missing_combinations.append((game, mechanism, model))
+    #             continue
+    #
+    #         for model in canonical_models:
+    #             if model not in data[game][mechanism]:
+    #                 missing_combinations.append((game, mechanism, model))
+    #
+    # if missing_combinations:
+    #     error_msg = f"Data inconsistency detected! Missing {len(missing_combinations)} combinations:\n"
+    #     # Show first 10 missing combinations
+    #     for game, mechanism, model in missing_combinations[:10]:
+    #         error_msg += f"  - {game} × {mechanism} × {model}\n"
+    #     if len(missing_combinations) > 10:
+    #         error_msg += f"  ... and {len(missing_combinations) - 10} more\n"
+    #     error_msg += "\nAll mechanism×game×model combinations must be present in batch experiments."
+    #     raise ValueError(error_msg)
+    pass
 
 
 def format_score(score: Optional[float], precision: int = 3) -> str:
@@ -443,16 +717,209 @@ def format_score_with_stderr(
     return f"{mean:.{precision}f} $\\pm$ {stderr:.{precision}f}"
 
 
+def compute_summary_statistic(
+    data_tuples: List[Tuple[float, float]],
+    precision: int,
+    show_stderr: bool,
+    is_rank: bool = False
+) -> str:
+    """
+    Compute summary statistic (mean ± stderr) from list of (mean, stderr) tuples.
+
+    Args:
+        data_tuples: List of (mean, stderr) tuples from individual data points
+        precision: Decimal places for formatting
+        show_stderr: Whether to include stderr in output
+        is_rank: If True, uses rank formatting (.1f), otherwise uses given precision
+
+    Returns:
+        Formatted string with mean or mean ± stderr
+    """
+    if not data_tuples:
+        return "N/A"
+
+    # Extract means from tuples (ignore within-group stderr)
+    means = [t[0] for t in data_tuples]
+    avg, std = compute_mean_stderr(means)
+
+    if is_rank:
+        if show_stderr and len(means) > 1:
+            return f"{avg:.1f} $\\pm$ {std:.1f}"
+        else:
+            return f"{avg:.1f}"
+    else:
+        if show_stderr and len(means) > 1:
+            return f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
+        else:
+            return f"{avg:.{precision}f}"
+
+
+def aggregate_rd_fitness_across_folders(
+    experiments: List[ExperimentData],
+    models: List[str]
+) -> Tuple[
+    Dict[str, Tuple[float, float]],  # model → (mean_fitness, stderr)
+    Dict[str, float]                  # model → mean_population
+]:
+    """
+    Aggregate RD fitness across folders with population data.
+
+    For each model:
+    1. Compute mean fitness ± stderr across runs
+    2. Compute mean population across runs
+
+    Returns both because summary rows need population weights for averaging.
+
+    Args:
+        experiments: List of ExperimentData for same (game, mechanism)
+        models: Expected model list
+
+    Returns:
+        (fitness_dict, population_dict)
+        - fitness_dict: model → (mean_fitness, stderr_fitness)
+        - population_dict: model → mean_population
+    """
+    # Collect fitness and population values for each model
+    model_fitness_values: Dict[str, List[float]] = {model: [] for model in models}
+    model_population_values: Dict[str, List[float]] = {model: [] for model in models}
+
+    for exp in experiments:
+        # Validate data exists
+        if exp.rd_fitness is None:
+            raise ValueError(
+                f"Missing RD fitness in {exp.folder_path} "
+                f"for {exp.mechanism}_{exp.game}"
+            )
+        if exp.rd_populations is None:
+            raise ValueError(
+                f"Missing RD populations in {exp.folder_path} "
+                f"for {exp.mechanism}_{exp.game}"
+            )
+
+        # Validate population sums to ~1.0
+        total_pop = sum(exp.rd_populations.values())
+        if not (0.99 <= total_pop <= 1.01):
+            raise ValueError(
+                f"Population sum is {total_pop} (expected ~1.0) "
+                f"in {exp.folder_path} for {exp.mechanism}_{exp.game}"
+            )
+
+        # Collect values
+        for model in models:
+            if model not in exp.rd_fitness:
+                raise ValueError(
+                    f"Missing {model} fitness in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+            if model not in exp.rd_populations:
+                raise ValueError(
+                    f"Missing {model} population in {exp.folder_path} "
+                    f"for {exp.mechanism}_{exp.game}"
+                )
+
+            fitness_value = exp.rd_fitness[model]
+            population_value = exp.rd_populations[model]
+
+            if fitness_value is None or population_value is None:
+                raise ValueError(
+                    f"None value for {model} in {exp.folder_path}"
+                )
+
+            model_fitness_values[model].append(fitness_value)
+            model_population_values[model].append(population_value)
+
+    # Compute means and stderr for fitness
+    fitness_results = {}
+    for model, fitness_values in model_fitness_values.items():
+        mean_fitness, stderr_fitness = compute_mean_stderr(fitness_values)
+        fitness_results[model] = (mean_fitness, stderr_fitness)
+
+    # Compute mean populations (no stderr needed)
+    population_results = {}
+    for model, population_values in model_population_values.items():
+        mean_population = sum(population_values) / len(population_values)
+        population_results[model] = mean_population
+
+    return fitness_results, population_results
+
+
+def compute_population_weighted_summary(
+    fitness_tuples: List[Tuple[float, float]],
+    populations: List[float],
+    precision: int,
+    show_stderr: bool
+) -> str:
+    """
+    Compute population-weighted average of RD fitness values.
+
+    Args:
+        fitness_tuples: List of (mean_fitness, stderr_fitness) for each model
+        populations: List of mean_population for each model
+        precision: Number of decimal places
+        show_stderr: Whether to show stderr
+
+    Returns:
+        Formatted string with weighted average (± stderr if requested)
+    """
+    if not fitness_tuples or not populations:
+        return "N/A"
+
+    if len(fitness_tuples) != len(populations):
+        raise ValueError(
+            f"Mismatch: {len(fitness_tuples)} fitness values "
+            f"but {len(populations)} populations"
+        )
+
+    # Validate populations sum to approximately 1.0
+    total_pop = sum(populations)
+    if total_pop == 0:
+        raise ValueError("Total population is zero")
+    if not (0.99 <= total_pop <= 1.01):
+        raise ValueError(
+            f"Population distribution does not sum to ~1.0: sum = {total_pop:.6f}. "
+            f"Expected sum to be in range [0.99, 1.01]. "
+            f"Populations: {populations}"
+        )
+
+    # Normalize populations to sum to 1.0 (handle numerical errors)
+    normalized_pops = [p / total_pop for p in populations]
+
+    # Compute weighted average of mean fitness values
+    fitness_means = [t[0] for t in fitness_tuples]
+    weighted_avg = sum(
+        fitness * pop
+        for fitness, pop in zip(fitness_means, normalized_pops)
+    )
+
+    if show_stderr:
+        # Propagate stderr using weighted variance
+        # Var(weighted_sum) = sum(weight_i^2 * stderr_i^2)
+        fitness_stderrs = [t[1] for t in fitness_tuples]
+        weighted_variance = sum(
+            (pop ** 2) * (stderr ** 2)
+            for pop, stderr in zip(normalized_pops, fitness_stderrs)
+        )
+        weighted_stderr = math.sqrt(weighted_variance)
+
+        return format_score_with_stderr(
+            (weighted_avg, weighted_stderr), precision
+        )
+    else:
+        return format_score(weighted_avg, precision)
+
+
 def generate_game_table(
     game: str,
     mechanisms: List[str],
     models: List[str],
-    payoffs: Dict[str, Dict[str, Dict[str, float]]],
-    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[float]]]],
-    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]],
+    payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
+    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    rd_populations: Dict[str, Dict[str, Dict[str, Optional[float]]]],
+    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     precision: int = 3,
     metrics: List[str] | None = None,
     source_folders: List[Path] | None = None,
+    show_stderr: bool = False,
 ) -> str:
     """
     Generate LaTeX table for a single game with multicolumn headers.
@@ -463,6 +930,7 @@ def generate_game_table(
         models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
+        rd_populations: Nested dictionary with RD population distributions
         deviation_ranks: Nested dictionary with deviation ranks
         precision: Number of decimal places
         metrics: List of metrics to include (subset of ["mean", "rd", "dr"])
@@ -483,7 +951,7 @@ def generate_game_table(
         for folder in source_folders:
             lines.append(f"%   {folder}")
 
-    lines.append(r"\begin{table}[t]")
+    lines.append(r"\begin{table*}[t]")
     lines.append(r"\centering")
     lines.append(f"\\caption{{Results for {game}}}")
     game_slug = game.lower().replace(" ", "_")
@@ -492,7 +960,7 @@ def generate_game_table(
     # Determine which metrics each mechanism supports
     mech_metrics = {}
     for mech in mechanisms:
-        is_reputation = mech.lower() == "reputation"
+        is_reputation = is_reputation_mechanism(mech)
         if is_reputation:
             # Reputation only supports mean
             mech_metrics[mech] = ["mean"] if "mean" in metrics else []
@@ -508,17 +976,19 @@ def generate_game_table(
         if num_cols > 0:
             col_spec_parts.append("r" * num_cols)
     col_spec = "|".join(col_spec_parts)
+    lines.append(r"\scalebox{0.78}{")
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
     # First header row: Mechanism names with multicolumn
     header_parts = ["\\textbf{Model}"]
     for mech in mechanisms:
+        display_name = display_mechanism_name(mech)
         num_cols = len(mech_metrics[mech])
         if num_cols > 1:
-            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
+            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{display_name}}}}}")
         elif num_cols == 1:
-            header_parts.append(f"\\textbf{{{mech}}}")
+            header_parts.append(f"\\textbf{{{display_name}}}")
     lines.append(" & ".join(header_parts) + " \\\\")
 
     # Second header row: Sub-column labels (only if needed)
@@ -538,31 +1008,48 @@ def generate_game_table(
     lines.append(r"\midrule")
 
     # Summary row (average across all models)
-    row_parts = ["\\textbf{Average}"]
+    row_parts = ["\\textbf{LLM Averaged}"]
     for mech in mechanisms:
         metric_averages = {}
         mech_metric_list = mech_metrics[mech]
 
-        # Calculate average for each metric this mechanism supports
-        for metric in mech_metric_list:
-            if metric == "mean":
-                values = [payoffs[game][mech][model] for model in models]
-                avg = sum(values) / len(values)
-                metric_averages[metric] = format_score(avg, precision)
-            elif metric == "rd":
-                values = [rd_fitness[game][mech][model] for model in models if rd_fitness[game][mech][model] is not None]
-                if values:
-                    avg = sum(values) / len(values)
-                    metric_averages[metric] = format_score(avg, precision)
-                else:
-                    metric_averages[metric] = "N/A"
-            elif metric == "dr":
-                values = [float(deviation_ranks[game][mech][model]) for model in models if deviation_ranks[game][mech][model] is not None]
-                if values:
-                    avg = sum(values) / len(values)
-                    metric_averages[metric] = f"{avg:.1f}"
-                else:
-                    metric_averages[metric] = "N/A"
+        # Check if data exists for this game-mechanism combination
+        if game in payoffs and mech in payoffs[game]:
+            # Calculate average for each metric this mechanism supports
+            for metric in mech_metric_list:
+                if metric == "mean":
+                    tuples = [payoffs[game][mech][model] for model in models]
+                    metric_averages[metric] = compute_summary_statistic(
+                        tuples, precision, show_stderr, is_rank=False
+                    )
+                elif metric == "rd":
+                    # Get fitness tuples and populations for all models
+                    fitness_tuples = []
+                    populations = []
+                    for model in models:
+                        fitness_tuple = rd_fitness[game][mech][model]
+                        if fitness_tuple is not None:
+                            population = rd_populations[game][mech][model]
+                            fitness_tuples.append(fitness_tuple)
+                            populations.append(population)
+
+                    if fitness_tuples:
+                        # Use population-weighted averaging
+                        metric_averages[metric] = compute_population_weighted_summary(
+                            fitness_tuples, populations, precision, show_stderr
+                        )
+                    else:
+                        metric_averages[metric] = "N/A"
+                elif metric == "dr":
+                    tuples = [deviation_ranks[game][mech][model] for model in models
+                              if deviation_ranks[game][mech][model] is not None]
+                    metric_averages[metric] = compute_summary_statistic(
+                        tuples, precision, show_stderr, is_rank=True
+                    )
+        else:
+            # Missing data - use "Unav." for all metrics
+            for metric in mech_metric_list:
+                metric_averages[metric] = "Unav."
 
         metric_values = [metric_averages[m] for m in mech_metric_list]
         if metric_values:
@@ -573,18 +1060,51 @@ def generate_game_table(
 
     # Data rows (one per model)
     for model in models:
-        row_parts = [model]
+        row_parts = [simplify_model_name(model)]
         for mech in mechanisms:
             mech_metric_list = mech_metrics[mech]
-            payoff_score = payoffs[game][mech][model]
-            rd_val = rd_fitness[game][mech][model]
-            dr_val = deviation_ranks[game][mech][model]
 
-            metric_data = {
-                "mean": format_score(payoff_score, precision),
-                "rd": format_score(rd_val, precision) if rd_val is not None else "N/A",
-                "dr": dr_val if dr_val is not None else "N/A",
-            }
+            # Safely access nested dictionaries - use "Unav." for missing data
+            if game in payoffs and mech in payoffs[game]:
+                payoff_tuple = payoffs[game][mech][model]
+                rd_tuple = rd_fitness[game][mech][model]
+                dr_tuple = deviation_ranks[game][mech][model]
+
+                metric_data = {}
+
+                # Mean payoff
+                if show_stderr:
+                    metric_data["mean"] = format_score_with_stderr(payoff_tuple, precision)
+                else:
+                    payoff_mean, _ = payoff_tuple
+                    metric_data["mean"] = format_score(payoff_mean, precision)
+
+                # RD fitness
+                if rd_tuple is not None:
+                    if show_stderr:
+                        metric_data["rd"] = format_score_with_stderr(rd_tuple, precision)
+                    else:
+                        rd_mean, _ = rd_tuple
+                        metric_data["rd"] = format_score(rd_mean, precision)
+                else:
+                    metric_data["rd"] = "N/A"
+
+                # Deviation ranks
+                if dr_tuple is not None:
+                    dr_mean, dr_stderr = dr_tuple
+                    if show_stderr:
+                        metric_data["dr"] = f"{dr_mean:.1f} $\\pm$ {dr_stderr:.1f}"
+                    else:
+                        metric_data["dr"] = f"{dr_mean:.1f}"
+                else:
+                    metric_data["dr"] = "N/A"
+            else:
+                # Missing data - use "Unav." for all metrics
+                metric_data = {
+                    "mean": "Unav.",
+                    "rd": "Unav.",
+                    "dr": "Unav.",
+                }
 
             # Extract only metrics this mechanism supports
             metric_values = [metric_data[m] for m in mech_metric_list]
@@ -596,35 +1116,35 @@ def generate_game_table(
     # Table footer
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
-    lines.append(r"\end{table}")
+    lines.append(r"}")
+    lines.append(r"\end{table*}")
 
     return "\n".join(lines)
 
 
 def compute_aggregate_metric(
-    data,
+    data: Dict[str, Dict[str, Dict[str, Tuple[float, float] | None]]],
     game_configs: Dict[str, dict],
     mechanism: str,
     model: str,
     metric_type: str,
-) -> Optional[Tuple[float, float]] | Optional[str]:
+) -> Optional[Tuple[float, float]]:
     """
     Unified function to compute aggregate metrics across social dilemmas.
 
-    Handles three metric types:
+    Handles two metric types:
     - "numeric": For payoffs and RD fitness (returns mean ± stderr, with normalization)
-    - "rank": For deviation ranks (returns average rank as string, no normalization)
+    - "rank": For deviation ranks (returns mean ± stderr, no normalization)
 
     Args:
-        data: Nested dictionary with metric values
+        data: Nested dictionary with (mean, stderr) tuples for each metric
         game_configs: Game configuration dictionaries
         mechanism: Mechanism name
         model: Model name
         metric_type: Type of metric ("numeric" or "rank")
 
     Returns:
-        For "numeric": Tuple of (mean, stderr) or None if no data
-        For "rank": Average rank string or None if no data
+        Tuple of (mean, stderr) or None if no data
     """
     social_dilemmas = {
         "PrisonersDilemma",
@@ -645,49 +1165,43 @@ def compute_aggregate_metric(
         if game not in social_dilemmas:
             continue
 
-        value = data[game][mechanism][model]
+        # Skip if this game-mechanism combination doesn't exist
+        if mechanism not in data[game]:
+            continue
+
+        value_tuple = data[game][mechanism][model]
 
         # Skip None values (RD/DR for reputation mechanism)
-        if value is None:
+        if value_tuple is None:
             continue
+
+        # Extract mean from (mean, stderr) tuple (ignore within-game stderr)
+        mean_value, _ = value_tuple
 
         if metric_type == "numeric":
             # Apply normalization using precomputed normalizer
-            normalized_value = normalizers[game].normalize(value)
+            normalized_value = normalizers[game].normalize(mean_value)
             values.append(normalized_value)
         else:
             assert metric_type == "rank"
-            # Parse rank string to float
-            rank_value = float(value)
-            values.append(rank_value)
+            # Use rank mean directly
+            values.append(mean_value)
 
     # If no values collected (e.g., all None for reputation RD/DR), return None
     if not values:
         return None
 
-    n = len(values)
-    mean = sum(values) / n
-
-    if metric_type == "rank":
-        # Return formatted rank string
-        return f"{mean:.1f}"
-
-    # For numeric metrics, compute stderr
-    if n == 1:
-        stderr = 0.0
-    else:
-        variance = sum((x - mean) ** 2 for x in values) / (n - 1)
-        stderr = math.sqrt(variance / n)
-
-    return mean, stderr
+    # Compute mean and stderr for cross-game variation
+    return compute_mean_stderr(values)
 
 
 def generate_aggregate_table(
     mechanisms: List[str],
     models: List[str],
-    payoffs: Dict[str, Dict[str, Dict[str, float]]],
-    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[float]]]],
-    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[str]]]],
+    payoffs: Dict[str, Dict[str, Dict[str, Tuple[float, float]]]],
+    rd_fitness: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
+    rd_populations: Dict[str, Dict[str, Dict[str, Optional[float]]]],
+    deviation_ranks: Dict[str, Dict[str, Dict[str, Optional[Tuple[float, float]]]]],
     game_configs: Dict[str, dict],
     precision: int,
     metrics: List[str],
@@ -702,6 +1216,7 @@ def generate_aggregate_table(
         models: List of model names (rows)
         payoffs: Nested dictionary with payoff scores
         rd_fitness: Nested dictionary with RD fitness values
+        rd_populations: Nested dictionary with RD population distributions
         deviation_ranks: Nested dictionary with deviation ranks
         game_configs: Game configuration dictionaries for normalization
         precision: Number of decimal places
@@ -743,17 +1258,17 @@ def generate_aggregate_table(
         for folder in source_folders:
             lines.append(f"%   {folder}")
 
-    lines.append(r"\begin{table}[t]")
+    lines.append(r"\begin{table*}[t]")
     lines.append(r"\centering")
     lines.append(
-        r"\caption{Aggregate Results Across Social Dilemmas (Normalized)}"
+        r"\caption{Results aggregated from all four social dilemmas. Before aggregation, payoffs have been shifted and rescaled such that $0$ and $1$ reflect the payoff from everyone defecting and everyone playing their (most) cooperative action respectively. `\mean{}' and `\rd{}': Payoffs in uniform population or after replicator dynamics, `\dr{}': Rank obtained from deviation rankings. \et{Add maximize or minimize.} The latter two are not compatible with \REPU{}, since we cannot sensible construct a metagame from \REPU{}.}"
     )
     lines.append(r"\label{tab:aggregate_results}")
 
     # Determine which metrics each mechanism supports
     mech_metrics = {}
     for mech in mechanisms:
-        is_reputation = mech.lower() == "reputation"
+        is_reputation = is_reputation_mechanism(mech)
         if is_reputation:
             # Reputation only supports mean
             mech_metrics[mech] = ["mean"] if "mean" in metrics else []
@@ -761,139 +1276,182 @@ def generate_aggregate_table(
             # All other mechanisms support all requested metrics
             mech_metrics[mech] = metrics
 
-    # Table header with vertical bars
-    # Each mechanism has different number of sub-columns based on supported metrics
-    col_spec_parts = ["l"]
-    for mech in mechanisms:
-        num_cols = len(mech_metrics[mech])
-        if num_cols > 0:
-            col_spec_parts.append("r" * num_cols)
-    col_spec = "|".join(col_spec_parts)
+    # TRANSPOSED TABLE WITH SUBROWS: Columns are models, rows are mechanisms with metric subrows
+    # Structure: Mechanism | Metric | LLM Average | Model1 | Model2 | ...
+    # Each mechanism has 3 metric subrows (Mean, Fitness, DR), except reputation (only Mean)
+
+    # Table column spec: mechanism name, metric label, LLM Average (with double bars before, single bar after), then models
+    num_data_cols = len(models)  # Individual models
+    col_spec = "ll" + "||" + "r" + "|" + "r" * num_data_cols  # mechanism, metric || LLM Average | models
+    lines.append(r"\scalebox{0.78}{")
     lines.append(f"\\begin{{tabular}}{{{col_spec}}}")
     lines.append(r"\toprule")
 
-    # First header row: Mechanism names with multicolumn
-    header_parts = ["\\textbf{Model}"]
-    for mech in mechanisms:
-        num_cols = len(mech_metrics[mech])
-        if num_cols > 1:
-            header_parts.append(f"\\multicolumn{{{num_cols}}}{{c}}{{\\textbf{{{mech}}}}}")
-        elif num_cols == 1:
-            header_parts.append(f"\\textbf{{{mech}}}")
+    # Header row: Column names
+    header_parts = ["\\textbf{Mechanism}", "\\textbf{Metric}", "\\textbf{LLM Average}"]
+    # Individual model columns (not bold)
+    for model in models:
+        display_name = simplify_model_name(model)
+        header_parts.append(display_name)
     lines.append(" & ".join(header_parts) + " \\\\")
 
-    # Second header row: Sub-column labels (only if needed)
-    show_subheaders = any(len(mech_metrics[mech]) > 1 for mech in mechanisms)
-    if show_subheaders:
-        subheader_parts = [""]  # Empty for model column
-        for mech in mechanisms:
-            mech_metric_list = mech_metrics[mech]
-            if len(mech_metric_list) > 1:
-                metric_cols = " & ".join([f"\\textbf{{{METRIC_LABELS[m]}}}" for m in mech_metric_list])
-                subheader_parts.append(metric_cols)
-            elif len(mech_metric_list) == 1:
-                # Single column - show the metric label
-                subheader_parts.append(f"\\textbf{{{METRIC_LABELS[mech_metric_list[0]]}}}")
-        lines.append(" & ".join(subheader_parts) + " \\\\")
-
     lines.append(r"\midrule")
 
-    # Summary row (average across all models)
-    row_parts = ["\\textbf{Average}"]
-    for mech in mechanisms:
-        is_reputation = mech.lower() == "reputation"
-        mech_metric_list = mech_metrics[mech]
-        metric_averages = {}
+    # Data rows (mechanism blocks with metric subrows)
+    for mech_idx, mech in enumerate(mechanisms):
+        is_reputation = is_reputation_mechanism(mech)
+        display_name = display_mechanism_name(mech)
 
-        # Calculate average for each metric this mechanism supports
-        for metric in mech_metric_list:
+        # Determine which metrics to show for this mechanism
+        if is_reputation:
+            metric_list = ["mean"]  # Only mean for reputation
+        else:
+            metric_list = metrics  # All metrics for other mechanisms
+
+        # Create subrows for each metric
+        for metric_idx, metric in enumerate(metric_list):
+            row_parts = []
+
+            # First column: mechanism name
+            # For 3-metric mechanisms: use multirow on first row to center vertically
+            # For 1-metric mechanisms (reputation): show on the only row
+            if len(metric_list) == 3:
+                if metric_idx == 0:
+                    # Use multirow to center mechanism name vertically across 3 rows
+                    row_parts.append(f"\\multirow{{3}}{{*}}{{\\textbf{{{display_name}}}}}")
+                else:
+                    row_parts.append("")  # Empty for rows 2 and 3
+            else:
+                # Single row (reputation) - just show the name
+                row_parts.append(f"\\textbf{{{display_name}}}")
+
+            # Second column: metric label (not bold)
+            row_parts.append(METRIC_LABELS[metric])
+
+            # LLM Average column
             if metric == "mean":
-                values = [aggregate_payoffs[mech][model][0] for model in models]
-                avg = sum(values) / len(values)
-                if len(values) > 1:
-                    variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
-                    std = math.sqrt(variance)
-                else:
-                    std = 0.0
-
-                if show_stderr:
-                    metric_averages["mean"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
-                else:
-                    metric_averages["mean"] = f"{avg:.{precision}f}"
-
+                tuples = [aggregate_payoffs[mech][model] for model in models]
+                avg_val = compute_summary_statistic(
+                    tuples, precision, show_stderr, is_rank=False
+                )
+                row_parts.append(avg_val)
             elif metric == "rd":
-                values = [aggregate_rd[mech][model][0] for model in models if aggregate_rd[mech][model] is not None]
-                if values:
-                    avg = sum(values) / len(values)
-                    if len(values) > 1:
-                        variance = sum((x - avg) ** 2 for x in values) / (len(values) - 1)
-                        std = math.sqrt(variance)
-                    else:
-                        std = 0.0
+                # Compute population-weighted average for each game, then average
+                game_weighted_averages = []
+                for game in game_configs.keys():
+                    fitness_tuples = []
+                    populations = []
+                    for model in models:
+                        fitness_tuple = rd_fitness[game][mech][model]
+                        population = rd_populations[game][mech][model]
+                        fitness_tuples.append(fitness_tuple)
+                        populations.append(population)
 
-                    if show_stderr:
-                        metric_averages["rd"] = f"{avg:.{precision}f} $\\pm$ {std:.{precision}f}"
-                    else:
-                        metric_averages["rd"] = f"{avg:.{precision}f}"
+                    # Compute population-weighted average for this game
+                    fitness_means = [t[0] for t in fitness_tuples]
+                    total_pop = sum(populations)
+                    if not (0.99 <= total_pop <= 1.01):
+                        raise ValueError(
+                            f"Population sum is {total_pop} in {game}_{mech} "
+                            f"(expected ~1.0)"
+                        )
+                    normalized_pops = [p / total_pop for p in populations]
+                    weighted_avg = sum(
+                        fitness * pop
+                        for fitness, pop in zip(fitness_means, normalized_pops)
+                    )
+                    normalizer = NormalizeScore(game, game_configs[game])
+                    normalized_weighted_avg = normalizer.normalize(weighted_avg)
+                    game_weighted_averages.append(normalized_weighted_avg)
+
+                mean_across_games, stderr_across_games = compute_mean_stderr(
+                    game_weighted_averages
+                )
+                if show_stderr and len(game_weighted_averages) > 1:
+                    avg_val = format_score_with_stderr(
+                        (mean_across_games, stderr_across_games), precision
+                    )
                 else:
-                    metric_averages["rd"] = "N/A"
-
+                    avg_val = format_score(mean_across_games, precision)
+                row_parts.append(avg_val)
             elif metric == "dr":
-                values = [float(aggregate_dr[mech][model]) for model in models if aggregate_dr[mech][model] is not None]
-                if values:
-                    avg = sum(values) / len(values)
-                    metric_averages["dr"] = f"{avg:.1f}"
-                else:
-                    metric_averages["dr"] = "N/A"
+                # Average DR across all models
+                tuples = [aggregate_dr[mech][model] for model in models
+                          if aggregate_dr[mech][model] is not None]
+                avg_val = compute_summary_statistic(
+                    tuples, precision, show_stderr, is_rank=True
+                )
+                row_parts.append(avg_val)
 
-        metric_values = [metric_averages[m] for m in mech_metric_list]
-        if metric_values:
-            row_parts.append(" & ".join(metric_values))
+            # Individual model columns - collect values for ranking
+            model_values: List[Tuple[int, Optional[float], Optional[float], str, Optional[str]]] = []
 
-    lines.append(" & ".join(row_parts) + " \\\\")
-    lines.append(r"\midrule")
-
-    # Data rows (one per model)
-    for model in models:
-        row_parts = [model]
-        for mech in mechanisms:
-            is_reputation = mech.lower() == "reputation"
-            mech_metric_list = mech_metrics[mech]
-            metric_data = {}
-
-            for metric in mech_metric_list:
+            for idx, model in enumerate(models):
                 if metric == "mean":
                     payoff_result = aggregate_payoffs[mech][model]
+                    mean_val = payoff_result[0]
+                    stderr_val = payoff_result[1] if show_stderr else None
+                    mean_str = format_score(payoff_result[0], precision)
                     if show_stderr:
-                        metric_data["mean"] = format_score_with_stderr(payoff_result, precision)
+                        stderr_str = f"$\\pm$ {payoff_result[1]:.{precision}f}"
                     else:
-                        metric_data["mean"] = format_score(payoff_result[0], precision)
+                        stderr_str = None
+                    model_values.append((idx, mean_val, stderr_val, mean_str, stderr_str))
 
                 elif metric == "rd":
                     rd_result = aggregate_rd[mech][model]
                     if rd_result is not None:
+                        mean_val = rd_result[0]
+                        stderr_val = rd_result[1] if show_stderr else None
+                        mean_str = format_score(rd_result[0], precision)
                         if show_stderr:
-                            metric_data["rd"] = format_score_with_stderr(rd_result, precision)
+                            stderr_str = f"$\\pm$ {rd_result[1]:.{precision}f}"
                         else:
-                            metric_data["rd"] = format_score(rd_result[0], precision)
+                            stderr_str = None
+                        model_values.append((idx, mean_val, stderr_val, mean_str, stderr_str))
                     else:
-                        metric_data["rd"] = "N/A"
+                        model_values.append((idx, None, None, "N/A", None))
 
                 elif metric == "dr":
-                    dr_val = aggregate_dr[mech][model]
-                    metric_data["dr"] = dr_val if dr_val is not None else "N/A"
+                    dr_result = aggregate_dr[mech][model]
+                    if dr_result is not None:
+                        dr_mean, dr_stderr = dr_result
+                        mean_str = f"{dr_mean:.1f}"
+                        if show_stderr:
+                            stderr_str = f"$\\pm$ {dr_stderr:.1f}"
+                        else:
+                            stderr_str = None
+                        stderr_val = dr_stderr if show_stderr else None
+                        model_values.append((idx, dr_mean, stderr_val, mean_str, stderr_str))
+                    else:
+                        model_values.append((idx, None, None, "N/A", None))
 
-            # Extract only metrics this mechanism supports
-            metric_values = [metric_data[m] for m in mech_metric_list]
-            if metric_values:
-                row_parts.append(" & ".join(metric_values))
+            # Apply ranking-based formatting
+            if metric == "mean" or metric == "rd":
+                # Higher is better for mean and rd
+                formatted_values = apply_ranking_format(model_values, "maximize")
+            elif metric == "dr":
+                # Lower is better for DR
+                formatted_values = apply_ranking_format(model_values, "minimize")
+            else:
+                # Fallback (shouldn't happen)
+                formatted_values = [mean_s if stderr_s is None else f"{mean_s} {stderr_s}"
+                                   for _, _, _, mean_s, stderr_s in model_values]
 
-        lines.append(" & ".join(row_parts) + " \\\\")
+            # Add formatted values to row
+            row_parts.extend(formatted_values)
+
+            lines.append(" & ".join(row_parts) + " \\\\")
+
+        # Add midrule after each mechanism block (except the last one)
+        if mech_idx < len(mechanisms) - 1:
+            lines.append(r"\midrule")
 
     # Table footer
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
-    lines.append(r"\end{table}")
+    lines.append(r"}")
+    lines.append(r"\end{table*}")
 
     return "\n".join(lines)
 
@@ -974,33 +1532,49 @@ Examples:
         help="Hide standard errors in aggregate table (default: show stderr)",
     )
 
+    parser.add_argument(
+        "--show-stderr-games",
+        action="store_true",
+        default=False,
+        help="Show standard errors in per-game tables (from variation across runs)",
+    )
+
     args = parser.parse_args()
 
-    # Parse all batch folders
-    all_experiments = []
+    # Parse all batch folders and group
+    all_grouped_experiments: Dict[Tuple[str, str], List[ExperimentData]] = defaultdict(list)
+    all_failed = []
+
     for batch_path in args.batch_paths:
         try:
-            experiments = parse_batch_folder(batch_path, args.metrics)
-            all_experiments.extend(experiments)
-            print(f"Parsed {len(experiments)} experiments from {batch_path}")
-        except (FileNotFoundError, NotADirectoryError, ValueError) as e:
+            grouped, failed = parse_batch_folder(batch_path, args.metrics)
+            all_failed.extend(failed)
+
+            # Merge groups
+            for group_key, experiments in grouped.items():
+                all_grouped_experiments[group_key].extend(experiments)
+
+            print(f"Parsed {sum(len(exps) for exps in grouped.values())} experiments from {batch_path}")
+        except (FileNotFoundError, NotADirectoryError) as e:
             print(f"Error parsing {batch_path}: {e}", file=sys.stderr)
             sys.exit(1)
 
-    print(f"\nTotal experiments: {len(all_experiments)}")
+    print(f"\nTotal: {sum(len(exps) for exps in all_grouped_experiments.values())} successful, {len(all_failed)} failed")
+    print(f"Grouped into {len(all_grouped_experiments)} game-mechanism combinations")
 
-    # Validate experiments and extract canonical lists
+    # Validate experiment groups
     try:
-        mechanisms, games, models, eval_config = validate_experiments(all_experiments)
-    except ValueError as e:
+        mechanisms, games, models, eval_config = validate_experiment_groups(all_grouped_experiments)
+    except (ValueError, AssertionError) as e:
         print(f"Validation error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models")
-    print(f"Grid completeness: {len(mechanisms)} × {len(games)} = {len(all_experiments)} experiments\n")
+    print(f"Validation passed: {len(games)} games, {len(mechanisms)} mechanisms, {len(models)} models\n")
 
     # Build data structures
-    payoffs, rd_fitness, deviation_ranks, game_configs = build_data_structure(all_experiments)
+    payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs = build_data_structure(
+        all_grouped_experiments, models, args.metrics
+    )
 
     # Determine output directory
     if args.output:
@@ -1010,29 +1584,12 @@ Examples:
     else:
         output_dir = args.batch_paths[0].parent
 
-    # Store all table LaTeX for combined file
-    all_tables = []
+    # Store per-game tables for combined file
+    per_game_tables = []
 
-    # Generate and save per-game tables
-    for game in games:
-        table_latex = generate_game_table(
-            game, mechanisms, models, payoffs, rd_fitness, deviation_ranks, args.precision, args.metrics, args.batch_paths
-        )
-
-        output_path = output_dir / f"table_{game}.tex"
-        save_table(table_latex, output_path)
-
-        if not args.quiet:
-            print_table(table_latex, f"Table for {game}")
-
-        print(f"Saved: {output_path}")
-
-        # Add to combined list
-        all_tables.append(table_latex)
-
-    # Generate and save aggregate table (social dilemmas only)
+    # Generate and save aggregate table FIRST (social dilemmas only)
     aggregate_table_latex = generate_aggregate_table(
-        mechanisms, models, payoffs, rd_fitness, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
+        mechanisms, models, payoffs, rd_fitness, rd_populations, deviation_ranks, game_configs, args.precision, args.metrics, args.show_stderr, args.batch_paths
     )
 
     output_path = output_dir / "table_aggregate.tex"
@@ -1043,16 +1600,34 @@ Examples:
 
     print(f"Saved: {output_path}")
 
-    # Add aggregate table to combined list
-    all_tables.append(aggregate_table_latex)
+    # Generate per-game tables (don't save individually, just collect for combined file)
+    for game in games:
+        table_latex = generate_game_table(
+            game, mechanisms, models, payoffs, rd_fitness, rd_populations, deviation_ranks, args.precision, args.metrics, args.batch_paths, show_stderr=args.show_stderr_games
+        )
 
-    # Generate and save combined table file
-    combined_latex = "\n\n".join(all_tables)
-    combined_output_path = output_dir / "table_all_combined.tex"
+        if not args.quiet:
+            print_table(table_latex, f"Table for {game}")
+
+        # Add to per-game tables list
+        per_game_tables.append(table_latex)
+
+    # Generate and save combined per-game tables file (excluding aggregate)
+    combined_latex = "\n\n".join(per_game_tables)
+    combined_output_path = output_dir / "table_all_games.tex"
     save_table(combined_latex, combined_output_path)
-    print(f"Saved combined table: {combined_output_path}")
+    print(f"Saved combined per-game tables: {combined_output_path}")
 
-    print(f"\nTotal tables generated: {len(games) + 1} (plus 1 combined file)")
+    print(f"\nTotal tables generated: 2 files (1 aggregate + 1 combined per-game)")
+
+    # Print summary of failed experiments
+    if all_failed:
+        print(f"\n{'='*80}")
+        print(f"Failed to parse {len(all_failed)} experiment(s):")
+        for folder, error in all_failed:
+            print(f"  - {folder}")
+            print(f"    Error: {type(error).__name__}: {error}")
+        print(f"{'='*80}")
 
 
 if __name__ == "__main__":

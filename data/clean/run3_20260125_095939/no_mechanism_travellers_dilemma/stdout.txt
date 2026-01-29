@@ -1,0 +1,45 @@
+Logging to: /marvel/home/etewolde/agent-tournament/outputs/run3_20260125_095939/no_mechanism_travellers_dilemma
+Running TravellersDilemma with mechanism NoMechanism.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: Expecting property name enclosed in double quotes: line 1 column 2 (char 1) from response "Let's analyze this game step by step to find the optimal mixed strategy for Player 1 (you) that maximizes your expected payoff, assuming the other player is also rational and trying to maximize their own payoff.\n\n---\n\n### **Step 1: Understand the actions and values**\nActions correspond to numbers:\n-...[truncated due to length]...hat failed because A2 beats it.\n\nTry with **A2 and A3**\n\nEarlier: E(A2) = 6 - 2p, E(A3) = 5 - 3p → no solution\n\nWait, maybe sufficient to assume A2 and A3 are in support, and others not.\n\nBut we saw no solution.\n\nTry **A1 and A3**\n\nLet opponent play A1 with p, A3 with 1-p\n\nE(A1) = p*3 + (1-p)*5 = 3p"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 2.3333
+  google/gemini-3-flash-preview(CoT): 2.3333
+  google/gemini-3-flash-preview(IO): 2.1667
+  openai/gpt-4o-2024-05-13(CoT): 1.1667
+  openai/gpt-5.2(CoT): 2.1667
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 2.1667
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.333333333333333, 'google/gemini-3-flash-preview(CoT)': 2.333333333333333, 'google/gemini-3-flash-preview(IO)': 2.1666666666666665, 'openai/gpt-5.2(CoT)': 2.1666666666666665, 'openai/gpt-4o-2024-05-13(CoT)': 1.1666666666666665, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.1666666666666665}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0000003706457505, 'google/gemini-3-flash-preview(CoT)': 2.0000003706457505, 'google/gemini-3-flash-preview(IO)': 2.0000001853228753, 'openai/gpt-5.2(CoT)': 2.0000001853228753, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618178279860284, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0000001853228753}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0000000000002105, 'google/gemini-3-flash-preview(CoT)': 2.0000000000002105, 'google/gemini-3-flash-preview(IO)': 2.000000000000105, 'openai/gpt-5.2(CoT)': 2.000000000000105, 'openai/gpt-4o-2024-05-13(CoT)': 0.561817156754347, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.000000000000105}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 2.0, 'google/gemini-3-flash-preview(CoT)': 2.0, 'google/gemini-3-flash-preview(IO)': 2.0, 'openai/gpt-5.2(CoT)': 2.0, 'openai/gpt-4o-2024-05-13(CoT)': 0.5618171567539655, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 2.0}
+
+============================================================
+
+
+======================================================================
+RE-EVALUATION SCRIPT EXECUTED
+Timestamp: 2026-01-26T17:37:55.724863
+Evaluation methods applied: evolutionary_dynamics, deviation_rating
+Previous evaluation results have been overwritten.
+
+======================================================================

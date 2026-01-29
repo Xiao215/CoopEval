@@ -298,10 +298,20 @@ def main():
         default=None,
         help="Name for this experiment (used as subdirectory under output-dir)"
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        required=True,
+        help="Random seed for reproducibility"
+    )
 
     args = parser.parse_args()
 
-    # 0. Setup custom logging directory if provided
+    # 0. Set random seed for reproducibility
+    set_seed(args.seed)
+    print(f"Random seed set to: {args.seed}")
+
+    # 1. Setup custom logging directory if provided
     if args.output_dir:
         if args.experiment_name:
             experiment_dir = Path(args.output_dir) / args.experiment_name
@@ -310,21 +320,22 @@ def main():
         LOGGER.set_log_dir(experiment_dir)
         print(f"Logging to: {experiment_dir}")
 
-    # 1. Load config
+    # 2. Load config
     config = load_config(filename=args.config)
 
     # Setup concurrency
     concurrency_cfg = config.get("concurrency", {}) or {}
     set_default_max_workers(concurrency_cfg.get("max_workers"))
 
-    # 2. Setup game, agents and mechanism
+    # 3. Setup game, agents and mechanism
     game, mechanism = setup_game_and_mechanism(config)
     players = create_players_with_player_id(config["agents"], game.num_players)
 
-    # Log effective configuration including concurrency settings
+    # Log effective configuration including concurrency settings and seed
+    config["seed"] = args.seed
     LOGGER.log_record(config, "config.json")
 
-    # 3. Run mechanism (tournament)
+    # 4. Run mechanism (tournament)
     payoffs = run_mechanism(mechanism, players, args)
 
     # 5. Run evaluations
@@ -332,5 +343,4 @@ def main():
 
 
 if __name__ == "__main__":
-    set_seed()
     main()

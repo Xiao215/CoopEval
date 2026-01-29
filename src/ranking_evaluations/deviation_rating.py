@@ -241,8 +241,8 @@ class DeviationRating:
         N = self.n_players
         S = self.n_strategies
 
-        # Reshape to (N, S) matrix
-        ratings_matrix = ratings.reshape((N, S))
+        # Reshape to (N, S) matrix and round to 10 decimal places
+        ratings_matrix = np.round(ratings.reshape((N, S)), decimals=10)
 
         # Verify symmetry across players
         for s in range(S):

@@ -1,0 +1,68 @@
+{
+  "batch_start_time": "2026-01-21T06:34:29Z",
+  "batch_dir": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429",
+  "total_experiments": 6,
+  "completed_experiments": 6,
+  "experiments": {
+    "repetition_public_goods": {
+      "status": "success",
+      "game": "games/public_goods.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-21T06:34:32Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/repetition_public_goods",
+      "end_time": "2026-01-21T14:31:46Z",
+      "duration_seconds": 28634,
+      "exit_code": 0
+    },
+    "repetition_stag_hunt": {
+      "status": "success",
+      "game": "games/stag_hunt.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-21T06:34:32Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/repetition_stag_hunt",
+      "end_time": "2026-01-21T07:16:15Z",
+      "duration_seconds": 2503,
+      "exit_code": 0
+    },
+    "repetition_matching_pennies": {
+      "status": "success",
+      "game": "games/matching_pennies.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-21T06:34:32Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/repetition_matching_pennies",
+      "end_time": "2026-01-21T07:57:39Z",
+      "duration_seconds": 4987,
+      "exit_code": 0
+    },
+    "repetition_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-21T06:34:32Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/repetition_prisoners_dilemma",
+      "end_time": "2026-01-21T07:47:16Z",
+      "duration_seconds": 4364,
+      "exit_code": 0
+    },
+    "repetition_trust_game": {
+      "status": "success",
+      "game": "games/trust_game.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-21T06:34:32Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/repetition_trust_game",
+      "end_time": "2026-01-21T08:39:25Z",
+      "duration_seconds": 7493,
+      "exit_code": 0
+    },
+    "repetition_travellers_dilemma": {
+      "status": "success",
+      "game": "games/travellers_dilemma.yaml",
+      "mechanism": "mechanisms/repetition.yaml",
+      "start_time": "2026-01-21T06:34:32Z",
+      "output_dir": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/repetition_travellers_dilemma",
+      "end_time": "2026-01-21T07:51:00Z",
+      "duration_seconds": 4588,
+      "exit_code": 0
+    }
+  }
+}

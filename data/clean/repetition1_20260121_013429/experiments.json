@@ -1,0 +1,74 @@
+[
+  {
+    "index": 0,
+    "game": "games/matching_pennies.yaml",
+    "mechanism": "mechanisms/repetition.yaml",
+    "experiment_name": "repetition_matching_pennies",
+    "config_path": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/configs/repetition_matching_pennies.yaml",
+    "agents_config": "agents/few_strong_llms.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
+    "experiment_workers": 3,
+    "tournament_workers": 9,
+    "retry_failed_experiments": true
+  },
+  {
+    "index": 1,
+    "game": "games/prisoners_dilemma.yaml",
+    "mechanism": "mechanisms/repetition.yaml",
+    "experiment_name": "repetition_prisoners_dilemma",
+    "config_path": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/configs/repetition_prisoners_dilemma.yaml",
+    "agents_config": "agents/few_strong_llms.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
+    "experiment_workers": 3,
+    "tournament_workers": 9,
+    "retry_failed_experiments": true
+  },
+  {
+    "index": 2,
+    "game": "games/public_goods.yaml",
+    "mechanism": "mechanisms/repetition.yaml",
+    "experiment_name": "repetition_public_goods",
+    "config_path": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/configs/repetition_public_goods.yaml",
+    "agents_config": "agents/few_strong_llms.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
+    "experiment_workers": 3,
+    "tournament_workers": 9,
+    "retry_failed_experiments": true
+  },
+  {
+    "index": 3,
+    "game": "games/stag_hunt.yaml",
+    "mechanism": "mechanisms/repetition.yaml",
+    "experiment_name": "repetition_stag_hunt",
+    "config_path": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/configs/repetition_stag_hunt.yaml",
+    "agents_config": "agents/few_strong_llms.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
+    "experiment_workers": 3,
+    "tournament_workers": 9,
+    "retry_failed_experiments": true
+  },
+  {
+    "index": 4,
+    "game": "games/travellers_dilemma.yaml",
+    "mechanism": "mechanisms/repetition.yaml",
+    "experiment_name": "repetition_travellers_dilemma",
+    "config_path": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/configs/repetition_travellers_dilemma.yaml",
+    "agents_config": "agents/few_strong_llms.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
+    "experiment_workers": 3,
+    "tournament_workers": 9,
+    "retry_failed_experiments": true
+  },
+  {
+    "index": 5,
+    "game": "games/trust_game.yaml",
+    "mechanism": "mechanisms/repetition.yaml",
+    "experiment_name": "repetition_trust_game",
+    "config_path": "/marvel/home/etewolde/agent-tournament/outputs/repetition1_20260121_013429/configs/repetition_trust_game.yaml",
+    "agents_config": "agents/few_strong_llms.yaml",
+    "evaluation_config": "evaluation/default_evaluation.yaml",
+    "experiment_workers": 3,
+    "tournament_workers": 9,
+    "retry_failed_experiments": true
+  }
+]

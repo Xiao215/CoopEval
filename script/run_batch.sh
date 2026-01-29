@@ -32,13 +32,16 @@ TOURNAMENT_WORKERS=9    # Number of parallel matchups within each tournament (1=
 # Retry settings
 RETRY_FAILED_EXPERIMENTS=true  # Set to false to skip failed experiments instead of retrying them
 
+# Seeding settings
+BASE_SEED=42  # Base seed for reproducibility; experiment i will use seed BASE_SEED + i
+
 # List of game config paths (relative to configs/)
 # Based on games in src/games/
 GAME_CONFIGS=(
-    # "games/matching_pennies.yaml"
+    "games/matching_pennies.yaml"
     "games/prisoners_dilemma.yaml"
     "games/public_goods.yaml"
-    # "games/stag_hunt.yaml"
+    "games/stag_hunt.yaml"
     "games/travellers_dilemma.yaml"
     "games/trust_game.yaml"
 )
@@ -46,11 +49,12 @@ GAME_CONFIGS=(
 # List of mechanism config paths (relative to configs/)
 # Based on mechanisms in src/mechanisms/
 MECHANISM_CONFIGS=(
-    "mechanisms/no_mechanism.yaml"
+    # "mechanisms/no_mechanism.yaml"
     # "mechanisms/contracting.yaml"
     # "mechanisms/mediation.yaml"
     # "mechanisms/reputation.yaml"
     # "mechanisms/repetition.yaml"
+    "mechanisms/reputation_first_order.yaml"
 
     # "mechanisms/disarmament.yaml"
 )
@@ -66,6 +70,7 @@ MECHANISM_CONFIGS=(
 MODE=""
 BATCH_NAME=""
 RESUME_DIR=""
+CLI_BASE_SEED=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -85,9 +90,13 @@ while [[ $# -gt 0 ]]; do
             RESUME_DIR="$2"
             shift 2
             ;;
+        --base-seed)
+            CLI_BASE_SEED="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--local|--slurm] [--batch-name NAME] [--resume BATCH_DIR]"
+            echo "Usage: $0 [--local|--slurm] [--batch-name NAME] [--resume BATCH_DIR] [--base-seed SEED]"
             exit 1
             ;;
     esac
@@ -105,6 +114,11 @@ if [ -n "$RESUME_DIR" ] && [ -z "$MODE" ]; then
     echo "ERROR: Must specify --local or --slurm when resuming"
     echo "Usage: $0 --resume BATCH_DIR [--local|--slurm]"
     exit 1
+fi
+
+# Override BASE_SEED if provided via command line
+if [ -n "$CLI_BASE_SEED" ]; then
+    BASE_SEED=$CLI_BASE_SEED
 fi
 
 # =============================================================================
@@ -203,6 +217,7 @@ EOF
   "experiment_workers": $EXPERIMENT_WORKERS,
   "tournament_workers": $TOURNAMENT_WORKERS,
   "retry_failed_experiments": $RETRY_FAILED_EXPERIMENTS,
+  "base_seed": $BASE_SEED,
   "games": [$(printf '"%s",' "${GAME_CONFIGS[@]}" | sed 's/,$//')],
   "mechanisms": [$(printf '"%s",' "${MECHANISM_CONFIGS[@]}" | sed 's/,$//')],
   "total_experiments": $total_experiments,
@@ -239,6 +254,7 @@ import json
 
 experiments = []
 index = 0
+base_seed = ${BASE_SEED}
 
 games = [$(printf '"%s",' "${GAME_CONFIGS[@]}" | sed 's/,$//')]
 mechanisms = [$(printf '"%s",' "${MECHANISM_CONFIGS[@]}" | sed 's/,$//')]
@@ -260,14 +276,15 @@ for game in games:
             "evaluation_config": "${EVALUATION_CONFIG}",
             "experiment_workers": ${EXPERIMENT_WORKERS},
             "tournament_workers": ${TOURNAMENT_WORKERS},
-            "retry_failed_experiments": ${RETRY_FAILED_PY}
+            "retry_failed_experiments": ${RETRY_FAILED_PY},
+            "seed": base_seed + index
         })
         index += 1
 
 with open("${MANIFEST_FILE}", 'w') as f:
     json.dump(experiments, f, indent=2)
 
-print(f"Generated manifest with {len(experiments)} experiments")
+print(f"Generated manifest with {len(experiments)} experiments (base_seed={base_seed})")
 EOF
 
     echo "Manifest generated: $MANIFEST_FILE"

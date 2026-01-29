@@ -1,0 +1,8 @@
+game_config: games/public_goods.yaml
+mechanism_config: mechanisms/repetition.yaml
+agents_config: agents/few_strong_llms.yaml
+evaluation_config: evaluation/default_evaluation.yaml
+name: repetition_public_goods
+concurrency:
+  max_workers: 3
+  tournament_workers: 9
