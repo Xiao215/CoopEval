@@ -217,10 +217,10 @@ class Mediation(Mechanism):
             record=mediator_design, file_name="mediator_design.json"
         )
 
-        # Now call base class - it will use our cached agents
+        # Reuse the cached mediators when the base class runs the actual tournament.
         result = super().run_tournament(players)
 
-        # Clear cache for next run
+        # Prevent cross-contamination between tournaments.
         self._cached_agents = None
 
         return result
@@ -234,7 +234,7 @@ class Mediation(Mechanism):
             A list containing a single move sequence (one game result).
         """
 
-        # Step 1: Collect votes from all players
+        # Gather mediator approvals from every player (run in parallel to keep logs intact).
         def collect_vote_fn(
             player: Agent,
         ) -> tuple[Agent, str, dict[int, bool]]:
@@ -243,8 +243,8 @@ class Mediation(Mechanism):
 
         vote_results = run_tasks(players, collect_vote_fn)
 
-        # Step 2: Process voting results
-        all_votes = {}  # {voter: {mediator_idx: approval}}
+        # Normalize the raw votes into a dict keyed by voter for tallying and auditing later.
+        all_votes = {}
         vote_records = []
         for player, trace_id, votes in vote_results:
             all_votes[player] = votes
@@ -256,11 +256,11 @@ class Mediation(Mechanism):
                 }
             )
 
-        # Step 3: Select winning mediator
+        # Choose the mediator design with the most approvals (random tie-breaker).
         winning_idx, winning_agent = self._select_mediator(players, all_votes)
         winning_mediator = self.mediators[winning_agent.name]
 
-        # Step 4: Play game once under selected mediator
+        # Feed the mediator's description plus an action remapping into the base game for the actual playthrough.
         mediator_description = self._mediator_description(winning_mediator)
         mediator_mechanism = self.mediation_mechanism_prompt.format(
             mediator_description=mediator_description,
@@ -274,7 +274,7 @@ class Mediation(Mechanism):
             action_map=self.mediator_mapping(winning_mediator),
         )
 
-        # Step 6: Log voting and game results
+        # Persist both the votes and final moves for later inspection.
         record = {
             "votes": vote_records,
             "selected_mediator_index": winning_idx,
@@ -283,7 +283,7 @@ class Mediation(Mechanism):
         }
         LOGGER.log_record(record=[record], file_name=self.record_file)
 
-        # Return list with single game result (base class will call payoffs.add_profile)
+        # Base class expects a list-of-rounds; mediation only plays once.
         return [moves]
 
     def mediator_mapping(self, mediator: dict[int, Action]) -> Callable:
@@ -312,7 +312,7 @@ class Mediation(Mechanism):
                 _mediated,
             ) in players_decision.items():
                 if action.is_mediator:
-                    # Hard coded mediated to True for identifying whether a move comes from mediation in record
+                    # Flag mediated moves explicitly so downstream analysis can attribute them to the mediator.
                     post_mapping_decision[player] = (
                         recommended_action,
                         trace_id,

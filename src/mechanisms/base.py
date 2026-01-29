@@ -135,20 +135,19 @@ class RepetitiveMechanism(Mechanism):
 
         def __init__(self, action_class: type[Action]) -> None:
             self.action_class = action_class
-            # List of all rounds information.
-            # Note, the indices is arbitrary and only used for lookup.
+            # Raw move histories stored in insertion order; indices act as stable IDs.
             self.records: list[list[Move]] = []
 
-            # Maps each record index to its tournament round number
+            # Some mechanisms reuse external round numbers, so keep both logical and sequential IDs.
             self.round_numbers: list[int] = []
 
-            # Maps player -> List of global round indices they participated in
+            # Track which record indices each player participated in for quick lookups.
             self.player_round_indices: dict[Agent, list[int]] = defaultdict(
                 list
             )
 
-            # Maps player -> List of cumulative distributions at each step
-            # Index i corresponds to the state after the player's i-th game
+            # For each player, capture the cumulative action histogram after every appearance.
+            # The i-th entry reflects the distribution immediately after their i-th game.
             self.player_cumulative_actions: dict[
                 Agent, list[dict[Action, int]]
             ] = defaultdict(list)

@@ -58,12 +58,7 @@ class MatchupPayoffs(PayoffsBase):
 
     @override
     def add_profile(self, moves_over_rounds: Sequence[Sequence[Move]]) -> None:
-        """
-        Record match outcomes.
-
-        The call to this method should be intended to record all the entire sequence of matches, included repetitive rounds.
-        Multiple calls to this method should be intended for averaging over multiple independent batches of matches.
-        """
+        """Record all rounds from one tournament execution; separate calls represent independent runs."""
         if not moves_over_rounds:
             raise ValueError("Cannot add empty moves list to payoff table")
 

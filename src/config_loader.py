@@ -1,7 +1,6 @@
 """Modular configuration loading system."""
 
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -59,17 +58,14 @@ class ConfigLoader:
         """Load and merge all component configs referenced in main."""
         resolved = {}
 
-        # Load game component
         if 'game_config' in main:
             game_path = self._resolve_config_path(main['game_config'])
             resolved['game'] = self._load_yaml(game_path)
 
-        # Load mechanism component
         if 'mechanism_config' in main:
             mech_path = self._resolve_config_path(main['mechanism_config'])
             resolved['mechanism'] = self._load_yaml(mech_path)
 
-        # Load agents component
         if 'agents_config' in main:
             agents_path = self._resolve_config_path(main['agents_config'])
             # Agent configs are lists directly (no wrapper key)
@@ -90,7 +86,7 @@ class ConfigLoader:
 
         return resolved
 
-    def load_component(self, component_path: str, component_type: str):
+    def load_component(self, component_path: str):
         """
         Load a single component config.
 

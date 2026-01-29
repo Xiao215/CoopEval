@@ -32,7 +32,7 @@ class PublicGoods(Game):
         if not (1.0 <= multiplier <= num_players):
             raise ValueError("Multiplier should be between 1 and num_players.")
         action_class = PublicGoodsAction
-        self.endowment = 1  # value of endowment does not matter
+        self.endowment = 1  # Normalize endowment to 1; all payoffs scale linearly so absolute value is irrelevant.
         self.multiplier = multiplier
         self.num_players = num_players
 

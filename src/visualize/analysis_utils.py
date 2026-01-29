@@ -160,18 +160,6 @@ def simplify_model_name(model_name: str) -> str:
         "anthropic/claude-sonnet-4.5(CoT)" -> "claude-sonnet-4.5"
         "qwen/qwen3-30b-a3b-instruct-2507(CoT)" -> "qwen3-30b-a3b"
     """
-    # Define mappings for specific models
-    # model_mappings = {
-    #     "google/gemini-3-flash-preview": {
-    #         "with_cot": "gemini-3-f-reasoning",
-    #         "without_cot": "gemini-3-f-base"
-    #     },
-    #     "openai/gpt-5.2": "gpt-5.2",
-    #     "openai/gpt-4o-2024-05-13": "gpt-4o",
-    #     "anthropic/claude-sonnet-4.5": "claude-sonnet-4.5",
-    #     "qwen/qwen3-30b-a3b-instruct-2507": "qwen3-30b-a3b"
-    # }
-
     model_mappings = {
         "google/gemini-3-flash-preview": {
             "with_cot": "Gemini-R",
@@ -183,21 +171,15 @@ def simplify_model_name(model_name: str) -> str:
         "qwen/qwen3-30b-a3b-instruct-2507": "Qwen-30b"
     }
 
-    # Check if model has CoT suffix
     has_cot = "(CoT)" in model_name
     base_model = model_name.replace("(CoT)", "").replace("(IO)", "").strip()
 
-    # Look up the mapping
-    if base_model in model_mappings:
-        mapping = model_mappings[base_model]
-        if isinstance(mapping, dict):
-            # Special handling for models with different variants
-            return mapping["with_cot"] if has_cot else mapping["without_cot"]
-        else:
-            # Simple mapping
-            return mapping
+    mapping = model_mappings.get(base_model)
+    if isinstance(mapping, dict):
+        return mapping["with_cot"] if has_cot else mapping["without_cot"]
+    if mapping:
+        return mapping
 
-    # Fallback to basic cleaning if no mapping exists
     return model_name
 
 
@@ -224,7 +206,6 @@ def sort_mechanisms(mechanisms: list[str]) -> list[str]:
     Returns:
         Sorted list of mechanism names
     """
-    # Define preferred order (case-insensitive matching)
     preferred_order = [
         "NoMechanism",
         "Repetition",
@@ -235,16 +216,13 @@ def sort_mechanisms(mechanisms: list[str]) -> list[str]:
         "Contracting"
     ]
 
-    # Create a mapping for case-insensitive lookup
     order_map = {name.lower(): i for i, name in enumerate(preferred_order)}
 
-    # Sort mechanisms by preferred order, alphabetically for any not in the list
     def sort_key(mech):
         mech_lower = mech.lower()
         if mech_lower in order_map:
             return (0, order_map[mech_lower])
-        else:
-            return (1, mech)  # Unknown mechanisms go last, sorted alphabetically
+        return (1, mech)
 
     return sorted(mechanisms, key=sort_key)
 
@@ -259,7 +237,6 @@ def sort_games(games: list[str]) -> list[str]:
     Returns:
         Sorted list of game names
     """
-    # Define preferred order (case-insensitive matching)
     preferred_order = [
         "PrisonersDilemma",
         "PublicGoods",
@@ -269,16 +246,13 @@ def sort_games(games: list[str]) -> list[str]:
         "MatchingPennies"
     ]
 
-    # Create a mapping for case-insensitive lookup
     order_map = {name.lower(): i for i, name in enumerate(preferred_order)}
 
-    # Sort games by preferred order, alphabetically for any not in the list
     def sort_key(game):
         game_lower = game.lower()
         if game_lower in order_map:
             return (0, order_map[game_lower])
-        else:
-            return (1, game)  # Unknown games go last, sorted alphabetically
+        return (1, game)
 
     return sorted(games, key=sort_key)
 
@@ -295,30 +269,21 @@ def sort_models(models: list[str]) -> list[str]:
     Returns:
         Sorted list of model names
     """
-    # Define preferred order based on model patterns
-    # Order: claude, gemini with reasoning, gemini without reasoning, gpt 5.2, gpt 4o, qwen
     def sort_key(model):
         model_lower = model.lower()
 
-        # Claude models
         if "claude" in model_lower:
             return (0, model)
-        # Gemini with reasoning (CoT)
         elif "gemini" in model_lower and "(cot)" in model_lower:
             return (1, model)
-        # Gemini without reasoning (IO or base)
         elif "gemini" in model_lower:
             return (2, model)
-        # GPT-5.2
         elif "gpt-5" in model_lower:
             return (3, model)
-        # GPT-4o
         elif "gpt-4" in model_lower:
             return (4, model)
-        # Qwen models
         elif "qwen" in model_lower:
             return (5, model)
-        # Unknown models go last, sorted alphabetically
         else:
             return (6, model)
 

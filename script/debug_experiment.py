@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
+"""
+Small harness for exercising script.run_experiment with a curated config file.
+It rewrites sys.argv so we can mimic CLI usage directly from an IDE/debugger.
+"""
 import sys
 from pathlib import Path
 
-# Add project root to Python path
+# Allow running from the repo root without installing the package
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-# Specify Configs and simulate command line arguments
 from script.run_experiment import main, set_seed
 
 CONFIG = "main/pd_testing.yaml"
+# Uncomment to smoke-test reputations locally
 # CONFIG = "main/pg_reputation_test.yaml"
+
+# Reuse the same interface as the CLI entry point
 sys.argv = ["script/run_experiment.py", "--config", CONFIG]
 
-# ============ Legacy Configs for reference ============
-# from script.run_evolution import set_seed, main
-# CONFIG = "legacy/tg_testing_openrouter.yaml"
-# sys.argv = ["run_evolution.py", "--config", CONFIG]
-
-
-# Run the main script
 if __name__ == "__main__":
     set_seed()
     main()

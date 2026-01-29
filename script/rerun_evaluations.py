@@ -57,17 +57,17 @@ def discover_experiment_folders(batch_dir: Path) -> list[Path]:
     experiment_dirs = []
 
     for item in batch_dir.iterdir():
-        # Skip non-directories and metadata folders
+        # Only consider real experiment directories; skip metadata and stray files
         if not item.is_dir():
             continue
         if item.name in {"configs", "__pycache__", "slurm"}:
             continue
 
-        # Check if it's a valid experiment folder
+        # Treat directories with serialized configs as runnable experiments
         config_file = item / "config.json"
         with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
-        # Check if it's a reputation experiment (always skip)
+        # Reputation experiments have bespoke evaluation logic; leave them untouched here
         mechanism_type = config["mechanism"]["type"].lower()
         if mechanism_type in {"reputation", "reputationfirstorder"}:
             print(f"  Skipping reputation experiment: {item.name}")
@@ -95,7 +95,7 @@ def load_matchup_payoffs(experiment_dir: Path) -> MatchupPayoffs:
     with open(matchup_file, "r", encoding="utf-8") as f:
         payload = json.load(f)
 
-    # MatchupPayoffs.from_json() handles agent reconstruction
+    # MatchupPayoffs.from_json() rehydrates players/metadata needed downstream
     return MatchupPayoffs.from_json(payload)
 
 
@@ -112,14 +112,14 @@ def load_agents_from_config(config: dict) -> list[Agent]:
     agents_config = config["agents"]
     game_config = config["game"]
 
-    # Infer num_players from game type
+    # Non-public-goods games are 2-player; public goods encodes its arity explicitly
     game_type = game_config["type"]
     if game_type == "PublicGoods":
         num_players = game_config["kwargs"]["num_players"]
     else:
         num_players = 2  # Default for most games
 
-    # Reconstruct players using registry function
+    # Use the registry helper so player IDs match the serialized payoff tensor
     players = create_players_with_player_id(agents_config, num_players)
 
     return players
@@ -227,15 +227,11 @@ def update_config_evaluation(config_file: Path, new_evaluation_config: dict) -> 
     with open(config_file, "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    # Update evaluation section
+    # Mirror the rerun configuration so downstream tooling sees the updated metadata
     config["evaluation"] = new_evaluation_config
-
-    # Write back atomically
     temp_file = config_file.with_suffix(".json.tmp")
     with open(temp_file, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
-
-    # Atomic rename
     temp_file.replace(config_file)
 
     print(f"    Updated config.json with new evaluation methods")
@@ -284,12 +280,12 @@ def run_evaluations_on_experiment(
     """
     print(f"\nProcessing experiment: {experiment_dir.name}")
 
-    # 1. Load config
+    # 1. Load config for agent/game metadata
     config_file = experiment_dir / "config.json"
     with open(config_file, "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    # 2. Load existing matchup payoffs
+    # 2. Load existing matchup payoffs to avoid re-running the expensive tournament
     print("  Loading matchup payoffs...")
     matchup_payoffs = load_matchup_payoffs(experiment_dir)
 
@@ -297,22 +293,22 @@ def run_evaluations_on_experiment(
     print("  Building payoff tensor...")
     matchup_payoffs.build_payoff_tensor()
 
-    # 4. Load agents from config
+    # 4. Load agents from config so rankings use readable agent labels
     print("  Reconstructing agents...")
     players = load_agents_from_config(config)
 
-    # 5. Set random seed
+    # 5. Set random seed for deterministic replicator dynamics
     set_seed(seed)
     print(f"  Random seed set to: {seed}")
 
-    # 6. Setup logger to write to experiment directory
+    # 6. Redirect logger output to the experiment directory for easy auditing
     original_log_dir = LOGGER._log_dir
     LOGGER.set_log_dir(experiment_dir)
 
     evaluation_methods_run = []
 
     try:
-        # 7. Run each evaluation method from config
+        # 7. Execute every evaluation method declared in the new config
         methods = evaluation_config["methods"]
         print(f"  Running {len(methods)} evaluation method(s)...")
 
@@ -329,17 +325,17 @@ def run_evaluations_on_experiment(
                 run_deviation_rating_rerun(matchup_payoffs, eval_kwargs)
                 evaluation_methods_run.append("deviation_rating")
 
-        # 8. Update config.json with new evaluation methods
+        # 8. Persist evaluation metadata alongside the experiment
         print("  Updating metadata...")
         update_config_evaluation(config_file, evaluation_config)
 
-        # 9. Append to stdout.txt with datestamp
+        # 9. Leave a visible breadcrumb for future investigators
         append_to_stdout(experiment_dir, evaluation_methods_run)
 
         print(f"  ✓ Completed {experiment_dir.name}")
 
     finally:
-        # 10. Restore original log directory
+        # 10. Restore the original logging destination so global state is unchanged
         if original_log_dir:
             LOGGER._log_dir = original_log_dir
 
@@ -357,14 +353,11 @@ def update_batch_config(batch_dir: Path, evaluation_config_path: str) -> None:
     with open(batch_config_file, "r", encoding="utf-8") as f:
         batch_config = json.load(f)
 
-    # Update evaluation_config field
+    # Record which evaluation config produced the refreshed artifacts
     batch_config["evaluation_config"] = evaluation_config_path
-
-    # Write back atomically
     temp_file = batch_config_file.with_suffix(".json.tmp")
     with open(temp_file, "w", encoding="utf-8") as f:
         json.dump(batch_config, f, indent=2)
-
     temp_file.replace(batch_config_file)
 
     print(f"✓ Updated batch_config.json")
@@ -388,14 +381,13 @@ def update_yaml_configs(
     for exp_name in processed_experiments:
         yaml_file = configs_dir / f"{exp_name}.yaml"
 
-        # Read YAML file
+        # Load the saved CLI arguments for this experiment
         with open(yaml_file, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
-        # Update evaluation_config field
+        # Point each config at the evaluation spec used during the rerun
         config["evaluation_config"] = evaluation_config_path
 
-        # Write back atomically
         temp_file = yaml_file.with_suffix(".yaml.tmp")
         with open(temp_file, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
@@ -420,11 +412,11 @@ def update_experiments_json(
     """
     experiments_file = batch_dir / "experiments.json"
 
-    # Read experiments.json
+    # Keep the experiments index in sync so dashboards show the new evaluation spec
     with open(experiments_file, "r", encoding="utf-8") as f:
         experiments = json.load(f)
 
-    # Update evaluation_config for each processed experiment
+    # Only touch experiments we actually processed in this run
     processed_set = set(processed_experiments)
     updated_count = 0
 
@@ -433,11 +425,9 @@ def update_experiments_json(
             experiment["evaluation_config"] = evaluation_config_path
             updated_count += 1
 
-    # Write back atomically
     temp_file = experiments_file.with_suffix(".json.tmp")
     with open(temp_file, "w", encoding="utf-8") as f:
         json.dump(experiments, f, indent=2)
-
     temp_file.replace(experiments_file)
 
     print(f"✓ Updated experiments.json ({updated_count} experiment(s))")
@@ -475,7 +465,6 @@ def parse_arguments() -> argparse.Namespace:
 
 def main():
     """Main entry point for re-running evaluations."""
-    # Parse arguments
     args = parse_arguments()
 
     print("="*70)
@@ -485,19 +474,18 @@ def main():
     print(f"Random seed: {args.seed}")
     print(f"Batch folders: {len(args.batch_folders)}")
 
-    # Load evaluation config YAML
+    # Use ConfigLoader so relative paths can reference configs/ without extra plumbing
     loader = ConfigLoader()
     evaluation_config = loader.load_component(
         args.evaluation_config,
-        component_type="evaluation"
     )
 
     print(f"Evaluation methods: {[m['type'] for m in evaluation_config['methods']]}")
 
-    # Validate evaluation config once
+    # Fail fast if the supplied evaluation config is incomplete
     validate_evaluation_config(evaluation_config)
 
-    # Process each batch folder
+    # Iterate through each batch independently so one failure does not abort the rest
     all_successful = []
     all_failed = []
 
@@ -508,13 +496,13 @@ def main():
         print(f"Processing batch: {batch_dir}")
         print(f"{'='*70}")
 
-        # Discover experiments (always skip reputation)
+        # Skip reputation batches—they require different evaluators than the matchup ones
         experiment_dirs = discover_experiment_folders(batch_dir)
         processed_experiment_names = []
 
         print(f"\nFound {len(experiment_dirs)} non-reputation experiment(s) to process")
 
-        # Process each experiment
+        # Keep going even if one experiment fails; others might still succeed
         for exp_dir in experiment_dirs:
             try:
                 run_evaluations_on_experiment(exp_dir, evaluation_config, args.seed)

@@ -234,7 +234,7 @@ class Contracting(Mechanism):
 
     @override
     def run_tournament(self, players: list[Agent]) -> PayoffsBase:
-        # Cache agents so base class reuses them
+        # Record the participants so MatchupPayoffs sees the same Agent objects during run_tournament.
         self._cached_agents = players
 
         def design_fn(player: Agent) -> tuple[Agent, str, Contract]:
@@ -255,10 +255,10 @@ class Contracting(Mechanism):
             record=contract_design, file_name="contract_design.json"
         )
 
-        # Now call base class - it will use our cached agents
+        # Let the shared tournament runner execute with the cached contracts.
         result = super().run_tournament(players)
 
-        # Clear cache for next run
+        # Avoid leaking references between tournaments.
         self._cached_agents = None
 
         return result
@@ -306,7 +306,7 @@ class Contracting(Mechanism):
         """
         Have players vote on contracts, select winner, get signatures, and play once.
         """
-        # Step 1: Collect votes from all players
+        # Collect every player's approval vector in parallel so we can tally the winner quickly.
         def collect_vote_fn(
             player: Agent,
         ) -> tuple[Agent, str, dict[int, bool]]:
@@ -315,8 +315,8 @@ class Contracting(Mechanism):
 
         vote_results = run_tasks(players, collect_vote_fn)
 
-        # Step 2: Process voting results
-        all_votes = {}  # {voter: {contract_idx: approval}}
+        # Fold the raw vote traces into a single dict for downstream tie-breaking while preserving provenance.
+        all_votes = {}
         vote_records = []
         for player, trace_id, votes in vote_results:
             all_votes[player] = votes
@@ -328,11 +328,11 @@ class Contracting(Mechanism):
                 }
             )
 
-        # Step 3: Select winning contract
+        # Determine which contract cleared the approval threshold (ties broken randomly).
         winning_idx, winning_agent = self._select_contract(players, all_votes)
         winning_contract = self.contracts[winning_agent.name]
 
-        # Step 4: Collect signatures for the winning contract
+        # Designers can win even if others refuse to sign; gather those signature decisions separately.
         def sign_contract_fn(player: Agent) -> tuple[Agent, str, bool]:
             _, trace_id, agreement = self._agree_to_contract(
                 player=player, designer=winning_agent
@@ -341,7 +341,7 @@ class Contracting(Mechanism):
 
         sign_results = run_tasks(players, sign_contract_fn)
 
-        # Step 5: Process signature results
+        # Track who signed and who opted out so prompts and logs can reflect the outcome.
         player_ids = {player: f"Player {player.player_id}" for player in players}
 
         all_agree = True
@@ -356,7 +356,7 @@ class Contracting(Mechanism):
                 all_agree = False
                 rejector_ids.append(player_ids[player])
 
-        # Step 6: Play game once (with or without contract)
+        # Prepare the narration the base game should see—either the accepted contract or the reason it failed.
         if all_agree:
             contract_prompt = CONTRACT_MECHANISM_PROMPT.format(
                 contract_description=self._contract_description(

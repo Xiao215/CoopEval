@@ -25,7 +25,7 @@ class TestInstance(LLM):
         if self._is_contract_confirmation_prompt(prompt):
             return self._fake_contract_confirmation_response(prompt)
         if self._is_action_making_prompt(prompt):
-            # Parse the action template to determine number of actions
+            # Inspect the canonical "Actions available" template so our fake distribution matches the game's arity.
             num_actions = self._count_actions_in_template(prompt)
 
             caps = self._parse_disarm_caps_from_prompt(prompt)
@@ -130,12 +130,10 @@ class TestInstance(LLM):
         return ints
 
     def _count_actions_in_template(self, prompt: str) -> int:
-        """Count the number of action keys in the template by finding all A0, A1, A2, etc."""
-        # First, try to find action definitions in the "Actions available" section
-        # This works for all games that list actions like "- A0:", "- A1:", etc.
+        """Infer action count by inspecting the canonical `Actions available` bullet list."""
         action_keys = re.findall(r'^\s*-\s*A(\d+)', prompt, re.MULTILINE)
         assert action_keys, "No action keys found in the prompt."
-        # Return the maximum action index + 1 (since A0 is the first action)
+        # A0 is the first action; max index + 1 gives the total arity.
         return max(int(key) for key in action_keys) + 1
 
     def _fake_mediator_design_response(self, prompt: str) -> str:

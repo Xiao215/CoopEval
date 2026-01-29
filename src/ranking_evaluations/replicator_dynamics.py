@@ -31,11 +31,11 @@ class DiscreteReplicatorDynamics:
         self.players = players
         self.matchup_payoffs = matchup_payoffs
         
-        # Ensure payoff tensor is built
+        # Replicator dynamics relies on the tensor; defer construction until the first request to avoid unnecessary work.
         if matchup_payoffs._payoff_tensor is None:
             matchup_payoffs.build_payoff_tensor()
         
-        # Use agent types from payoff tensor
+        # The tensor captures the canonical ordering of agent types; reuse it for all bookkeeping.
         self.agent_types = matchup_payoffs._tensor_agent_types
         if self.agent_types is None:
             raise ValueError(

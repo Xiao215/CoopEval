@@ -72,14 +72,14 @@ class Disarmament(RepetitiveMechanism):
             opp_lines.append(f"{other_player_label}: {other_player_caps}")
         other_players_caps_block = "\n".join(opp_lines)
 
-        # Build base prompt with current state
+        # Inject both the player's caps and everyone else's latest proposals plus the continuation probability.
         base_prompt = DISARM_PROMPT_BASE.format(
             my_caps=self_caps_description,
             other_players_caps=other_players_caps_block,
             discount=round(self.discount * 100),
         )
 
-        # Append appropriate format requirement based on whether player can disarm
+        # Force the right response schema depending on whether this player still has slack to disarm.
         can_disarm = sum(caps[player]) > 100.0
         if can_disarm:
             return base_prompt + DISARM_FORMAT_CAN_DISARM
@@ -157,9 +157,8 @@ class Disarmament(RepetitiveMechanism):
                 f"'choice' field must be either 'disarm', 'pass', or 'end', got {choice!r}"
             )
 
-        # For "pass" and "end", return current caps (no changes)
+        # For "pass" and "end", the player's bounds remain unchanged.
         if choice_lower in ("pass", "end"):
-            # Validate no other keys present
             extra_keys = set(json_obj.keys()) - {"choice"}
             if extra_keys:
                 raise ValueError(
@@ -168,14 +167,14 @@ class Disarmament(RepetitiveMechanism):
                 )
             return choice_lower, caps[player]
 
-        # For "disarm", check if player has room to disarm
+        # Disarm requests only make sense if the player still has probability mass above 100.
         if sum(caps[player]) <= 100.0:
             raise ValueError(
                 'You chose "disarm" but your upper bounds already sum to 100, so you have no room to disarm further. '
                 'You may only choose "pass" or "end".'
             )
 
-        # Parse and validate the caps
+        # Otherwise parse the proposal and ensure it touches every action key.
         n = self.base_game.num_actions
         got_keys = set(json_obj.keys()) - {"choice"}
         missing = set(f"A{i}" for i in range(n)) - got_keys
@@ -245,7 +244,7 @@ class Disarmament(RepetitiveMechanism):
         Returns:
             A list of move sequences (one sequence per round played).
         """
-        # Create per-matchup state to avoid shared state across parallel matchups
+        # Each matchup keeps its own probability caps so parallel tournaments don't bleed state.
         current_disarm_caps = {
             player: [100.0 for _ in range(self.base_game.num_actions)]
             for player in players
@@ -256,14 +255,14 @@ class Disarmament(RepetitiveMechanism):
         matchup_moves = []
 
         for _ in range(1, self.num_rounds + 1):
-            # Prompt ALL players (including those with no room to disarm)
+            # Always solicit responses from every player so the transcript reflects unanimous consent (or lack thereof).
             negotiation_results = self._run_negotiations(players, current_disarm_caps)
 
             proposed_caps: CapsByPlayer = {}
             player_choices = {}
             disarming_phase_records: list[dict[str, Any]] = []
 
-            # First pass: collect all choices and proposed caps
+            # First pass: capture each player's choice plus the full trace for auditing.
             for player in players:
                 trace_id, choice, player_cap = negotiation_results[player]
 
@@ -279,25 +278,22 @@ class Disarmament(RepetitiveMechanism):
                     }
                 )
 
-            # Check for veto
+            # Any explicit "end" immediately halts negotiation.
             veto = any(choice == "end" for choice in player_choices.values())
 
-            # Determine which caps to use (veto discards all proposed changes)
+            # Veto keeps the previous caps; otherwise apply the fresh proposals.
             if veto:
                 caps_to_use = current_disarm_caps.copy()
             else:
                 caps_to_use = proposed_caps
 
-            # Check if negotiation continues (no veto and at least one "disarm")
+            # Continue only if at least one player wants to disarm and nobody vetoed.
             active_disarm = any(choice == "disarm" for choice in player_choices.values())
             negotiation_continue = (not veto) and active_disarm
 
-            # Calculate termination reason for this round
-            # We play the game in every iteration, simulating what would happen if disarmament ended here
+            # Emit a human-readable reason for why the phase ended (or why we simulated an end this round).
             if not negotiation_continue:
-                # Explicit stop condition
                 if veto:
-                    # Find which players vetoed
                     vetoers = [
                         f"Player {player.player_id}"
                         for player, choice in player_choices.items()
@@ -305,33 +301,27 @@ class Disarmament(RepetitiveMechanism):
                     ]
                     termination_reason = f"{', '.join(vetoers)} vetoed by choosing to end the disarmament phase."
                 else:
-                    # No veto, but negotiation stopped
-                    # Check if anyone has room to disarm
                     any_room_to_disarm = any(
                         sum(current_disarm_caps[player]) > 100.0
                         for player in players
                     )
                     if not any_room_to_disarm:
-                        # No one can disarm further (all at sum=100)
                         termination_reason = "No players can disarm further (all at sum=100)."
                     else:
-                        # No veto, people can disarm, but no one chose to
-                        # This means everyone must have chosen "pass"
                         assert all(choice == "pass" for choice in player_choices.values()), \
                             "Logic error: negotiation stopped without veto, but not everyone passed"
                         termination_reason = "Everyone passed - no active disarmament occurred."
             else:
-                # No explicit stop, but we're simulating what would happen if continuation probability ended it
                 termination_reason = "The disarmament phase came to an end by random chance."
 
-            # Build formatted cap lines for all players
+            # Precompute pretty versions of the caps so prompt construction below stays simple.
             player_cap_lines = {}
             for player in players:
                 label = f"Player {player.player_id}"
                 caps_desc = self._caps_description(caps_to_use[player])
                 player_cap_lines[player] = f"{label}: {caps_desc}"
 
-            # Second pass: build mechanism prompts for each player
+            # Second pass: provide each player with their own caps plus everyone else's summary.
             disarmament_mechanisms: list[str] = []
             for player in players:
                 # Extract just the caps description for "my_caps" (without the label)

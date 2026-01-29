@@ -24,8 +24,7 @@ from src.visualize.analysis_utils import (NormalizeScore,
                                             validate_list_consistency,
                                             )
 
-# Styling constants
-# High contrast: deep purple (bad) -> dark red (NE) -> orange-red -> bright yellow (cooperative) -> bright cyan
+# Styling constants (monotone from "bad" purple to "good" cyan for payoff shifts)
 PALETTE_BASE = ["#2E0854", "#B30000", "#FF5722", "#FFEB3B", "#00E5FF", "#00BCD4"]
 COLOR_PALETTE = {
     "primary": "#355070",
@@ -58,15 +57,14 @@ def load_and_build_tensor(folder_path: Path) -> tuple[np.ndarray, list[str], int
 
     num_players = get_num_players_from_matchup(json_data)
 
-    # Build full payoff tensor for all players using existing symmetry method
+    # Leverage the symmetry-aware helper so we do not duplicate indexing logic here
     full_tensor = payoffs.build_full_payoff_tensor()
 
     return full_tensor, payoffs._tensor_agent_types, num_players
 
 
 def to_snake_case(text: str) -> str:
-    """Convert text to snake_case."""
-    # Handle camelCase to snake_case
+    """Convert CamelCase/mixed identifiers to snake_case."""
     import re
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', text)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -181,18 +179,17 @@ def generate_latex_file(output_dir: Path, created_plots: list[tuple[str, str, Pa
         f.write("% Payoff Tensor Visualizations\n")
         f.write("% Generated automatically\n\n")
         
-        # Group by mechanism
+        # Keep mechanisms grouped so LaTeX consumers can import exactly the sections they need
         mechanisms = {}
         for mechanism, game, filepath in created_plots:
             if mechanism not in mechanisms:
                 mechanisms[mechanism] = []
             mechanisms[mechanism].append((game, filepath))
         
-        # Write organized by mechanism
+        # Deterministic ordering within each mechanism keeps git diffs readable
         for mechanism in sort_mechanisms(list(mechanisms.keys())):
             display_mech = display_mechanism_name(mechanism)
             f.write(f"\n% {display_mech.replace('_', ' ').title()}\n")
-            # Sort games within each mechanism
             game_list = [game for game, _ in mechanisms[mechanism]]
             sorted_games = sort_games(game_list)
             game_filepath_map = {game: filepath for game, filepath in mechanisms[mechanism]}
@@ -229,31 +226,29 @@ def plot_2player_payoff_tensor(
     """
     n = len(agent_labels)
 
-    # Reshape full_tensor to get payoff matrices for each player
-    # Joint strategies are ordered as (i,j) -> i*n + j
+    # Reshape using the same joint-strategy ordering (i,j) -> i*n + j used during serialization
     p1_payoffs = full_tensor[0, :].reshape(n, n)
     p2_payoffs = full_tensor[1, :].reshape(n, n)
 
-    # Create normalized payoff matrix for coloring
+    # Color encodes Player 1's normalized payoff so plots share a consistent legend
     p1_normalized = np.zeros_like(p1_payoffs)
     for i in range(n):
         for j in range(n):
             p1_normalized[i, j] = normalizer.normalize(p1_payoffs[i, j])
 
-    # Clip normalized scores to [-1, 1.5] range for consistent color mapping
+    # Clamp extremes so qualitatively similar plots use the same palette range
     p1_normalized = np.clip(p1_normalized, -1.0, 1.5)
 
-    # Create annotation matrix with both players' payoffs (raw scores)
+    # Keep raw payoffs visible so readers can recover both players' utilities
     annotations = np.empty((n, n), dtype=object)
     for i in range(n):
         for j in range(n):
             annotations[i, j] = f"{p1_payoffs[i, j]:.1f}/{p2_payoffs[i, j]:.1f}"
 
-    # Clean labels for display
+    # Strip provider prefixes to prevent axis labels from overflowing
     cleaned_labels = [simplify_model_name(label) for label in agent_labels]
 
-    # Create heatmap - color by normalized player 1's payoff, annotate with raw payoffs
-    # Use fixed vmin/vmax for consistent colors across all plots
+    # Fixed vmin/vmax keeps visual comparisons meaningful across mechanisms
     fig, ax = plt.subplots(figsize=(10, 8))
 
     sns.heatmap(
@@ -297,23 +292,18 @@ def plot_3player_payoff_tensor(
     """
     n = len(agent_labels)
 
-    # Create 2x3 subplot grid for 6 agents with larger figure and adjusted spacing
     fig, axes = plt.subplots(2, 3, figsize=(24, 16))
     axes = axes.flatten()
 
-    # Clean labels for display
     cleaned_labels = [simplify_model_name(label) for label in agent_labels]
 
-    # Use fixed vmin/vmax for consistent colors across all plots
     vmin = -1.0
     vmax = 1.5
 
-    # Create a heatmap for each player 3 choice
     for k in range(n):
         ax = axes[k]
 
-        # Extract all players' payoffs when player 3 chooses strategy k
-        # Joint strategies are ordered as (i,j,k) -> i*n*n + j*n + k
+        # Joint strategies follow (i,j,k) -> i*n*n + j*n + k
         p1_payoffs = np.zeros((n, n))
         p1_normalized = np.zeros((n, n))
         p2_payoffs = np.zeros((n, n))
@@ -333,10 +323,8 @@ def plot_3player_payoff_tensor(
                 p3_payoffs[i, j] = p3
                 annotations[i, j] = f"{p1:.1f}/{p2:.1f}/{p3:.1f}"
 
-        # Clip normalized scores to [-1, 1.5] range for consistent color mapping
         p1_normalized = np.clip(p1_normalized, -1.0, 1.5)
 
-        # Create heatmap - color by normalized player 1's payoff, annotate with raw payoffs
         sns.heatmap(
             data=p1_normalized,
             annot=annotations,
@@ -358,7 +346,6 @@ def plot_3player_payoff_tensor(
         ax.set_ylabel("Player 1 Model", fontsize=11)
         ax.set_title(f"Player 3: {cleaned_labels[k]}", fontsize=12, fontweight='bold')
 
-    # Add a single colorbar for all subplots on the right side
     fig.subplots_adjust(right=0.92, hspace=0.3, wspace=0.3)
     cbar_ax = fig.add_axes([0.94, 0.15, 0.02, 0.7])
     fig.colorbar(
@@ -378,9 +365,6 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
     output_dir = Path(output_dir)
     created_plots = []
 
-    # ==========================================
-    # PHASE 1: Discovery and Grouping
-    # ==========================================
     print("Phase 1: Discovering and grouping experiment folders...")
 
     grouped_folders: dict[tuple[str, str], dict] = defaultdict(lambda: {
@@ -395,17 +379,14 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
         folders = discover_experiment_subfolders(experiment_dir)
 
         for folder in folders:
-            # Load config (let errors propagate)
             config = load_json(folder / "config.json")
             game_type = config["game"]["type"]
             mechanism_type = config["mechanism"]["type"]
 
-            # Skip reputation mechanisms
             if mechanism_type.lower() in ["reputation", "reputationfirstorder"]:
                 print(f"Skipping reputation mechanism: {mechanism_type}_{game_type}")
                 continue
 
-            # Add to group
             group_key = (game_type, mechanism_type)
             grouped_folders[group_key]['folders'].append(folder)
             grouped_folders[group_key]['configs'].append(config)
@@ -414,27 +395,20 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
 
     print(f"Grouped into {len(grouped_folders)} game-mechanism combinations\n")
 
-    # ==========================================
-    # PHASE 2: Validate Folder Count and Load Tensors
-    # ==========================================
     print("Phase 2: Validating folder counts and loading tensors...")
 
-    # Validate that all groups have the same number of folders
     expected_folder_count = validate_folder_count_consistency(grouped_folders)
     print(f"All groups have {expected_folder_count} folder(s) - validation passed\n")
 
-    # Load tensors from each folder in each group
     for group_key, group_data in grouped_folders.items():
         game_type, mechanism_type = group_key
         print(f"Loading {mechanism_type}_{game_type}...")
 
         for folder in group_data['folders']:
-            # Let errors propagate - no try/catch
             full_tensor, agent_labels, num_players = load_and_build_tensor(folder)
             group_data['tensors'].append(full_tensor)
             group_data['agent_labels_list'].append(agent_labels)
 
-        # Validate consistency within this group
         agent_labels, game_config, mechanism_config = validate_group_consistency(
             group_data['agent_labels_list'],
             group_data['configs'],
@@ -442,40 +416,30 @@ def plot_payoff_tensors(experiment_dirs: list[str | Path], output_dir: str | Pat
             group_key
         )
 
-        # Store validated values
         group_data['agent_labels'] = agent_labels
         group_data['game_config'] = game_config
         group_data['mechanism_config'] = mechanism_config
 
         print(f"  Loaded and validated {len(group_data['tensors'])} tensor(s)")
 
-    # ==========================================
-    # PHASE 3: Average and Plot
-    # ==========================================
     print("\nPhase 3: Averaging tensors and creating plots...")
 
     for group_key, group_data in grouped_folders.items():
         game_type, mechanism_type = group_key
         print(f"\nPlotting {mechanism_type}_{game_type}...")
 
-        # Average tensors
         averaged_tensor = average_tensors(group_data['tensors'], group_key)
         print(f"  Averaged {len(group_data['tensors'])} tensor(s)")
 
-        # Get validated metadata
         agent_labels = group_data['agent_labels']
         game_config = group_data['game_config']
 
-        # Create normalizer
         normalizer = NormalizeScore(game_type, game_config)
 
-        # Determine number of players from tensor shape
         num_players = averaged_tensor.shape[0]
 
-        # Get output path
         output_path = get_output_path(output_dir, mechanism_type, game_type)
 
-        # Create plot (let errors propagate)
         if num_players == 2:
             plot_2player_payoff_tensor(
                 averaged_tensor, agent_labels, game_type,

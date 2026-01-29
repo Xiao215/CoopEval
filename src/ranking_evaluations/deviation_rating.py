@@ -31,7 +31,7 @@ class DeviationRating:
             population_payoffs: PopulationPayoffs instance with built payoff tensor.
             tolerance: Base tolerance for numerical comparisons (will be scaled by payoff range).
         """
-        # Validate that tensor has been built
+        # Ratings operate on the matchup tensor; require callers to materialize it first so we do not silently fall back to averages.
         if matchup_payoffs._payoff_tensor is None:
             raise ValueError(
                 "Must call build_payoff_tensor() before creating DeviationRating"
@@ -41,7 +41,7 @@ class DeviationRating:
                 "MatchupPayoffs must have _tensor_agent_types populated"
             )
 
-        # Extract game parameters
+        # Cache basic tensor geometry for convenience.
         self.n_players = matchup_payoffs._payoff_tensor.ndim
         self.n_strategies = matchup_payoffs._payoff_tensor.shape[0]
         self.agent_types = matchup_payoffs._tensor_agent_types
@@ -52,13 +52,12 @@ class DeviationRating:
                 f"{len(self.agent_types)} agent types and {self.n_strategies} strategies"
             )
 
-        # Build full payoff tensor for all players
+        # Build the symmetric payoff tensor G[p, joint_strategy] up front so the LP can reuse it.
         self.G = matchup_payoffs.build_full_payoff_tensor()
 
-        # Store tolerance
         self.base_tolerance = tolerance
 
-        # Generate joint strategy space for reference
+        # Precompute the joint-strategy tuples once; they index both the tensor and the deviation matrix.
         self.joint_strategies = list(
             product(range(self.n_strategies), repeat=self.n_players)
         )
@@ -81,26 +80,20 @@ class DeviationRating:
         S = self.n_strategies
         n_joint_strategies = len(self.joint_strategies)
 
-        # Initialize deviation matrix
         M = np.zeros((N * S, n_joint_strategies), dtype=float)
 
-        # For each player and deviation strategy
         for player_idx in range(N):
             for deviation_strat in range(S):
                 row_idx = player_idx * S + deviation_strat
 
-                # For each joint strategy
                 for joint_strat_idx, joint_strat in enumerate(self.joint_strategies):
-                    # Construct deviation: replace player's strategy with deviation_strat
                     deviation_joint_strat = list(joint_strat)
                     deviation_joint_strat[player_idx] = deviation_strat
 
-                    # Find index of deviation joint strategy
                     deviation_joint_strat_idx = self.joint_strategies.index(
                         tuple(deviation_joint_strat)
                     )
 
-                    # M[(p,s), a] = G_p(s, a_{-p}) - G_p(a)
                     M[row_idx, joint_strat_idx] = (
                         G[player_idx, deviation_joint_strat_idx]
                         - G[player_idx, joint_strat_idx]
@@ -136,23 +129,20 @@ class DeviationRating:
         S = self.n_strategies
         n_joint_strategies = len(self.joint_strategies)
 
-        # Initialize ratings and tracking
+        # Keep track of which strategy-player pairs have been fixed (rated) so later LPs can enforce equality constraints.
         ratings = np.zeros(N * S, dtype=float)
         is_rated = np.zeros(N * S, dtype=bool)
         active_set_count = 0
         iteration = 0
         max_iterations = N * S
 
-        # Iterative LP algorithm (Algorithm 1)
         while active_set_count < N * S:
             iteration += 1
 
-            # Create Gurobi model
             model = gp.Model("deviation_rating")
             model.setParam("OutputFlag", 0)  # Suppress output
             model.setParam("Method", 2)  # Dual simplex
 
-            # Variables
             sigma = model.addMVar(
                 n_joint_strategies, lb=0.0, name="sigma"
             )  # Joint distribution
@@ -160,14 +150,11 @@ class DeviationRating:
                 lb=-GRB.INFINITY, name="epsilon"
             )  # Max deviation gain
 
-            # Constraint: probability simplex
             model.addConstr(sigma.sum() == 1.0, name="simplex")
 
-            # Compute M @ sigma
             M_sigma = M @ sigma
 
-            # Add symmetry constraints: for each strategy s, all players must have same deviation gain
-            # This enforces that M[p*S + s, :] @ sigma == M[0*S + s, :] @ sigma for all p, s
+            # Enforce permutation invariance: every player using strategy s must see the same deviation gain.
             for s in range(S):
                 for p in range(1, N):
                     model.addConstr(
@@ -175,7 +162,6 @@ class DeviationRating:
                         name=f"symmetry_p{p}_s{s}",
                     )
 
-            # Constraints for rated strategies (equality) and unrated strategies (inequality)
             for i in range(N * S):
                 if is_rated[i]:
                     model.addConstr(
@@ -188,10 +174,8 @@ class DeviationRating:
                         name=f"unrated_{i}",
                     )
 
-            # Objective: minimize epsilon
             model.setObjective(epsilon, GRB.MINIMIZE)
 
-            # Solve
             model.optimize()
 
             if model.status != GRB.OPTIMAL:
@@ -200,11 +184,9 @@ class DeviationRating:
                     "This should not happen for CCE problems."
                 )
 
-            # Extract solution
             sigma_star = sigma.X
             epsilon_star = epsilon.X
 
-            # Identify active constraints
             delta = M @ sigma_star
 
             newly_active = 0

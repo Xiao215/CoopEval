@@ -90,7 +90,7 @@ class TravellersDilemma(Game):
             is_symmetric=True,
         )
 
-        # Override mixed-strategy instruction to reflect multi-action correctly
+        # Traveller's Dilemma can expose dozens of claims, so restate the output instructions to emphasize covering the full action set.
         self.default_output_instruction = textwrap.dedent(
             """
         Instruction:

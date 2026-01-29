@@ -68,22 +68,18 @@ class PayoffsBase(ABC):
                 "Only the last round will be counted due to weight logic."
             )
 
-        # Vectorized weight calculation
         rounds_idx = np.arange(num_rounds)
         weights = (1 - d) * (d**rounds_idx)
-        # Update the tail probability. This is the same as weights[-1] += d ** num_rounds.
-        # It assumes that whatever the last round's payoff is that the players achieved,
-        # will be the estimate of the payoffs they can expect for the rest of the iterations.
+        # Reassign the entire infinite-horizon tail to the final observed round so that the
+        # weighted average models "play forever after the last sample".
         weights[-1] = d ** (num_rounds - 1)
 
-        # In particular, the sum to 1.0
         if not math.isclose(np.sum(weights), 1.0):
             raise ValueError(
                 f"Discount weights sum to {np.sum(weights)}, expected 1.0"
             )
 
-        # Broadcasting weights: (num_rounds, 1) to multiply against (matches, rounds, players)
-        # We sum over axis 0 (rounds)
+        # Align weights (rounds, 1) with payoffs (rounds, players) before summing over rounds
         weighted_sums = np.sum(payoffs * weights[:, None], axis=0)
 
         return weighted_sums

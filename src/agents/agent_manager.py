@@ -27,7 +27,7 @@ class LLMManager:
             elif provider == "TestInstance":
                 self.llms[model_name] = TestInstance()
             elif provider in {"OpenAI", "Gemini", "OpenRouter"}:
-                # Default to OpenAI API based models
+                # These providers expose OpenAI-compatible HTTP APIs, so reuse the hosted client wrapper
                 self.llms[model_name] = ClientAPILLM(model_name, provider)
             else:
                 raise ValueError(
@@ -166,15 +166,13 @@ class Agent(ABC):
 
 
 class IOAgent(Agent):
-    """Input/Output Agent.
-    This agent is designed to be the most basic llm agent. Given a message, answer it.
-    """
+    """Input/Output agent that forces models to reply with bare answers (no reasoning preamble)."""
 
     def chat(
         self,
         messages: str,
     ) -> tuple[str, str]:
-        """Chat with the agent using the provided messages."""
+        """Append terse formatting instructions so the LLM returns only the action JSON."""
         messages += textwrap.dedent(
             """
             Please ONLY provide the output to the above question.
@@ -185,21 +183,18 @@ class IOAgent(Agent):
 
     @property
     def agent_type(self) -> str:
-        """Return the model type and prompt strategy."""
+        """Expose the `(IO)` suffix so downstream logging distinguishes prompt styles."""
         return f"{self.model_type}(IO)"
 
 
 class CoTAgent(Agent):
-    """Chain-of-Thought Agent.
-
-    This agent wraps the prompt to ask the LLM to think step-by-step.
-    """
+    """Chain-of-Thought agent that explicitly asks the model to reason before answering."""
 
     def chat(
         self,
         messages: str,
     ) -> tuple[str, str]:
-        """Chat with the agent using the provided messages."""
+        """Add structured reasoning instructions, then fall back to the same logging pipeline."""
         messages += textwrap.dedent(
             """
             Think about the question step by step.
@@ -211,5 +206,5 @@ class CoTAgent(Agent):
 
     @property
     def agent_type(self) -> str:
-        """Return the model type and prompt strategy."""
+        """Expose the `(CoT)` suffix to keep wandb/log output aligned with prompt type."""
         return f"{self.model_type}(CoT)"

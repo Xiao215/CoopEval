@@ -9,7 +9,7 @@ from transformers import logging as hf_logging
 from config import MODEL_WEIGHTS_DIR
 from src.agents.base import LLM
 
-# Suppress HF warnings
+# Keep Transformers from spamming INFO logs when loading large checkpoints
 hf_logging.set_verbosity_error()
 torch.set_float32_matmul_precision("high")
 
@@ -23,15 +23,15 @@ class HFInstance(LLM):
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            torch_dtype=torch.float16,  # use float16 for better performance on GPU
-            device_map="auto",  # automatically shards layers across GPU/CPU
+            torch_dtype=torch.float16,  # half precision keeps GPU memory usage manageable
+            device_map="auto",  # let Transformers shard layers across all visible accelerators
             offload_folder="hf_offload",
             offload_state_dict=True,
         )
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.model.config.pad_token_id = self.tokenizer.eos_token_id
 
-        # Gemma models have some issue with cache in long generation, temporarily disable it
+        # Gemma checkpoints misbehave with KV-cache on long generations; disable until upstream fixes land.
         self.use_cache = False if "gemma" in model_name else True
 
     def invoke(self, prompt: str, **kwargs: Any) -> str:

@@ -31,11 +31,10 @@ class ReputationPayoffs(PayoffsBase):
         """
         super().__init__(discount=discount)
 
-        # Storage: All points grouped by Player
-        # Structure: {player: list of points over all rounds}
+        # Keep a simple running log of every player's score so history-dependent mechanisms can be replayed.
         self._profiles: dict[Agent, list[float]] = defaultdict(list)
 
-        # Thread safety for concurrent matchup execution
+        # Concurrent tournaments append to _profiles, so guard writes with a lock.
         self._lock = threading.Lock()
 
     @override
@@ -66,7 +65,6 @@ class ReputationPayoffs(PayoffsBase):
             Dictionary mapping agent type to average discounted payoff, or None
             for agents that were never drawn.
         """
-        # Aggregate payoffs by agent type
         agent_payoffs: dict[str, list[float]] = defaultdict(list)
 
         for player, points_list in self._profiles.items():
@@ -74,20 +72,12 @@ class ReputationPayoffs(PayoffsBase):
             if not points_list:
                 continue
 
-            # Extract payoffs
             payoffs_array = np.array(points_list, dtype=float)
-
-            # Reshape to (num_rounds, 1) for discounting
             payoffs_2d = payoffs_array.reshape(-1, 1)
-
-            # Apply discounting
             discounted = self._compute_discounted_average(payoffs_2d)
-
-            # Extract the single value
             agent_payoffs[agent_type].append(float(discounted[0]))
 
-        # Average across all instances of each model
-        # Include all agents from _uid_to_agent, with None for those never drawn
+        # Report None for models that never appeared so downstream code can tell them apart from zero-score models.
         all_agents = set(player.agent_type for player in self._profiles.keys())
         return {
             agent_type: (

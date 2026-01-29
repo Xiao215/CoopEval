@@ -48,12 +48,12 @@ class ClientAPILLM(LLM):
 
     def invoke(self, prompt: str, **kwargs: Any) -> str:
         """Call the remote chat completion endpoint with basic retry/backoff."""
-        # Extract OpenRouter-specific parameters that need to go in extra_body
+        # OpenRouter threads "reasoning" config through `extra_body`; strip it from kwargs before calling the client.
         extra_body = {}
         if "reasoning" in kwargs:
             extra_body["reasoning"] = kwargs.pop("reasoning")
 
-        # Simple retry/backoff around the API call
+        # Exponential backoff to survive transient HTTP / rate-limit failures.
         delays = [2**i for i in range(1,8)]
         for attempt, delay in enumerate([0] + delays):
             if delay:
@@ -65,11 +65,10 @@ class ClientAPILLM(LLM):
                     extra_body=extra_body if extra_body else None,
                     **kwargs,
                 )
-                # Extract and return the response content
-                # This needs to be inside the try block to catch malformed responses
+                # Pull the first choice; do it inside the try to surface malformed payloads.
                 choice = completion.choices[0]
 
-                # Check for error in the choice object (e.g., quota exceeded, content filter)
+                # Some providers embed per-choice errors (quota, filter hits); surface them as OpenAIError.
                 if hasattr(choice, 'error') and choice.error:
                     error_msg = choice.error.get('message', 'Unknown error')
                     error_code = choice.error.get('code', 'unknown')
@@ -80,11 +79,10 @@ class ClientAPILLM(LLM):
                     raise OpenAIError("API returned empty response content")
                 return content
             except Exception as e:
-                # Catch all errors (API errors, malformed responses, HTTP errors, etc.)
-                # These are typically transient issues that can be retried
+                # Treat everything as retryable (httpx, OpenAIError, JSON issues); bail only after exhausting delays.
                 if attempt == len(delays):
                     raise e
-                # Log the error for debugging
+                # Keep a breadcrumb so operators know why we're retrying without flooding logs.
                 print(f"API call failed (attempt {attempt + 1}/{len(delays) + 1}): {type(e).__name__}: {e}")
                 continue
         raise RuntimeError("Unknown error invoking client API")

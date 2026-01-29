@@ -63,7 +63,7 @@ class Move:
 
     def serialize(self) -> dict[str, Any]:
         """Convert the Move to a dictionary, mostly for logging and record purpose."""
-        # Build dict manually to avoid deepcopy issues with Agent's HTTP clients
+        # Build dict manually so we never deepcopy network clients tucked inside Agent objects.
         d = {
             "player": self.player.name,
             "action": str(self.action),
@@ -228,7 +228,7 @@ class Game(ABC):
             player: (
                 self.action_class.from_index(action_idx),
                 trace_id,
-                False,  # mediated=False, could be modified with action_map
+                False,  # Mechanisms set this to True if action_map later rewrites the move.
             )
             for player, (action_idx, trace_id) in zip(
                 players, run_tasks(zip(players, info), lambda p: query(*p))
@@ -253,7 +253,7 @@ class GridGame(Game):
         self.action_class = action_class
         self.raw_payoff_matrix = payoff_matrix
         self.payoff_matrix = self._parse_payoff_matrix(payoff_matrix)
-        # Build the prompt now that payoff_matrix is ready
+        # Bake the processed payoff matrix into the prompt so each grid game prints the correct payoffs automatically.
         actions_block = "\n".join(
             [f"- {act.to_token()}" for act in action_class]
         )
