@@ -1,0 +1,1 @@
+"""Core coop-eval package."""

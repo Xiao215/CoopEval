@@ -1,0 +1,86 @@
+{
+  "google/gemini-3-flash-preview(CoT)#P1": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 2,
+      "PrisonersDilemmaAction.DEFECT": 0
+    },
+    "trace_id": "5a01d6b5"
+  },
+  "google/gemini-3-flash-preview(CoT)#P2": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 2,
+      "PrisonersDilemmaAction.DEFECT": 0
+    },
+    "trace_id": "1d1e6461"
+  },
+  "google/gemini-3-flash-preview(IO)#P1": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 2,
+      "PrisonersDilemmaAction.DEFECT": 0
+    },
+    "trace_id": "7eafdcc4"
+  },
+  "google/gemini-3-flash-preview(IO)#P2": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 2,
+      "PrisonersDilemmaAction.DEFECT": 0
+    },
+    "trace_id": "29bc8208"
+  },
+  "openai/gpt-5.2(CoT)#P1": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 1,
+      "PrisonersDilemmaAction.DEFECT": -1
+    },
+    "trace_id": "1fd38ff9"
+  },
+  "openai/gpt-5.2(CoT)#P2": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 1,
+      "PrisonersDilemmaAction.DEFECT": -1
+    },
+    "trace_id": "f9b097eb"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P1": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 1,
+      "PrisonersDilemmaAction.DEFECT": -1
+    },
+    "trace_id": "e35a9958"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P2": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 1,
+      "PrisonersDilemmaAction.DEFECT": -1
+    },
+    "trace_id": "4aa2478d"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P1": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 0,
+      "PrisonersDilemmaAction.DEFECT": -2
+    },
+    "trace_id": "91927535"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P2": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 0,
+      "PrisonersDilemmaAction.DEFECT": -2
+    },
+    "trace_id": "a88c801f"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 1,
+      "PrisonersDilemmaAction.DEFECT": 0
+    },
+    "trace_id": "d5895b6d"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2": {
+    "contract": {
+      "PrisonersDilemmaAction.COOPERATE": 0,
+      "PrisonersDilemmaAction.DEFECT": -1
+    },
+    "trace_id": "a1315d14"
+  }
+}

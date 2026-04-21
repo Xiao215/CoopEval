@@ -1,0 +1,16 @@
+group,label,count,share_of_group_pct
+ALL,Individual utility maximization,30492,79.51
+ALL,Strategic equilibrium focus,26934,70.23
+ALL,Strategic influence,18821,49.08
+ALL,Uncertainty evaluation,12529,32.67
+ALL,Multidimensional reasoning,11165,29.11
+ALL,Trust evaluation,8669,22.60
+ALL,Risk aversion,7336,19.13
+ALL,Reciprocity,6311,16.46
+ALL,Social welfare maximization,3059,7.98
+ALL,Exploration-exploitation trade-off,2215,5.78
+ALL,Strategy legibility,397,1.04
+ALL,Social norm conformity,149,0.39
+ALL,Inequity aversion,64,0.17
+ALL,Rule misunderstanding,34,0.09
+ALL,Competitiveness,11,0.03

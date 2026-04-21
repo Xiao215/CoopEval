@@ -1,0 +1,41 @@
+Random seed set to: 44
+Logging to: <cluster-output>/ablations3_20260327_214558/ablation_abl_repetition_k2_prisoners_dilemma
+Running PrisonersDilemma with mechanism Repetition.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of openai/gpt-4o-2024-05-13(CoT)#P1 to parse response failed: Expecting property name enclosed in double quotes: line 2 column 14 (char 15) from response 'To determine the optimal probability distribution over the actions A0 and A1, we need to consider two aspects:\n1. The payoffs from the given actions.\n2. The history of play and observable patterns that can influence the future rounds.\n\n**Step-by-Step Reasoning:**\n\n1. **Game Payoffs Analysis:**\n   - ...[truncated due to length]...Probability Distribution:**\n```json\n{\n  "A0": 90,  // A0 continues the cooperative pattern\n  "A1": 10   // A1 slight probability indicating potential for change\n}\n```\n\nThis mix ensures maintaining the established cooperative approach while allowing a minimal chance of a strategic shift if necessary.'
+Attempt 2 of openai/gpt-4o-2024-05-13(CoT)#P1 to parse response failed: Expecting property name enclosed in double quotes: line 2 column 14 (char 15) from response 'To determine the optimal probability distribution for the actions A0 and A1, we need to maximize our total points while considering the repeated nature of the game and the history of play. Here\'s a detailed step-by-step reasoning:\n\n1. **Game Payoffs Analysis:**\n   - If both players choose A0: Both g...[truncated due to length]...y Distribution:**\n```json\n{\n  "A0": 95,  // High probability for maintaining cooperation\n  "A1": 5   // Very low probability for A1 to indicate potential strategic shift if necessary\n}\n```\n\nThis distribution maximizes long-term cooperation potential while minimally signaling a possibility of change.'
+Attempt 3 of openai/gpt-4o-2024-05-13(CoT)#P1 to parse response failed: Expecting property name enclosed in double quotes: line 2 column 14 (char 15) from response 'To determine the optimal probability distribution for actions A0 and A1 in this repeated game, let\'s break down the problem step-by-step to ensure we maximize our total points while considering past behavior and future rounds.\n\n### Step-by-Step Analysis:\n\n1. **Payoffs:**\n   - If both players choose ...[truncated due to length]...on\n{\n  "A0": 95,  // High probability to maintain cooperation\n  "A1": 5    // Minimal probability to signal potential for strategic shift if necessary\n}\n```\n\nThis distribution aims to maintain the proven cooperative behavior while introducing a slight deterrent against potential future exploitation.'
+API call failed (attempt 1/8): JSONDecodeError: Expecting value: line 217 column 1 (char 1188)
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 1.9397
+  google/gemini-3-flash-preview(CoT): 1.7050
+  google/gemini-3-flash-preview(IO): 1.8794
+  openai/gpt-4o-2024-05-13(CoT): 1.7864
+  openai/gpt-5.2(CoT): 1.7699
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 1.7571
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9397264244189867, 'google/gemini-3-flash-preview(CoT)': 1.7049604443067732, 'google/gemini-3-flash-preview(IO)': 1.8794227605504, 'openai/gpt-5.2(CoT)': 1.7698930564300799, 'openai/gpt-4o-2024-05-13(CoT)': 1.7863703220770133, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.7571084873728}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9634055854672035, 'google/gemini-3-flash-preview(CoT)': 1.8208400737423918, 'google/gemini-3-flash-preview(IO)': 1.9280580645985457, 'openai/gpt-5.2(CoT)': 1.8638761092686653, 'openai/gpt-4o-2024-05-13(CoT)': 1.8426465800583918, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.8605111193874349}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9831296863800718, 'google/gemini-3-flash-preview(CoT)': 1.8910218574692825, 'google/gemini-3-flash-preview(IO)': 1.9580564922767731, 'openai/gpt-5.2(CoT)': 1.9222137440495766, 'openai/gpt-4o-2024-05-13(CoT)': 1.8800028223652783, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9149509993972411}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9925472962742008, 'google/gemini-3-flash-preview(CoT)': 1.927644254353683, 'google/gemini-3-flash-preview(IO)': 1.9737516591471145, 'openai/gpt-5.2(CoT)': 1.9521414657928338, 'openai/gpt-4o-2024-05-13(CoT)': 1.8997605828522255, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9426384950522382}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9966731236701514, 'google/gemini-3-flash-preview(CoT)': 1.9477311532333095, 'google/gemini-3-flash-preview(IO)': 1.9821741110073987, 'openai/gpt-5.2(CoT)': 1.9678495894290273, 'openai/gpt-4o-2024-05-13(CoT)': 1.9103577299075833, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9581282497274095}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9984862117772526, 'google/gemini-3-flash-preview(CoT)': 1.9596568863135637, 'google/gemini-3-flash-preview(IO)': 1.9870086985190611, 'openai/gpt-5.2(CoT)': 1.9766877532746088, 'openai/gpt-4o-2024-05-13(CoT)': 1.9164275476625476, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9676146123273464}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.999298859503968, 'google/gemini-3-flash-preview(CoT)': 1.967288967147544, 'google/gemini-3-flash-preview(IO)': 1.989989722117352, 'openai/gpt-5.2(CoT)': 1.9820488399155116, 'openai/gpt-4o-2024-05-13(CoT)': 1.920164243888141, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9738629649244317}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9996704758929973, 'google/gemini-3-flash-preview(CoT)': 1.9724953861238035, 'google/gemini-3-flash-preview(IO)': 1.9919511031183794, 'openai/gpt-5.2(CoT)': 1.9855332769870977, 'openai/gpt-4o-2024-05-13(CoT)': 1.9226215110714908, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9782213973531035}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.999843315362687, 'google/gemini-3-flash-preview(CoT)': 1.9762382361118096, 'google/gemini-3-flash-preview(IO)': 1.9933152001934968, 'openai/gpt-5.2(CoT)': 1.9879367374637986, 'openai/gpt-4o-2024-05-13(CoT)': 1.9243313401171747, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9814032116497478}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.999924805538965, 'google/gemini-3-flash-preview(CoT)': 1.9790456654701558, 'google/gemini-3-flash-preview(IO)': 1.9943085877153184, 'openai/gpt-5.2(CoT)': 1.9896785822246832, 'openai/gpt-4o-2024-05-13(CoT)': 1.9255781345623064, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9838129631427668}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999636448999905, 'google/gemini-3-flash-preview(CoT)': 1.9812250047006503, 'google/gemini-3-flash-preview(IO)': 1.995059774707583, 'openai/gpt-5.2(CoT)': 1.9909928232686995, 'openai/gpt-4o-2024-05-13(CoT)': 1.92652269786624, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9856937055403678}
+
+============================================================
+

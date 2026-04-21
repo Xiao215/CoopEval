@@ -1,0 +1,26 @@
+{
+  "anthropic/claude-sonnet-4.5(CoT)": {
+    "fitness": -0.07312496396847741,
+    "final_population": 0.05221321852915758
+  },
+  "google/gemini-3-flash-preview(CoT)": {
+    "fitness": -0.0049359574679373065,
+    "final_population": 0.0003293989396127944
+  },
+  "google/gemini-3-flash-preview(IO)": {
+    "fitness": -0.007285322960007038,
+    "final_population": 0.588041196581116
+  },
+  "openai/gpt-5.2(CoT)": {
+    "fitness": -0.011936015958483016,
+    "final_population": 0.04486947582325217
+  },
+  "openai/gpt-4o-2024-05-13(CoT)": {
+    "fitness": 0.02746603855606241,
+    "final_population": 0.31454668794502433
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)": {
+    "fitness": -0.13640184236874153,
+    "final_population": 2.2181837119421373e-08
+  }
+}

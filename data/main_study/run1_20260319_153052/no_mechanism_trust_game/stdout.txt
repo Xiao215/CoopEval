@@ -1,0 +1,58 @@
+Random seed set to: 47
+Logging to: <local-output>/nomechanism1_20260319_153052/no_mechanism_trust_game
+Running TrustGame with mechanism NoMechanism.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in the response 'Let\'s analyze this decision-making game step by step.\n\n---\n\n### Step 1: Understand the Payoff Structure\n\nWe are playing as **Player 2**. The other player is **Player 1**.\n\nThe payoffs are:\n\n| Player 1 \\ Player 2 | A0                | A1              ...[truncated due to length]... 1 always prefers A0**, no matter what q we choose.\n\nTherefore, **regardless of what we do**, Player 1 will play A0.\n\nSo the outcome is:\n- If we play A0 (prob q), then (A0, A0) → we get 10\n- If we play A1 (prob 1-q), then (A0, A1) → we get 2\n\nSo our expected payoff:\n> E = q × 10 + (1-q) × ' from response "Let's analyze this decision-making game step by step.\n\n---\n\n### Step 1: Understand the Payoff Structure\n\nWe are playing as **Player 2**. The other player is **Player 1**.\n\nThe payoffs are:\n\n| Player 1 \\ Player 2 | A0                | A1                |\n|---------------------|-------------------|---...[truncated due to length]..., **Player 1 always prefers A0**, no matter what q we choose.\n\nTherefore, **regardless of what we do**, Player 1 will play A0.\n\nSo the outcome is:\n- If we play A0 (prob q), then (A0, A0) → we get 10\n- If we play A1 (prob 1-q), then (A0, A1) → we get 2\n\nSo our expected payoff:\n> E = q × 10 + (1-q) × "
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 4.3333
+  google/gemini-3-flash-preview(CoT): 4.8333
+  google/gemini-3-flash-preview(IO): 6.1667
+  openai/gpt-4o-2024-05-13(CoT): 5.0000
+  openai/gpt-5.2(CoT): 6.6667
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 4.0000
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.333333333333333, 'google/gemini-3-flash-preview(CoT)': 4.833333333333333, 'google/gemini-3-flash-preview(IO)': 6.166666666666666, 'openai/gpt-5.2(CoT)': 6.666666666666666, 'openai/gpt-4o-2024-05-13(CoT)': 5.0, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9999999999999996}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.012090527161875, 'google/gemini-3-flash-preview(CoT)': 4.012091018142663, 'google/gemini-3-flash-preview(IO)': 2.35137381419135, 'openai/gpt-5.2(CoT)': 4.00000133896528, 'openai/gpt-4o-2024-05-13(CoT)': 2.1041569600855086, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9321159455238064}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.005928326020786, 'google/gemini-3-flash-preview(CoT)': 4.005928326020819, 'google/gemini-3-flash-preview(IO)': 2.3470668390984972, 'openai/gpt-5.2(CoT)': 4.000000000000089, 'openai/gpt-4o-2024-05-13(CoT)': 2.0918543911763976, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9259305868860483}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.00277738790372, 'google/gemini-3-flash-preview(CoT)': 4.00277738790372, 'google/gemini-3-flash-preview(IO)': 2.344865288682034, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.0855641269620584, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9227680367490985}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.001272213641673, 'google/gemini-3-flash-preview(CoT)': 4.001272213641673, 'google/gemini-3-flash-preview(IO)': 2.343813629857851, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.0825593257746746, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9212573151503456}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.000576616637158, 'google/gemini-3-flash-preview(CoT)': 4.000576616637158, 'google/gemini-3-flash-preview(IO)': 2.343327619560535, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.0811706954795337, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9205591544319383}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.000260079603762, 'google/gemini-3-flash-preview(CoT)': 4.000260079603762, 'google/gemini-3-flash-preview(IO)': 2.3431064567252338, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.0805387880688806, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9202414507424024}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.000117049484365, 'google/gemini-3-flash-preview(CoT)': 4.000117049484365, 'google/gemini-3-flash-preview(IO)': 2.343006522314566, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.080253254997787, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.9200978934553095}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.000052626132905, 'google/gemini-3-flash-preview(CoT)': 4.000052626132905, 'google/gemini-3-flash-preview(IO)': 2.3429615100525134, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.0801246457414533, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.92003323265726}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.000023650444315, 'google/gemini-3-flash-preview(CoT)': 4.000023650444315, 'google/gemini-3-flash-preview(IO)': 2.3429412648895767, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.0800668011607657, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.920004150172179}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 4.000010626490894, 'google/gemini-3-flash-preview(CoT)': 4.000010626490894, 'google/gemini-3-flash-preview(IO)': 2.3429321651211774, 'openai/gpt-5.2(CoT)': 4.0, 'openai/gpt-4o-2024-05-13(CoT)': 2.0800408012566973, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 3.919991078215986}
+
+============================================================
+
+
+============================================================
+RUNNING DEVIATION RATING
+============================================================
+
+Set parameter Username
+Set parameter LicenseID to value 2766514
+Academic license - for non-commercial use only - expires 2027-01-15
+Iterative LP converged in 2 iterations (max: 12)
+
+Deviation Ratings:
+  anthropic/claude-sonnet-4.5(CoT): 0.000000
+  google/gemini-3-flash-preview(CoT): 0.000000
+  google/gemini-3-flash-preview(IO): 0.000000
+  openai/gpt-5.2(CoT): 0.000000
+  openai/gpt-4o-2024-05-13(CoT): -1.000000
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): -1.000000
+
+============================================================
+

@@ -1,0 +1,22 @@
+# Cheap hosted LLM agents
+- llm:
+    provider: OpenRouter
+    model: google/gemini-2.5-flash-lite-preview-09-2025
+    kwargs:
+      temperature: 1
+  type: CoTAgent
+
+- llm:
+    provider: OpenRouter
+    model: openai/gpt-oss-120b
+    kwargs:
+      temperature: 1
+  type: CoTAgent
+
+- llm:
+    provider: OpenRouter
+    model: z-ai/glm-4.5-air
+    # model: qwen/qwen3-235b-a22b-2507
+    kwargs:
+      temperature: 1
+  type: CoTAgent

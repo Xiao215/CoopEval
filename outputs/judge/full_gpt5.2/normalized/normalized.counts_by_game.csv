@@ -1,0 +1,59 @@
+group,label,count,share_of_group_pct
+PrisonersDilemma,Individual utility maximization,2857,77.47
+PrisonersDilemma,Strategic influence,2597,70.42
+PrisonersDilemma,Strategic equilibrium focus,1934,52.44
+PrisonersDilemma,Uncertainty evaluation,1584,42.95
+PrisonersDilemma,Trust evaluation,1570,42.57
+PrisonersDilemma,Multidimensional reasoning,1434,38.88
+PrisonersDilemma,Reciprocity,1056,28.63
+PrisonersDilemma,Risk aversion,767,20.80
+PrisonersDilemma,Social welfare maximization,298,8.08
+PrisonersDilemma,Exploration-exploitation trade-off,190,5.15
+PrisonersDilemma,Strategy legibility,46,1.25
+PrisonersDilemma,Social norm conformity,6,0.16
+PrisonersDilemma,Inequity aversion,4,0.11
+PrisonersDilemma,Rule misunderstanding,4,0.11
+PublicGoods,Individual utility maximization,23003,84.17
+PublicGoods,Strategic equilibrium focus,20386,74.59
+PublicGoods,Strategic influence,11099,40.61
+PublicGoods,Uncertainty evaluation,7551,27.63
+PublicGoods,Multidimensional reasoning,6455,23.62
+PublicGoods,Trust evaluation,4678,17.12
+PublicGoods,Risk aversion,4133,15.12
+PublicGoods,Reciprocity,3747,13.71
+PublicGoods,Social welfare maximization,2129,7.79
+PublicGoods,Exploration-exploitation trade-off,1438,5.26
+PublicGoods,Strategy legibility,258,0.94
+PublicGoods,Social norm conformity,130,0.48
+PublicGoods,Inequity aversion,37,0.14
+PublicGoods,Rule misunderstanding,22,0.08
+PublicGoods,Competitiveness,10,0.04
+TravellersDilemma,Strategic equilibrium focus,2272,61.91
+TravellersDilemma,Strategic influence,2229,60.74
+TravellersDilemma,Individual utility maximization,2116,57.66
+TravellersDilemma,Uncertainty evaluation,2055,55.99
+TravellersDilemma,Risk aversion,1745,47.55
+TravellersDilemma,Multidimensional reasoning,1386,37.77
+TravellersDilemma,Trust evaluation,901,24.55
+TravellersDilemma,Reciprocity,550,14.99
+TravellersDilemma,Exploration-exploitation trade-off,426,11.61
+TravellersDilemma,Social welfare maximization,314,8.56
+TravellersDilemma,Strategy legibility,45,1.23
+TravellersDilemma,Inequity aversion,20,0.54
+TravellersDilemma,Social norm conformity,9,0.25
+TravellersDilemma,Rule misunderstanding,5,0.14
+TravellersDilemma,Competitiveness,1,0.03
+TrustGame,Strategic influence,2896,79.06
+TrustGame,Individual utility maximization,2516,68.69
+TrustGame,Strategic equilibrium focus,2342,63.94
+TrustGame,Multidimensional reasoning,1890,51.60
+TrustGame,Trust evaluation,1520,41.50
+TrustGame,Uncertainty evaluation,1339,36.55
+TrustGame,Reciprocity,958,26.15
+TrustGame,Risk aversion,691,18.86
+TrustGame,Social welfare maximization,318,8.68
+TrustGame,Exploration-exploitation trade-off,161,4.40
+TrustGame,Strategy legibility,48,1.31
+TrustGame,Social norm conformity,4,0.11
+TrustGame,Rule misunderstanding,3,0.08
+TrustGame,Inequity aversion,3,0.08

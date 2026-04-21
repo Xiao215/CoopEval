@@ -1,0 +1,7 @@
+type: ReputationFirstOrder
+kwargs:
+  num_rounds: 15
+  discount: 0.8
+  lookup_depth: 3
+  max_recursion_depth: 1
+  include_prior_distributions: false

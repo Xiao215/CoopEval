@@ -1,0 +1,17 @@
+experiment_path,game,mechanism,agent_name,short_name,initial_payoff,initial_rank,final_fitness,final_population,collapse_index
+data/main_study/run1_20260319_153052/mediation_trust_game,TrustGame,Mediation,google/gemini-3-flash-preview(CoT),Gemini-R,9.833333333333334,1,9.284852583881339,2.931797836229507e-32,1.0
+data/main_study/run3_20260125_095939/repetition_trust_game,TrustGame,Repetition,google/gemini-3-flash-preview(CoT),Gemini-R,9.873785227728213,1,9.7943459820116,1.3671521709191897e-08,0.9999999179708696
+data/main_study/run3_20260125_095939/repetition_trust_game,TrustGame,Repetition,google/gemini-3-flash-preview(IO),Gemini-B,9.308422157407572,3,8.952798349957266,5.169487009802871e-41,0.6
+data/main_study/run1_20260319_153052/repetition_travellers_dilemma,TravellersDilemma,Repetition,anthropic/claude-sonnet-4.5(CoT),Claude,3.25650216136704,2,3.261146261886208,1.5026622303329543e-75,0.8
+data/main_study/run1_20260319_153052/repetition_travellers_dilemma,TravellersDilemma,Repetition,google/gemini-3-flash-preview(IO),Gemini-B,3.0552530095718393,3,2.6386573028711973,8.704448369067217e-102,0.6
+data/main_study/run1_20260319_153052/repetition_trust_game,TrustGame,Repetition,anthropic/claude-sonnet-4.5(CoT),Claude,9.722860597794133,2,8.843971258626953,1.650452314903208e-47,0.8
+data/main_study/run1_20260319_153052/repetition_trust_game,TrustGame,Repetition,openai/gpt-5.2(CoT),GPT-5.2,9.32406229161301,3,9.57307860383014,2.073356611890645e-18,0.6
+data/main_study/run1_20260319_153052/repetition_prisoners_dilemma,PrisonersDilemma,Repetition,anthropic/claude-sonnet-4.5(CoT),Claude,1.8470017697109335,2,1.666620825911425,3.3015823520483186e-13,0.7999999999984153
+data/main_study/run2_20260124_025842/repetition_public_goods,PublicGoods,Repetition,qwen/qwen3-30b-a3b-instruct-2507(CoT),Qwen-30b,1.1791709624464117,2,1.253226825461662,1.5831445528496502e-09,0.7999999924009061
+data/main_study/run3_20260125_095939/repetition_travellers_dilemma,TravellersDilemma,Repetition,anthropic/claude-sonnet-4.5(CoT),Claude,3.591651306427733,2,4.894509267322422,8.794651441749544e-06,0.7999577856730796
+data/main_study/run3_20260125_095939/repetition_travellers_dilemma,TravellersDilemma,Repetition,google/gemini-3-flash-preview(CoT),Gemini-R,3.4582299793134936,3,4.999987057087365,0.014263968715875945,0.5486497126228465
+data/main_study/run1_20260319_153052/contracting_public_goods,PublicGoods,Contracting,qwen/qwen3-30b-a3b-instruct-2507(CoT),Qwen-30b,1.4907407407407407,2,1.445374930542208,0.005841517875011216,0.7719607141999462
+data/main_study/run3_20260125_095939/repetition_prisoners_dilemma,PrisonersDilemma,Repetition,openai/gpt-4o-2024-05-13(CoT),GPT-4o,1.7932818363050664,1,1.9205104713940588,0.03835538881445671,0.7698676671132597
+data/main_study/run3_20260125_095939/repetition_prisoners_dilemma,PrisonersDilemma,Repetition,google/gemini-3-flash-preview(IO),Gemini-B,1.7314124634248536,3,1.922602441907521,0.041553069019540485,0.45040895152965427
+data/main_study/run2_20260124_025842/repetition_trust_game,TrustGame,Repetition,google/gemini-3-flash-preview(IO),Gemini-B,9.481039428321278,2,9.989524158603322,0.03393671879953714,0.6371037497622218
+data/main_study/run2_20260124_025842/repetition_trust_game,TrustGame,Repetition,openai/gpt-4o-2024-05-13(CoT),GPT-4o,9.476690709572265,3,9.991177716427211,0.047638611234459206,0.42850099955594684

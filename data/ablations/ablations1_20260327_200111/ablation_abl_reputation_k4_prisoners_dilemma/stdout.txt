@@ -1,0 +1,23 @@
+Random seed set to: 49
+Logging to: <cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_k4_prisoners_dilemma
+Running PrisonersDilemma with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 0.9493
+  google/gemini-3-flash-preview(CoT): 1.1761
+  google/gemini-3-flash-preview(IO): 1.7228
+  openai/gpt-4o-2024-05-13(CoT): 1.1672
+  openai/gpt-5.2(CoT): 1.5610
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 1.3738
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+

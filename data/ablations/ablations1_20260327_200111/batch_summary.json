@@ -1,0 +1,128 @@
+{
+  "batch_start_time": "2026-03-28T00:01:11Z",
+  "batch_dir": "<cluster-output>/ablations1_20260327_200111",
+  "total_experiments": 12,
+  "completed_experiments": 12,
+  "experiments": {
+    "ablation_abl_reputation_first_order_k4_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_first_order_k4.yaml",
+      "start_time": "2026-03-28T00:01:14Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_first_order_k4_prisoners_dilemma",
+      "end_time": "2026-03-28T00:17:56Z",
+      "duration_seconds": 1002,
+      "exit_code": 0
+    },
+    "ablation_abl_reputation_first_order_k2_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_first_order_k2.yaml",
+      "start_time": "2026-03-28T00:01:14Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_first_order_k2_prisoners_dilemma",
+      "end_time": "2026-03-28T00:20:50Z",
+      "duration_seconds": 1176,
+      "exit_code": 0
+    },
+    "ablation_abl_repetition_d07_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_repetition_d07.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_repetition_d07_prisoners_dilemma",
+      "end_time": "2026-03-28T00:45:57Z",
+      "duration_seconds": 2682,
+      "exit_code": 0
+    },
+    "ablation_abl_reputation_k4_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_k4.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_k4_prisoners_dilemma",
+      "end_time": "2026-03-28T00:16:25Z",
+      "duration_seconds": 910,
+      "exit_code": 0
+    },
+    "ablation_abl_reputation_first_order_d09_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_first_order_d09.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_first_order_d09_prisoners_dilemma",
+      "end_time": "2026-03-28T00:18:54Z",
+      "duration_seconds": 1059,
+      "exit_code": 0
+    },
+    "ablation_abl_repetition_k2_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_repetition_k2.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_repetition_k2_prisoners_dilemma",
+      "end_time": "2026-03-28T00:48:11Z",
+      "duration_seconds": 2816,
+      "exit_code": 0
+    },
+    "ablation_abl_repetition_d09_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_repetition_d09.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_repetition_d09_prisoners_dilemma",
+      "end_time": "2026-03-28T00:51:23Z",
+      "duration_seconds": 3008,
+      "exit_code": 0
+    },
+    "ablation_abl_reputation_d07_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_d07.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_d07_prisoners_dilemma",
+      "end_time": "2026-03-28T00:18:54Z",
+      "duration_seconds": 1059,
+      "exit_code": 0
+    },
+    "ablation_abl_reputation_first_order_d07_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_first_order_d07.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_first_order_d07_prisoners_dilemma",
+      "end_time": "2026-03-28T00:22:56Z",
+      "duration_seconds": 1301,
+      "exit_code": 0
+    },
+    "ablation_abl_reputation_d09_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_d09.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_d09_prisoners_dilemma",
+      "end_time": "2026-03-28T00:17:37Z",
+      "duration_seconds": 982,
+      "exit_code": 0
+    },
+    "ablation_abl_reputation_k2_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_reputation_k2.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_k2_prisoners_dilemma",
+      "end_time": "2026-03-28T00:20:02Z",
+      "duration_seconds": 1127,
+      "exit_code": 0
+    },
+    "ablation_abl_repetition_k4_prisoners_dilemma": {
+      "status": "success",
+      "game": "games/prisoners_dilemma.yaml",
+      "mechanism": "ablation_mechanisms/abl_repetition_k4.yaml",
+      "start_time": "2026-03-28T00:01:15Z",
+      "output_dir": "<cluster-output>/ablations1_20260327_200111/ablation_abl_repetition_k4_prisoners_dilemma",
+      "end_time": "2026-03-28T01:44:26Z",
+      "duration_seconds": 6191,
+      "exit_code": 0
+    }
+  }
+}

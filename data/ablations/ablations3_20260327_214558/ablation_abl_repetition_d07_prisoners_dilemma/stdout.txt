@@ -1,0 +1,38 @@
+Random seed set to: 42
+Logging to: <cluster-output>/ablations3_20260327_214558/ablation_abl_repetition_d07_prisoners_dilemma
+Running PrisonersDilemma with mechanism Repetition.
+
+No precomputed matchup payoff provided; running tournament...
+[Parallel] Running 36 matchups with 9 workers
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in the response 'Let\'s solve this step by step.\n\n---\n\n### **Step 1: Understand the game structure**\n\nThis is a **repeated game** with two players, and you are **Player 2** (the one whose decision is labeled "you" in the description).  \nEach round:\n- You and the opponent...[truncated due to length]...**your past actions are known**, and the opponent can adapt based on that.\n\n---\n\n### **Step 3: Analyze the history of the last 4 rounds**\n\nWe are told:\n\n- **Round 4**: You: A1, Opponent: A0 → You get 3, opponent gets 0\n- **Round 3**: You: A1, Opponent: A0 → You get 3, opponent gets 0\n- **' from response 'Let\'s solve this step by step.\n\n---\n\n### **Step 1: Understand the game structure**\n\nThis is a **repeated game** with two players, and you are **Player 2** (the one whose decision is labeled "you" in the description).  \nEach round:\n- You and the opponent independently choose a probability distributio...[truncated due to length]...s crucial: **your past actions are known**, and the opponent can adapt based on that.\n\n---\n\n### **Step 3: Analyze the history of the last 4 rounds**\n\nWe are told:\n\n- **Round 4**: You: A1, Opponent: A0 → You get 3, opponent gets 0\n- **Round 3**: You: A1, Opponent: A0 → You get 3, opponent gets 0\n- **'
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 1.9075
+  google/gemini-3-flash-preview(CoT): 1.8843
+  google/gemini-3-flash-preview(IO): 1.9364
+  openai/gpt-4o-2024-05-13(CoT): 1.8634
+  openai/gpt-5.2(CoT): 1.9896
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 1.9590
+============================================================
+
+
+============================================================
+RUNNING EVOLUTIONARY DYNAMICS
+============================================================
+
+Step 1: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9075471148761258, 'google/gemini-3-flash-preview(CoT)': 1.8843100555316583, 'google/gemini-3-flash-preview(IO)': 1.9363912442141418, 'openai/gpt-5.2(CoT)': 1.9895845783535424, 'openai/gpt-4o-2024-05-13(CoT)': 1.8633904401017556, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9589644655799017}
+Step 100: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9639712634994444, 'google/gemini-3-flash-preview(CoT)': 1.8584277627478607, 'google/gemini-3-flash-preview(IO)': 1.9029541083041355, 'openai/gpt-5.2(CoT)': 1.9674186638296376, 'openai/gpt-4o-2024-05-13(CoT)': 1.8031415127317592, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.968432111319834}
+Step 200: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9931767761701256, 'google/gemini-3-flash-preview(CoT)': 1.8270661038084692, 'google/gemini-3-flash-preview(IO)': 1.8828247219772676, 'openai/gpt-5.2(CoT)': 1.9550881660416706, 'openai/gpt-4o-2024-05-13(CoT)': 1.7642125673015163, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.975325783311149}
+Step 300: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9991286170952058, 'google/gemini-3-flash-preview(CoT)': 1.8079437271185765, 'google/gemini-3-flash-preview(IO)': 1.8837797855786542, 'openai/gpt-5.2(CoT)': 1.9516920228550518, 'openai/gpt-4o-2024-05-13(CoT)': 1.762082741175783, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9805160737879155}
+Step 400: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9998933238253387, 'google/gemini-3-flash-preview(CoT)': 1.7996344240044808, 'google/gemini-3-flash-preview(IO)': 1.8936994768322224, 'openai/gpt-5.2(CoT)': 1.9507941319937245, 'openai/gpt-4o-2024-05-13(CoT)': 1.7764890444319439, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9854688843932635}
+Step 500: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.999985707770874, 'google/gemini-3-flash-preview(CoT)': 1.7958009001873894, 'google/gemini-3-flash-preview(IO)': 1.9043569753515794, 'openai/gpt-5.2(CoT)': 1.9503694495237323, 'openai/gpt-4o-2024-05-13(CoT)': 1.7929781358406247, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9898067329341467}
+Step 600: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.999997872986565, 'google/gemini-3-flash-preview(CoT)': 1.7937435442456189, 'google/gemini-3-flash-preview(IO)': 1.9130591801249905, 'openai/gpt-5.2(CoT)': 1.950082978039751, 'openai/gpt-4o-2024-05-13(CoT)': 1.8066736921849231, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.993189313013102}
+Step 700: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999996552210768, 'google/gemini-3-flash-preview(CoT)': 1.7925379850613874, 'google/gemini-3-flash-preview(IO)': 1.919369603956804, 'openai/gpt-5.2(CoT)': 1.9498827389364208, 'openai/gpt-4o-2024-05-13(CoT)': 1.8166714436100713, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9956073458917545}
+Step 800: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999999405959676, 'google/gemini-3-flash-preview(CoT)': 1.7918103017242788, 'google/gemini-3-flash-preview(IO)': 1.9236408817757782, 'openai/gpt-5.2(CoT)': 1.949747994633045, 'openai/gpt-4o-2024-05-13(CoT)': 1.8234598671453708, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9972345356606247}
+Step 900: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999999893389782, 'google/gemini-3-flash-preview(CoT)': 1.7913691595984926, 'google/gemini-3-flash-preview(IO)': 1.9264097925086745, 'openai/gpt-5.2(CoT)': 1.9496606179347307, 'openai/gpt-4o-2024-05-13(CoT)': 1.827868083690669, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.998286304624186}
+Step 1000: Population fitness is {'anthropic/claude-sonnet-4.5(CoT)': 1.9999999980359318, 'google/gemini-3-flash-preview(CoT)': 1.7911025203808266, 'google/gemini-3-flash-preview(IO)': 1.928156625416845, 'openai/gpt-5.2(CoT)': 1.9496054138519818, 'openai/gpt-4o-2024-05-13(CoT)': 1.8306520066076104, 'qwen/qwen3-30b-a3b-instruct-2507(CoT)': 1.9989486981944053}
+
+============================================================
+

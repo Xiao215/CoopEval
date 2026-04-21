@@ -1,0 +1,15 @@
+# TestModel agents (no API calls)
+- llm:
+    provider: TestModel
+    model: test-1
+  type: CoTAgent
+
+- llm:
+    provider: TestModel
+    model: test-2
+  type: CoTAgent
+
+- llm:
+    provider: TestModel
+    model: test-3
+  type: CoTAgent

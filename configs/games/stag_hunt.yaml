@@ -1,0 +1,7 @@
+type: StagHunt
+kwargs:
+  payoff_matrix:
+    SS: [5, 5]
+    SH: [0, 3]
+    HS: [3, 0]
+    HH: [3, 3]

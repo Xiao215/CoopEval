@@ -1,0 +1,112 @@
+{
+  "canonical_labels": [
+    "Individual utility maximization",
+    "Strategic equilibrium focus",
+    "Social welfare maximization",
+    "Inequity aversion",
+    "Reciprocity",
+    "Strategic influence",
+    "Trust evaluation",
+    "Competitiveness",
+    "Uncertainty evaluation",
+    "Social norm conformity",
+    "Rule misunderstanding",
+    "Exploration-exploitation trade-off",
+    "Risk aversion",
+    "Strategy legibility",
+    "Multidimensional reasoning",
+    "Other"
+  ],
+  "alias_to_canonical": {
+    "category1": [
+      "Individual utility maximization"
+    ],
+    "category2": [
+      "Strategic equilibrium focus"
+    ],
+    "category3": [
+      "Social welfare maximization"
+    ],
+    "category4": [
+      "Inequity aversion"
+    ],
+    "category5": [
+      "Reciprocity"
+    ],
+    "category6": [
+      "Strategic influence"
+    ],
+    "category7": [
+      "Trust evaluation"
+    ],
+    "category8": [
+      "Competitiveness"
+    ],
+    "category9": [
+      "Uncertainty evaluation"
+    ],
+    "category10": [
+      "Social norm conformity"
+    ],
+    "category11": [
+      "Rule misunderstanding"
+    ],
+    "category12": [
+      "Exploration-exploitation trade-off"
+    ],
+    "category13": [
+      "Risk aversion"
+    ],
+    "category14": [
+      "Strategy legibility"
+    ],
+    "category15": [
+      "Multidimensional reasoning"
+    ],
+    "1": [
+      "Individual utility maximization"
+    ],
+    "2": [
+      "Strategic equilibrium focus"
+    ],
+    "3": [
+      "Social welfare maximization"
+    ],
+    "4": [
+      "Inequity aversion"
+    ],
+    "5": [
+      "Reciprocity"
+    ],
+    "6": [
+      "Strategic influence"
+    ],
+    "7": [
+      "Trust evaluation"
+    ],
+    "8": [
+      "Competitiveness"
+    ],
+    "9": [
+      "Uncertainty evaluation"
+    ],
+    "10": [
+      "Social norm conformity"
+    ],
+    "11": [
+      "Rule misunderstanding"
+    ],
+    "12": [
+      "Exploration-exploitation trade-off"
+    ],
+    "13": [
+      "Risk aversion"
+    ],
+    "14": [
+      "Strategy legibility"
+    ],
+    "15": [
+      "Multidimensional reasoning"
+    ]
+  }
+}

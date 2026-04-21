@@ -1,0 +1,127 @@
+{
+  "game": {
+    "type": "StagHunt",
+    "kwargs": {
+      "payoff_matrix": {
+        "SS": [
+          5,
+          5
+        ],
+        "SH": [
+          0,
+          3
+        ],
+        "HS": [
+          3,
+          0
+        ],
+        "HH": [
+          3,
+          3
+        ]
+      }
+    }
+  },
+  "mechanism": {
+    "type": "ReputationFirstOrder",
+    "kwargs": {
+      "num_rounds": 15,
+      "discount": 0.8,
+      "lookup_depth": 3,
+      "max_recursion_depth": 1,
+      "include_prior_distributions": false
+    }
+  },
+  "agents": [
+    {
+      "llm": {
+        "provider": "OpenRouter",
+        "model": "google/gemini-3-flash-preview",
+        "kwargs": {
+          "temperature": 1,
+          "reasoning": {
+            "effort": "medium"
+          }
+        }
+      },
+      "type": "CoTAgent"
+    },
+    {
+      "llm": {
+        "provider": "OpenRouter",
+        "model": "google/gemini-3-flash-preview",
+        "kwargs": {
+          "temperature": 1,
+          "reasoning": {
+            "effort": "none"
+          }
+        }
+      },
+      "type": "IOAgent"
+    },
+    {
+      "llm": {
+        "provider": "OpenRouter",
+        "model": "openai/gpt-5.2",
+        "kwargs": {
+          "temperature": 1,
+          "reasoning": {
+            "effort": "low"
+          }
+        }
+      },
+      "type": "CoTAgent"
+    },
+    {
+      "llm": {
+        "provider": "OpenRouter",
+        "model": "openai/gpt-4o-2024-05-13",
+        "kwargs": {
+          "temperature": 1
+        }
+      },
+      "type": "CoTAgent"
+    },
+    {
+      "llm": {
+        "provider": "OpenRouter",
+        "model": "anthropic/claude-sonnet-4.5",
+        "kwargs": {
+          "temperature": 1,
+          "reasoning": {
+            "effort": "low"
+          }
+        }
+      },
+      "type": "CoTAgent"
+    },
+    {
+      "llm": {
+        "provider": "OpenRouter",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "kwargs": {
+          "temperature": 1
+        }
+      },
+      "type": "CoTAgent"
+    }
+  ],
+  "evaluation": {
+    "methods": [
+      {
+        "type": "evolutionary_dynamics",
+        "kwargs": {
+          "initial_population": "uniform",
+          "steps": 1000,
+          "lr_method": "constant",
+          "lr_nu": 0.1
+        }
+      }
+    ]
+  },
+  "concurrency": {
+    "max_workers": 3,
+    "tournament_workers": 9
+  },
+  "name": "reputation_first_order_stag_hunt"
+}

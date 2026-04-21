@@ -1,0 +1,24 @@
+Random seed set to: 47
+Logging to: <cluster-output>/ablations2_20260327_214553/ablation_abl_reputation_d09_prisoners_dilemma
+Running PrisonersDilemma with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2 to parse response failed: No JSON object found in the response "Let's break this problem down step by step.\n\n---\n\n### **Step 1: Understand the Game Structure**\n\nThis is a **repeated 2-player game with imperfect information**, where:\n- You are **Player 2**.\n- Each round, both players simultaneously choose a probabilit...[truncated due to length]...)(2 - 2q) $\n- $ U = 3p - 2pq + 2 - 2q - 2p + 2pq $\n- $ U = p + 2 - 2q $\n\nSo expected payoff:  \n**Your EP = p - 2q + 2**\n\nTo maximize this, you want:\n- $ p $ as high as possible (since it's positive)\n- $ q $ as low as possible (since it's subtracted)\n\nBut $ q $ is the action of the *other" from response "Let's break this problem down step by step.\n\n---\n\n### **Step 1: Understand the Game Structure**\n\nThis is a **repeated 2-player game with imperfect information**, where:\n- You are **Player 2**.\n- Each round, both players simultaneously choose a probability distribution over actions A0 and A1.\n- The a...[truncated due to length]...2q) + (1 - p)(2 - 2q) $\n- $ U = 3p - 2pq + 2 - 2q - 2p + 2pq $\n- $ U = p + 2 - 2q $\n\nSo expected payoff:  \n**Your EP = p - 2q + 2**\n\nTo maximize this, you want:\n- $ p $ as high as possible (since it's positive)\n- $ q $ as low as possible (since it's subtracted)\n\nBut $ q $ is the action of the *other"
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 1.4609
+  google/gemini-3-flash-preview(CoT): 1.6957
+  google/gemini-3-flash-preview(IO): 1.3959
+  openai/gpt-4o-2024-05-13(CoT): 1.5267
+  openai/gpt-5.2(CoT): 1.2933
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 1.4236
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+

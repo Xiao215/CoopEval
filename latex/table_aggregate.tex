@@ -1,0 +1,36 @@
+% Source folders:
+%   data/main_study/run1_20260319_153052
+%   data/main_study/run2_20260124_025842
+%   data/main_study/run3_20260125_095939
+\begin{table*}[t]
+\centering
+\caption{Results aggregated from all four social dilemmas. Before aggregation, payoffs have been shifted and rescaled such that $0$ and $1$ reflect the payoff from everyone defecting ({\color[HTML]{0072B2}\rule{1ex}{1ex}}) and everyone playing their (most) cooperative action ({\color[HTML]{E69F00}\rule{1ex}{1ex}}) respectively. Stronger and weaker LLM performances are bolded or greyed out. ``\mean{}'' and ``\rd{}'' $(\uparrow)$: Payoffs in uniform population or after replicator dynamics. The LLM Average column is weighted by the respective population distributions. ``\dr{}'' $(\downarrow)$: Rank obtained from deviation rankings. The latter two are not compatible with \REPU{}, since we cannot sensibly construct a metagame from \REPU{}.}
+\label{tab:aggregate_results}
+\scalebox{0.78}{
+\begin{tabular}{ll||r|rrrrrr}
+\toprule
+\textbf{Mechanism} & \textbf{Metric} & \textbf{LLM Average} & Claude & Gemini-R & Gemini-B & GPT-5.2 & GPT-4o & Qwen-30b \\
+\midrule
+\multirow{3}{*}{\textbf{NoMechanism}} & Mean & \cellcolor[HTML]{91C2DE} 0.072{\scriptsize\color{black!75}$\pm$0.015} & 0.111{\scriptsize\color{black!75}$\pm$0.056} & \textcolor{black!75}{0.085}{\scriptsize\color{black!75}$\pm$0.037} & \textbf{0.133}{\scriptsize\color{black!75}$\pm$0.038} & \textbf{0.143}{\scriptsize\color{black!75}$\pm$0.022} & \textcolor{black!75}{-0.132}{\scriptsize\color{black!75}$\pm$0.065} & 0.090{\scriptsize\color{black!75}$\pm$0.036} \\
+ & Fitness & \cellcolor[HTML]{85BBDA} 0.021{\scriptsize\color{black!75}$\pm$0.021} & -0.026{\scriptsize\color{black!75}$\pm$0.026} & \textbf{-0.020}{\scriptsize\color{black!75}$\pm$0.015} & -0.060{\scriptsize\color{black!75}$\pm$0.036} & \textbf{0.021}{\scriptsize\color{black!75}$\pm$0.021} & \textcolor{black!75}{-0.335}{\scriptsize\color{black!75}$\pm$0.105} & -0.061{\scriptsize\color{black!75}$\pm$0.044} \\
+ & DR & 3.5{\scriptsize\color{black!75}$\pm$0.0} & \textbf{3.0}{\scriptsize\color{black!75}$\pm$0.2} & \textbf{2.8}{\scriptsize\color{black!75}$\pm$0.1} & \textbf{3.0}{\scriptsize\color{black!75}$\pm$0.2} & \textbf{3.1}{\scriptsize\color{black!75}$\pm$0.3} & \textcolor{black!75}{5.4}{\scriptsize\color{black!75}$\pm$0.4} & \textcolor{black!75}{3.8}{\scriptsize\color{black!75}$\pm$0.4} \\
+\midrule
+\multirow{3}{*}{\textbf{Repetition}} & Mean & \cellcolor[HTML]{FDF6E8} 0.587{\scriptsize\color{black!75}$\pm$0.141} & \textbf{0.624}{\scriptsize\color{black!75}$\pm$0.128} & \textbf{0.627}{\scriptsize\color{black!75}$\pm$0.138} & \textbf{0.650}{\scriptsize\color{black!75}$\pm$0.119} & 0.588{\scriptsize\color{black!75}$\pm$0.148} & \textcolor{black!75}{0.496}{\scriptsize\color{black!75}$\pm$0.176} & \textcolor{black!75}{0.535}{\scriptsize\color{black!75}$\pm$0.152} \\
+ & Fitness & \cellcolor[HTML]{F3D082} 0.992{\scriptsize\color{black!75}$\pm$0.005} & 0.810{\scriptsize\color{black!75}$\pm$0.086} & \textbf{0.972}{\scriptsize\color{black!75}$\pm$0.017} & \textbf{0.912}{\scriptsize\color{black!75}$\pm$0.059} & 0.788{\scriptsize\color{black!75}$\pm$0.098} & \textcolor{black!75}{0.643}{\scriptsize\color{black!75}$\pm$0.129} & \textcolor{black!75}{0.616}{\scriptsize\color{black!75}$\pm$0.167} \\
+ & DR & 3.5{\scriptsize\color{black!75}$\pm$0.0} & 3.6{\scriptsize\color{black!75}$\pm$0.3} & \textbf{2.9}{\scriptsize\color{black!75}$\pm$0.5} & \textbf{2.8}{\scriptsize\color{black!75}$\pm$0.6} & \textbf{3.0}{\scriptsize\color{black!75}$\pm$0.5} & \textcolor{black!75}{4.8}{\scriptsize\color{black!75}$\pm$0.7} & \textcolor{black!75}{3.9}{\scriptsize\color{black!75}$\pm$0.4} \\
+\midrule
+\textbf{Reputation-} & Mean & \cellcolor[HTML]{D1E6F1} 0.321{\scriptsize\color{black!75}$\pm$0.138} & \textbf{0.375}{\scriptsize\color{black!75}$\pm$0.164} & \textcolor{black!75}{0.284}{\scriptsize\color{black!75}$\pm$0.147} & \textcolor{black!75}{0.200}{\scriptsize\color{black!75}$\pm$0.158} & 0.325{\scriptsize\color{black!75}$\pm$0.141} & 0.344{\scriptsize\color{black!75}$\pm$0.156} & \textbf{0.399}{\scriptsize\color{black!75}$\pm$0.117} \\
+\midrule
+\textbf{Reputation+} & Mean & \cellcolor[HTML]{BAD9EA} 0.227{\scriptsize\color{black!75}$\pm$0.097} & \textbf{0.273}{\scriptsize\color{black!75}$\pm$0.126} & \textcolor{black!75}{0.146}{\scriptsize\color{black!75}$\pm$0.115} & \textcolor{black!75}{0.089}{\scriptsize\color{black!75}$\pm$0.061} & \textbf{0.281}{\scriptsize\color{black!75}$\pm$0.110} & 0.259{\scriptsize\color{black!75}$\pm$0.158} & \textbf{0.315}{\scriptsize\color{black!75}$\pm$0.074} \\
+\midrule
+\multirow{3}{*}{\textbf{Mediation}} & Mean & \cellcolor[HTML]{FAEDCF} 0.695{\scriptsize\color{black!75}$\pm$0.082} & \textbf{0.863}{\scriptsize\color{black!75}$\pm$0.086} & \textbf{0.868}{\scriptsize\color{black!75}$\pm$0.071} & \textbf{0.853}{\scriptsize\color{black!75}$\pm$0.075} & 0.760{\scriptsize\color{black!75}$\pm$0.112} & \textcolor{black!75}{0.243}{\scriptsize\color{black!75}$\pm$0.063} & \textcolor{black!75}{0.583}{\scriptsize\color{black!75}$\pm$0.127} \\
+ & Fitness & \cellcolor[HTML]{F2CF80} 1.000{\scriptsize\color{black!75}$\pm$0.000} & 0.934{\scriptsize\color{black!75}$\pm$0.037} & \textbf{0.988}{\scriptsize\color{black!75}$\pm$0.009} & \textbf{1.000}{\scriptsize\color{black!75}$\pm$0.000} & 0.917{\scriptsize\color{black!75}$\pm$0.052} & \textcolor{black!75}{0.251}{\scriptsize\color{black!75}$\pm$0.082} & \textcolor{black!75}{0.606}{\scriptsize\color{black!75}$\pm$0.101} \\
+ & DR & 3.5{\scriptsize\color{black!75}$\pm$0.0} & 3.0{\scriptsize\color{black!75}$\pm$0.5} & \textbf{2.4}{\scriptsize\color{black!75}$\pm$0.2} & \textbf{2.8}{\scriptsize\color{black!75}$\pm$0.2} & 3.5{\scriptsize\color{black!75}$\pm$0.2} & \textcolor{black!75}{5.5}{\scriptsize\color{black!75}$\pm$0.3} & \textcolor{black!75}{3.8}{\scriptsize\color{black!75}$\pm$0.4} \\
+\midrule
+\multirow{3}{*}{\textbf{Contracting}} & Mean & \cellcolor[HTML]{F8E2B2} 0.801{\scriptsize\color{black!75}$\pm$0.037} & \textcolor{black!75}{0.557}{\scriptsize\color{black!75}$\pm$0.289} & \textbf{1.055}{\scriptsize\color{black!75}$\pm$0.061} & \textbf{1.138}{\scriptsize\color{black!75}$\pm$0.059} & 0.831{\scriptsize\color{black!75}$\pm$0.061} & \textcolor{black!75}{0.450}{\scriptsize\color{black!75}$\pm$0.117} & 0.778{\scriptsize\color{black!75}$\pm$0.269} \\
+ & Fitness & \cellcolor[HTML]{F2CF80} 0.999{\scriptsize\color{black!75}$\pm$0.001} & 0.798{\scriptsize\color{black!75}$\pm$0.167} & \textbf{0.979}{\scriptsize\color{black!75}$\pm$0.021} & \textbf{0.999}{\scriptsize\color{black!75}$\pm$0.001} & 0.901{\scriptsize\color{black!75}$\pm$0.078} & \textcolor{black!75}{0.372}{\scriptsize\color{black!75}$\pm$0.185} & \textcolor{black!75}{0.714}{\scriptsize\color{black!75}$\pm$0.106} \\
+ & DR & 3.5{\scriptsize\color{black!75}$\pm$0.0} & 3.2{\scriptsize\color{black!75}$\pm$0.2} & 3.2{\scriptsize\color{black!75}$\pm$0.4} & \textbf{2.7}{\scriptsize\color{black!75}$\pm$0.0} & \textbf{2.7}{\scriptsize\color{black!75}$\pm$0.0} & \textcolor{black!75}{4.8}{\scriptsize\color{black!75}$\pm$0.4} & \textcolor{black!75}{4.4}{\scriptsize\color{black!75}$\pm$0.5} \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}

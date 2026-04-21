@@ -1,0 +1,86 @@
+{
+  "google/gemini-3-flash-preview(CoT)#P1": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "e13d3bf5"
+  },
+  "google/gemini-3-flash-preview(CoT)#P2": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 2,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "833a4605"
+  },
+  "google/gemini-3-flash-preview(IO)#P1": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 1,
+      "MatchingPenniesAction.TAILS": -1
+    },
+    "trace_id": "f227eabd"
+  },
+  "google/gemini-3-flash-preview(IO)#P2": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "59e56c8e"
+  },
+  "openai/gpt-5.2(CoT)#P1": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "3fa394c2"
+  },
+  "openai/gpt-5.2(CoT)#P2": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "206a5963"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P1": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": -1,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "a9bfb09b"
+  },
+  "openai/gpt-4o-2024-05-13(CoT)#P2": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 2,
+      "MatchingPenniesAction.TAILS": 1
+    },
+    "trace_id": "528c38ad"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P1": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "b126a5bb"
+  },
+  "anthropic/claude-sonnet-4.5(CoT)#P2": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 1
+    },
+    "trace_id": "c0197dd6"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "c62d215f"
+  },
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)#P2": {
+    "contract": {
+      "MatchingPenniesAction.HEADS": 0,
+      "MatchingPenniesAction.TAILS": 0
+    },
+    "trace_id": "b997cf31"
+  }
+}

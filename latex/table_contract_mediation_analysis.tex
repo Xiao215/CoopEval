@@ -1,0 +1,22 @@
+% Source folders:
+%   data/main_study/run1_20260319_153052
+%   data/main_study/run2_20260124_025842
+%   data/main_study/run3_20260125_095939
+\begin{table*}[t]
+\centering
+\caption{Design-analysis results for Mediation and Contracting, aggregated across 4 selected games. `NS' $(\uparrow)$ is the percentage of submitted designs that make full delegation (Mediation) or mutual cooperation (Contracting) Nash stable. `WD' $(\uparrow)$ is the percentage that make that target action weakly dominant. Values are shown as percentages, with standard error across games when multiple games are aggregated.}
+\label{tab:contract_mediation_analysis}
+\scalebox{0.78}{
+\begin{tabular}{ll||rrrrrr}
+\toprule
+\textbf{Mechanism} & \textbf{Metric} & Claude & Gemini-R & Gemini-B & GPT-5.2 & GPT-4o & Qwen-30b \\
+\midrule
+\multirow{2}{*}{\textbf{Mediation}} & NS & \textbf{95.8}{\scriptsize\color{black!60}$\pm$ 4.2} & \textbf{95.8}{\scriptsize\color{black!60}$\pm$ 4.2} & \textbf{97.2}{\scriptsize\color{black!60}$\pm$ 2.8} & 75.0{\scriptsize\color{black!60}$\pm$ 16.0} & \textcolor{black!60}{27.8}{\scriptsize\color{black!60}$\pm$ 14.7} & \textcolor{black!60}{61.1}{\scriptsize\color{black!60}$\pm$ 15.2} \\
+ & WD & \textbf{45.8}{\scriptsize\color{black!60}$\pm$ 26.7} & \textbf{50.0}{\scriptsize\color{black!60}$\pm$ 28.9} & \textbf{47.2}{\scriptsize\color{black!60}$\pm$ 27.4} & 33.3{\scriptsize\color{black!60}$\pm$ 23.6} & \textcolor{black!60}{11.1}{\scriptsize\color{black!60}$\pm$ 7.9} & 33.3{\scriptsize\color{black!60}$\pm$ 19.2} \\
+\midrule
+\multirow{2}{*}{\textbf{Contracting}} & NS & \textbf{91.7}{\scriptsize\color{black!60}$\pm$ 4.8} & \textbf{91.7}{\scriptsize\color{black!60}$\pm$ 8.3} & \textbf{87.5}{\scriptsize\color{black!60}$\pm$ 12.5} & \textbf{91.7}{\scriptsize\color{black!60}$\pm$ 8.3} & \textcolor{black!60}{65.3}{\scriptsize\color{black!60}$\pm$ 14.8} & \textcolor{black!60}{59.7}{\scriptsize\color{black!60}$\pm$ 16.7} \\
+ & WD & 75.0{\scriptsize\color{black!60}$\pm$ 14.4} & \textbf{87.5}{\scriptsize\color{black!60}$\pm$ 8.0} & \textbf{87.5}{\scriptsize\color{black!60}$\pm$ 12.5} & \textbf{91.7}{\scriptsize\color{black!60}$\pm$ 8.3} & \textcolor{black!60}{52.8}{\scriptsize\color{black!60}$\pm$ 19.0} & \textcolor{black!60}{43.1}{\scriptsize\color{black!60}$\pm$ 17.2} \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}

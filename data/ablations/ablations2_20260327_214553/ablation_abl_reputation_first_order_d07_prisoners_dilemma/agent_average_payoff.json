@@ -1,0 +1,8 @@
+{
+  "google/gemini-3-flash-preview(IO)": 1.8573307827638952,
+  "anthropic/claude-sonnet-4.5(CoT)": 1.49202642722849,
+  "openai/gpt-4o-2024-05-13(CoT)": 1.2729283775758051,
+  "google/gemini-3-flash-preview(CoT)": 1.0476770890810552,
+  "qwen/qwen3-30b-a3b-instruct-2507(CoT)": 1.74988,
+  "openai/gpt-5.2(CoT)": 1.8020839030000002
+}

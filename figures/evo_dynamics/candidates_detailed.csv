@@ -1,0 +1,11 @@
+rank,path,game,mechanism,num_degraded,max_collapse,avg_collapse,degraded_agents
+1,data/main_study/run1_20260319_153052/mediation_trust_game,TrustGame,Mediation,1,1.0000,1.0000,google/gemini-3-flash-preview(CoT)
+2,data/main_study/run3_20260125_095939/repetition_trust_game,TrustGame,Repetition,2,1.0000,0.8000,google/gemini-3-flash-preview(CoT); google/gemini-3-flash-preview(IO)
+3,data/main_study/run1_20260319_153052/repetition_travellers_dilemma,TravellersDilemma,Repetition,2,0.8000,0.7000,anthropic/claude-sonnet-4.5(CoT); google/gemini-3-flash-preview(IO)
+4,data/main_study/run1_20260319_153052/repetition_trust_game,TrustGame,Repetition,2,0.8000,0.7000,anthropic/claude-sonnet-4.5(CoT); openai/gpt-5.2(CoT)
+5,data/main_study/run1_20260319_153052/repetition_prisoners_dilemma,PrisonersDilemma,Repetition,1,0.8000,0.8000,anthropic/claude-sonnet-4.5(CoT)
+6,data/main_study/run2_20260124_025842/repetition_public_goods,PublicGoods,Repetition,1,0.8000,0.8000,qwen/qwen3-30b-a3b-instruct-2507(CoT)
+7,data/main_study/run3_20260125_095939/repetition_travellers_dilemma,TravellersDilemma,Repetition,2,0.8000,0.6743,anthropic/claude-sonnet-4.5(CoT); google/gemini-3-flash-preview(CoT)
+8,data/main_study/run1_20260319_153052/contracting_public_goods,PublicGoods,Contracting,1,0.7720,0.7720,qwen/qwen3-30b-a3b-instruct-2507(CoT)
+9,data/main_study/run3_20260125_095939/repetition_prisoners_dilemma,PrisonersDilemma,Repetition,2,0.7699,0.6101,openai/gpt-4o-2024-05-13(CoT); google/gemini-3-flash-preview(IO)
+10,data/main_study/run2_20260124_025842/repetition_trust_game,TrustGame,Repetition,2,0.6371,0.5328,google/gemini-3-flash-preview(IO); openai/gpt-4o-2024-05-13(CoT)

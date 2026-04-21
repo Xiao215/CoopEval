@@ -1,0 +1,25 @@
+Random seed set to: 46
+Logging to: <cluster-output>/ablations2_20260327_214553/ablation_abl_reputation_d07_prisoners_dilemma
+Running PrisonersDilemma with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+Attempt 1 of openai/gpt-4o-2024-05-13(CoT)#P1 to parse response failed: Expecting property name enclosed in double quotes: line 2 column 13 (char 14) from response 'To tackle this decision-making problem, we need to consider both immediate and longer-term strategies due to the repetition and visibility of actions.\n\n### Step-by-Step Reasoning:\n\n1. **Understanding Agent #12\'s Behavior:**\n   - Agent #12 has always chosen A1 in the last three rounds, receiving 1 po...[truncated due to length]... but nonzero chance to test cooperation\n  "A1": 95  // High probability to match Agent #12\'s consistent behavior\n}\n```\n\nThis ensures that we are mostly aligning with Agent #12\'s strategy to avoid 0-point outcomes while maintaining a slight possibility for testing cooperation for higher future gains.'
+Attempt 2 of openai/gpt-4o-2024-05-13(CoT)#P1 to parse response failed: Expecting property name enclosed in double quotes: line 2 column 13 (char 14) from response 'To ensure a valid decision-making process in the game, we need to carefully consider the game setup, the history of play, and the behavior pattern of Agent #12. Let\'s break down the reasoning step by step to arrive at the optimal probability distribution over the two actions (A0 and A1).\n\n### Step-b...[truncated due to length]...imal chance to test cooperation\n  "A1": 95  // High probability to match Agent #12\'s consistent behavior\n}\n```\n\nThis distribution ensures we are mostly aligning with Agent #12\'s strategy to avoid 0-point outcomes while maintaining a slight possibility for testing cooperation for higher future gains.'
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 1.4390
+  google/gemini-3-flash-preview(CoT): 1.3198
+  google/gemini-3-flash-preview(IO): 1.5464
+  openai/gpt-4o-2024-05-13(CoT): 1.3453
+  openai/gpt-5.2(CoT): 1.4894
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 1.9618
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+

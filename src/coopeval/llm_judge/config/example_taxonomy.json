@@ -1,0 +1,14 @@
+{
+  "categories": {
+    "Positive sentiment": "Text expresses positive emotions, satisfaction, happiness, or optimistic outlook.",
+    "Negative sentiment": "Text expresses negative emotions, dissatisfaction, sadness, or pessimistic outlook.",
+    "Neutral sentiment": "Text is factual or objective without strong emotional content.",
+    "Mixed sentiment": "Text contains both positive and negative emotional elements.",
+    "Question or inquiry": "Text is primarily asking for information or clarification.",
+    "Complaint or criticism": "Text expresses dissatisfaction with a product, service, or situation.",
+    "Praise or compliment": "Text expresses appreciation, admiration, or positive feedback.",
+    "Request or demand": "Text is asking for action to be taken or something to be provided.",
+    "Informational": "Text is primarily sharing facts, data, or objective information.",
+    "Other": "Text does not fit clearly into any of the above categories."
+  }
+}

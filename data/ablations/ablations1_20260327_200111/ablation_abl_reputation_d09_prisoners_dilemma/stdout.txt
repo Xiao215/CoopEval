@@ -1,0 +1,24 @@
+Random seed set to: 47
+Logging to: <cluster-output>/ablations1_20260327_200111/ablation_abl_reputation_d09_prisoners_dilemma
+Running PrisonersDilemma with mechanism Reputation.
+
+No precomputed matchup payoff provided; running tournament...
+Attempt 1 of qwen/qwen3-30b-a3b-instruct-2507(CoT)#P1 to parse response failed: No JSON object found in the response 'Let’s break this down step by step.\n\n---\n\n### **Step 1: Understand the Game Structure**\n\nThis is a **repeated game** with **two players**, each choosing between actions A0 and A1. The payoffs are:\n\n| Your Action | Other Player’s Action | Your Points | Ot...[truncated due to length]...% chance that an additional round will take place."\n\nSo the game is long, but future players play A1 no matter what.\n\nSo **you should play A1 with probability 1**, to get 1 per round.\n\nBut wait — **what if future opponents learn that you play A1, and then they try to play A0?**\n\nBut we just' from response 'Let’s break this down step by step.\n\n---\n\n### **Step 1: Understand the Game Structure**\n\nThis is a **repeated game** with **two players**, each choosing between actions A0 and A1. The payoffs are:\n\n| Your Action | Other Player’s Action | Your Points | Other Player’s Points |\n|-------------|---------...[truncated due to length]...e is a 90% chance that an additional round will take place."\n\nSo the game is long, but future players play A1 no matter what.\n\nSo **you should play A1 with probability 1**, to get 1 per round.\n\nBut wait — **what if future opponents learn that you play A1, and then they try to play A0?**\n\nBut we just'
+
+============================================================
+MODEL AVERAGE PAYOFFS
+============================================================
+  anthropic/claude-sonnet-4.5(CoT): 1.5398
+  google/gemini-3-flash-preview(CoT): 1.1345
+  google/gemini-3-flash-preview(IO): 1.3415
+  openai/gpt-4o-2024-05-13(CoT): 1.4674
+  openai/gpt-5.2(CoT): 1.2092
+  qwen/qwen3-30b-a3b-instruct-2507(CoT): 1.2357
+============================================================
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! REPUTATION MECHANISM DETECTED
+! Only model averages available (no tensor-based evaluations)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+

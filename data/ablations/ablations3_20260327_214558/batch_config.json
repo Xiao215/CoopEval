@@ -1,0 +1,12 @@
+{
+  "agents_config": "agents/few_strong_llms.yaml",
+  "evaluation_config": "evaluation/no_deviation_ratings.yaml",
+  "experiment_workers": 3,
+  "tournament_workers": 9,
+  "retry_failed_experiments": true,
+  "base_seed": 42,
+  "games": ["games/prisoners_dilemma.yaml"],
+  "mechanisms": ["ablation_mechanisms/abl_repetition_d07.yaml","ablation_mechanisms/abl_repetition_d09.yaml","ablation_mechanisms/abl_repetition_k2.yaml","ablation_mechanisms/abl_repetition_k4.yaml","ablation_mechanisms/abl_reputation_d07.yaml","ablation_mechanisms/abl_reputation_d09.yaml","ablation_mechanisms/abl_reputation_k2.yaml","ablation_mechanisms/abl_reputation_k4.yaml","ablation_mechanisms/abl_reputation_first_order_d07.yaml","ablation_mechanisms/abl_reputation_first_order_d09.yaml","ablation_mechanisms/abl_reputation_first_order_k2.yaml","ablation_mechanisms/abl_reputation_first_order_k4.yaml"],
+  "total_experiments": 12,
+  "mode": "slurm"
+}

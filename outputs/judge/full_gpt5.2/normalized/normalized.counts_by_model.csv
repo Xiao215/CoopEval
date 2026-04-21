@@ -1,0 +1,71 @@
+group,label,count,share_of_group_pct
+anthropic/claude-sonnet-4.5,Strategic equilibrium focus,7183,83.66
+anthropic/claude-sonnet-4.5,Individual utility maximization,6224,72.49
+anthropic/claude-sonnet-4.5,Strategic influence,4065,47.34
+anthropic/claude-sonnet-4.5,Trust evaluation,3058,35.62
+anthropic/claude-sonnet-4.5,Multidimensional reasoning,2902,33.80
+anthropic/claude-sonnet-4.5,Reciprocity,2475,28.83
+anthropic/claude-sonnet-4.5,Uncertainty evaluation,2185,25.45
+anthropic/claude-sonnet-4.5,Risk aversion,1446,16.84
+anthropic/claude-sonnet-4.5,Social welfare maximization,864,10.06
+anthropic/claude-sonnet-4.5,Exploration-exploitation trade-off,93,1.08
+anthropic/claude-sonnet-4.5,Strategy legibility,87,1.01
+anthropic/claude-sonnet-4.5,Inequity aversion,28,0.33
+anthropic/claude-sonnet-4.5,Social norm conformity,15,0.17
+anthropic/claude-sonnet-4.5,Competitiveness,4,0.05
+google/gemini-3-flash-preview,Strategic equilibrium focus,6979,81.59
+google/gemini-3-flash-preview,Individual utility maximization,6582,76.95
+google/gemini-3-flash-preview,Strategic influence,4466,52.21
+google/gemini-3-flash-preview,Trust evaluation,2766,32.34
+google/gemini-3-flash-preview,Multidimensional reasoning,2416,28.24
+google/gemini-3-flash-preview,Reciprocity,2411,28.19
+google/gemini-3-flash-preview,Uncertainty evaluation,2306,26.96
+google/gemini-3-flash-preview,Risk aversion,1616,18.89
+google/gemini-3-flash-preview,Social welfare maximization,1378,16.11
+google/gemini-3-flash-preview,Strategy legibility,97,1.13
+google/gemini-3-flash-preview,Social norm conformity,73,0.85
+google/gemini-3-flash-preview,Exploration-exploitation trade-off,12,0.14
+google/gemini-3-flash-preview,Inequity aversion,9,0.11
+google/gemini-3-flash-preview,Rule misunderstanding,4,0.05
+google/gemini-3-flash-preview,Competitiveness,4,0.05
+openai/gpt-4o-2024-05-13,Individual utility maximization,6514,75.87
+openai/gpt-4o-2024-05-13,Uncertainty evaluation,5720,66.62
+openai/gpt-4o-2024-05-13,Strategic influence,5441,63.37
+openai/gpt-4o-2024-05-13,Multidimensional reasoning,3012,35.08
+openai/gpt-4o-2024-05-13,Risk aversion,2755,32.09
+openai/gpt-4o-2024-05-13,Strategic equilibrium focus,2389,27.82
+openai/gpt-4o-2024-05-13,Exploration-exploitation trade-off,1894,22.06
+openai/gpt-4o-2024-05-13,Trust evaluation,1441,16.78
+openai/gpt-4o-2024-05-13,Reciprocity,770,8.97
+openai/gpt-4o-2024-05-13,Social welfare maximization,696,8.11
+openai/gpt-4o-2024-05-13,Strategy legibility,105,1.22
+openai/gpt-4o-2024-05-13,Social norm conformity,37,0.43
+openai/gpt-4o-2024-05-13,Inequity aversion,27,0.31
+openai/gpt-4o-2024-05-13,Rule misunderstanding,4,0.05
+openai/gpt-4o-2024-05-13,Competitiveness,2,0.02
+openai/gpt-5.2,Individual utility maximization,3426,84.84
+openai/gpt-5.2,Strategic equilibrium focus,2800,69.34
+openai/gpt-5.2,Strategic influence,1084,26.84
+openai/gpt-5.2,Uncertainty evaluation,513,12.70
+openai/gpt-5.2,Trust evaluation,422,10.45
+openai/gpt-5.2,Multidimensional reasoning,393,9.73
+openai/gpt-5.2,Reciprocity,354,8.77
+openai/gpt-5.2,Risk aversion,308,7.63
+openai/gpt-5.2,Exploration-exploitation trade-off,118,2.92
+openai/gpt-5.2,Social welfare maximization,109,2.70
+openai/gpt-5.2,Strategy legibility,64,1.58
+openai/gpt-5.2,Social norm conformity,20,0.50
+openai/gpt-5.2,Competitiveness,1,0.02
+qwen/qwen3-30b-a3b-instruct-2507,Individual utility maximization,7746,90.22
+qwen/qwen3-30b-a3b-instruct-2507,Strategic equilibrium focus,7583,88.32
+qwen/qwen3-30b-a3b-instruct-2507,Strategic influence,3765,43.85
+qwen/qwen3-30b-a3b-instruct-2507,Multidimensional reasoning,2442,28.44
+qwen/qwen3-30b-a3b-instruct-2507,Uncertainty evaluation,1805,21.02
+qwen/qwen3-30b-a3b-instruct-2507,Risk aversion,1211,14.10
+qwen/qwen3-30b-a3b-instruct-2507,Trust evaluation,982,11.44
+qwen/qwen3-30b-a3b-instruct-2507,Reciprocity,301,3.51
+qwen/qwen3-30b-a3b-instruct-2507,Exploration-exploitation trade-off,98,1.14
+qwen/qwen3-30b-a3b-instruct-2507,Strategy legibility,44,0.51
+qwen/qwen3-30b-a3b-instruct-2507,Rule misunderstanding,26,0.30
+qwen/qwen3-30b-a3b-instruct-2507,Social welfare maximization,12,0.14
+qwen/qwen3-30b-a3b-instruct-2507,Social norm conformity,4,0.05

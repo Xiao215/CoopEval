@@ -1,0 +1,83 @@
+group,label,count,share_of_group_pct
+Contracting,Individual utility maximization,1849,91.94
+Contracting,Strategic equilibrium focus,1450,72.10
+Contracting,Uncertainty evaluation,180,8.95
+Contracting,Multidimensional reasoning,146,7.26
+Contracting,Risk aversion,106,5.27
+Contracting,Social welfare maximization,74,3.68
+Contracting,Strategic influence,58,2.88
+Contracting,Exploration-exploitation trade-off,19,0.94
+Contracting,Trust evaluation,14,0.70
+Contracting,Strategy legibility,8,0.40
+Contracting,Rule misunderstanding,7,0.35
+Contracting,Inequity aversion,6,0.30
+Contracting,Social norm conformity,3,0.15
+Contracting,Reciprocity,1,0.05
+Mediation,Strategic equilibrium focus,1623,84.18
+Mediation,Individual utility maximization,1377,71.42
+Mediation,Multidimensional reasoning,570,29.56
+Mediation,Uncertainty evaluation,469,24.33
+Mediation,Strategic influence,442,22.93
+Mediation,Risk aversion,410,21.27
+Mediation,Social welfare maximization,270,14.00
+Mediation,Trust evaluation,116,6.02
+Mediation,Exploration-exploitation trade-off,75,3.89
+Mediation,Inequity aversion,13,0.67
+Mediation,Strategy legibility,7,0.36
+Mediation,Social norm conformity,6,0.31
+Mediation,Rule misunderstanding,2,0.10
+NoMechanism,Individual utility maximization,1687,91.14
+NoMechanism,Strategic equilibrium focus,1430,77.26
+NoMechanism,Uncertainty evaluation,232,12.53
+NoMechanism,Risk aversion,175,9.45
+NoMechanism,Multidimensional reasoning,96,5.19
+NoMechanism,Strategic influence,41,2.22
+NoMechanism,Exploration-exploitation trade-off,32,1.73
+NoMechanism,Social welfare maximization,8,0.43
+NoMechanism,Inequity aversion,7,0.38
+NoMechanism,Strategy legibility,7,0.38
+NoMechanism,Rule misunderstanding,6,0.32
+NoMechanism,Reciprocity,3,0.16
+NoMechanism,Trust evaluation,3,0.16
+Repetition,Individual utility maximization,22612,78.42
+Repetition,Strategic equilibrium focus,20250,70.22
+Repetition,Strategic influence,15952,55.32
+Repetition,Uncertainty evaluation,9468,32.83
+Repetition,Multidimensional reasoning,9285,32.20
+Repetition,Trust evaluation,7253,25.15
+Repetition,Reciprocity,6123,21.23
+Repetition,Risk aversion,5543,19.22
+Repetition,Social welfare maximization,2647,9.18
+Repetition,Exploration-exploitation trade-off,1881,6.52
+Repetition,Strategy legibility,335,1.16
+Repetition,Social norm conformity,109,0.38
+Repetition,Inequity aversion,38,0.13
+Repetition,Rule misunderstanding,16,0.06
+Repetition,Competitiveness,9,0.03
+Reputation,Individual utility maximization,1511,80.37
+Reputation,Strategic influence,1145,60.90
+Reputation,Uncertainty evaluation,1108,58.94
+Reputation,Strategic equilibrium focus,1099,58.46
+Reputation,Trust evaluation,617,32.82
+Reputation,Risk aversion,577,30.69
+Reputation,Multidimensional reasoning,491,26.12
+Reputation,Exploration-exploitation trade-off,93,4.95
+Reputation,Reciprocity,89,4.73
+Reputation,Social welfare maximization,19,1.01
+Reputation,Social norm conformity,19,1.01
+Reputation,Strategy legibility,17,0.90
+Reputation,Rule misunderstanding,2,0.11
+ReputationFirstOrder,Individual utility maximization,1456,78.96
+ReputationFirstOrder,Strategic influence,1183,64.15
+ReputationFirstOrder,Strategic equilibrium focus,1082,58.68
+ReputationFirstOrder,Uncertainty evaluation,1072,58.13
+ReputationFirstOrder,Trust evaluation,666,36.12
+ReputationFirstOrder,Multidimensional reasoning,577,31.29
+ReputationFirstOrder,Risk aversion,525,28.47
+ReputationFirstOrder,Exploration-exploitation trade-off,115,6.24
+ReputationFirstOrder,Reciprocity,95,5.15
+ReputationFirstOrder,Social welfare maximization,41,2.22
+ReputationFirstOrder,Strategy legibility,23,1.25
+ReputationFirstOrder,Social norm conformity,12,0.65
+ReputationFirstOrder,Competitiveness,2,0.11
+ReputationFirstOrder,Rule misunderstanding,1,0.05
