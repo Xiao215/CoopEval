@@ -2,7 +2,7 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2604.15267-b31b1b.svg)](https://arxiv.org/abs/2604.15267)
 
-This repository contains the official implementation for the paper **"CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas"**.
+This repository contains the official implementation for the paper **"CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas"**, published at ICML 2026.
 
 It serves as a research framework for simulating societies of Large Language Model (LLM) agents interacting in mixed-motive games. The codebase enables the evaluation of how game-theoretic mechanisms—such as repetition, reputation, mediation, and contracts—can enforce cooperation among selfish, rational agents.
 
@@ -194,13 +194,10 @@ for the one-liner invocation guide and optional flags.
 If you use CoopEval in your work, please cite:
 
 ```bibtex
-@misc{tewolde2026coopeval,
+@inproceedings{Tewolde2026coopeval,
       title={CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas},
       author={Emanuel Tewolde and Xiao Zhang and David Guzman Piedrahita and Vincent Conitzer and Zhijing Jin},
       year={2026},
-      eprint={2604.15267},
-      archivePrefix={arXiv},
-      primaryClass={cs.GT},
-      url={https://arxiv.org/abs/2604.15267},
+      booktitle = "Proceedings of the Forty-Third International Conference on Machine Learning"
 }
 ```
