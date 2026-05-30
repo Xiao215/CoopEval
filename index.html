@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="CoopEval - Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas">
+  <meta name="description" content="CoopEval benchmarks repetition, reputation, mediation, and contracting for LLM agents in social dilemmas.">
+  <meta name="keywords" content="CoopEval, cooperation, social dilemmas, LLM agents, game theory, multiagent systems, AI safety">
+  <meta name="author" content="Emanuel Tewolde, Xiao Zhang, David Guzman Piedrahita, Vincent Conitzer, Zhijing Jin">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="CoopEval">
+  <meta property="og:title" content="CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas">
+  <meta property="og:description" content="A benchmark for testing cooperation-sustaining mechanisms for LLM agents in social dilemmas.">
+  <meta property="og:url" content="https://xiao215.github.io/CoopEval/">
+  <meta property="og:image" content="static/images/social_preview.png">
+  <meta property="og:image:alt" content="CoopEval action-frequency results preview">
+  <meta property="article:published_time" content="2026-04-16T00:00:00.000Z">
+  <meta property="article:author" content="Emanuel Tewolde">
+  <meta property="article:author" content="Xiao Zhang">
+  <meta property="article:section" content="Research">
+  <meta property="article:tag" content="LLM agents">
+  <meta property="article:tag" content="game theory">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CoopEval">
+  <meta name="twitter:description" content="Benchmarking cooperation-sustaining mechanisms and LLM agents in social dilemmas.">
+  <meta name="twitter:image" content="static/images/social_preview.png">
+  <meta name="twitter:image:alt" content="CoopEval action-frequency results preview">
+
+  <!-- Academic/Research Specific -->
+  <meta name="citation_title" content="CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas">
+  <meta name="citation_author" content="Tewolde, Emanuel">
+  <meta name="citation_author" content="Zhang, Xiao">
+  <meta name="citation_author" content="Guzman Piedrahita, David">
+  <meta name="citation_author" content="Conitzer, Vincent">
+  <meta name="citation_author" content="Jin, Zhijing">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_arxiv_id" content="2604.15267">
+  <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2604.15267">
+
+  <!-- Additional SEO -->
+  <meta name="theme-color" content="#2563eb">
+  <meta name="msapplication-TileColor" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://ajax.googleapis.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  <title>CoopEval - Academic Project Page</title>
+
+  <!-- Favicon and App Icons -->
+  <link rel="icon" type="image/png" href="static/images/webicon.svg">
+  <link rel="apple-touch-icon" href="static/images/webicon.svg">
+
+  <!-- Critical CSS - copied from Academic-project-page-template -->
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+  <link rel="stylesheet" href="static/css/coopeval.css">
+
+  <!-- Non-critical CSS - copied from Academic-project-page-template -->
+  <link rel="preload" href="static/css/bulma-carousel.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="static/css/bulma-slider.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="static/css/fontawesome.all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+
+  <noscript>
+    <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+    <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+    <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  </noscript>
+
+  <!-- Fonts - Optimized loading -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Defer non-critical JavaScript - copied from Academic-project-page-template -->
+  <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script defer src="static/js/bulma-carousel.min.js"></script>
+  <script defer src="static/js/bulma-slider.min.js"></script>
+  <script defer src="static/js/index.js"></script>
+
+  <!-- Structured Data for Academic Papers -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas",
+    "description": "CoopEval benchmarks cooperation-sustaining mechanisms for LLM agents in social dilemmas.",
+    "author": [
+      { "@type": "Person", "name": "Emanuel Tewolde" },
+      { "@type": "Person", "name": "Xiao Zhang" },
+      { "@type": "Person", "name": "David Guzman Piedrahita" },
+      { "@type": "Person", "name": "Vincent Conitzer" },
+      { "@type": "Person", "name": "Zhijing Jin" }
+    ],
+    "datePublished": "2026-04-16",
+    "url": "https://arxiv.org/abs/2604.15267",
+    "image": "static/images/social_preview.png",
+    "keywords": ["LLM agents", "social dilemmas", "game theory", "cooperation", "multiagent systems"],
+    "isAccessibleForFree": true
+  }
+  </script>
+</head>
+<body>
+  <!-- Scroll to Top Button -->
+  <button class="scroll-to-top" onclick="scrollToTop()" title="Scroll to top" aria-label="Scroll to top">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <main id="main-content">
+    <section class="hero publication-header">
+      <div class="hero-body">
+        <div class="container is-max-desktop">
+          <div class="columns is-centered">
+            <div class="column has-text-centered">
+              <h1 class="title is-1 publication-title">
+                <span class="title-line title-kicker">CoopEval</span>
+                <span class="title-line">Cooperation-Sustaining Mechanisms</span>
+                <span class="title-line">and LLM Agents in Social Dilemmas</span>
+              </h1>
+
+              <div class="is-size-5 publication-authors coopeval-author-list">
+                <div class="author-row">
+                  <span class="author-block">
+                    <a href="https://emanueltewolde.com/" target="_blank">Emanuel Tewolde</a><sup>*,1,2</sup>,
+                  </span>
+                  <span class="author-block">
+                    <a href="https://xiao215.github.io/" target="_blank">Xiao Zhang</a><sup>*,3</sup>,
+                  </span>
+                  <span class="author-block">
+                    <a href="https://davidguzmanp.github.io/homepage/" target="_blank">David Guzman Piedrahita</a><sup>3,4,5</sup>
+                  </span>
+                </div>
+                <div class="author-row">
+                  <span class="author-block">
+                    <a href="https://www.cs.cmu.edu/~conitzer/" target="_blank">Vincent Conitzer</a><sup>&dagger;,1,2</sup>,
+                  </span>
+                  <span class="author-block">
+                    <a href="https://zhijing-jin.com/home/" target="_blank">Zhijing Jin</a><sup>&dagger;,3,4,6</sup>
+                  </span>
+                </div>
+              </div>
+
+              <div class="is-size-5 publication-authors">
+                <span class="author-block">
+                  <span class="affiliation-list">
+                    <span><sup>1</sup>Carnegie Mellon University</span>
+                    <span><sup>2</sup>Foundations of Cooperative AI Lab (FOCAL)</span>
+                    <span><sup>3</sup>Jinesis Lab, University of Toronto &amp; Vector Institute</span>
+                    <span><sup>4</sup>EuroSafeAI</span>
+                    <span><sup>5</sup>ETH Zurich</span>
+                    <span><sup>6</sup>Max Planck Institute for Intelligent Systems, Tubingen, Germany</span>
+                  </span>
+                </span>
+                <span class="eql-cntrb"><small><br><sup>*</sup>Indicates equal contribution, <sup>&dagger;</sup>equal advising</small></span>
+                <span class="publication-venue">ICML 2026</span>
+              </div>
+
+              <div class="column has-text-centered">
+                <div class="publication-links">
+                  <span class="link-block">
+                    <a href="https://arxiv.org/pdf/2604.15267" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                      <span>Paper</span>
+                    </a>
+                  </span>
+
+                  <span class="link-block">
+                    <a href="https://github.com/Xiao215/CoopEval" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon"><i class="fab fa-github"></i></span>
+                      <span>Code</span>
+                    </a>
+                  </span>
+
+                  <span class="link-block">
+                    <a href="https://arxiv.org/abs/2604.15267" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon"><i class="ai ai-arxiv"></i></span>
+                      <span>arXiv</span>
+                    </a>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Teaser image -->
+    <section class="hero teaser coopeval-teaser">
+      <div class="container is-max-desktop">
+        <div class="hero-body">
+          <figure class="publication-banner">
+            <img src="static/images/mechanism_figure_transparent.png" alt="Overview of CoopEval cooperation-sustaining mechanisms" loading="eager">
+          </figure>
+          <h2 class="subtitle has-text-centered">
+            CoopEval compares repetition, reputation, mediation, and contracting as mechanisms for sustaining cooperation among LLM agents.
+          </h2>
+        </div>
+      </div>
+    </section>
+    <!-- End teaser image -->
+
+    <!-- Paper abstract -->
+    <section class="section hero is-light">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-four-fifths">
+            <h2 class="title is-3">Abstract</h2>
+            <div class="content has-text-justified">
+              <p>
+                It is increasingly important that LLM agents interact effectively and safely with other goal-pursuing agents, yet, recent works report the opposite trend: LLMs with stronger reasoning capabilities behave less cooperatively in mixed-motive games such as the prisoner&apos;s dilemma and public goods settings. Indeed, our experiments show that recent models - with or without reasoning enabled - consistently defect in single-shot social dilemmas.
+              </p>
+              <p>
+                To tackle this safety concern, we present the first comparative study of game-theoretic mechanisms that are designed to enable cooperative outcomes between rational agents in equilibrium. Across four social dilemmas testing distinct components of robust cooperation, we evaluate the following mechanisms: (1) <span class="mechanism-pill repetition-pill">repeating the game for many rounds</span>, (2) <span class="mechanism-pill reputation-pill">reputation systems</span>, (3) <span class="mechanism-pill mediation-pill">third-party mediators to delegate decision making to</span>, and (4) <span class="mechanism-pill contracting-pill">contract agreements for outcome-conditional payments between players</span>. Among our findings, we establish that contracting and mediation are most effective in achieving cooperative outcomes between capable LLM models, and that repetition-induced cooperation deteriorates drastically when co-players vary. Moreover, we demonstrate that these cooperation mechanisms become more effective under evolutionary pressures to maximize individual payoffs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- End paper abstract -->
+
+    <!-- Mechanism overview -->
+    <section class="section coopeval-overview">
+      <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">Mechanisms</h2>
+        <p class="section-lead is-centered">
+          CoopEval compares four game-theoretic interventions that preserve players' freedom to act while changing the information or incentives around the base social dilemma.
+        </p>
+        <div class="columns is-multiline">
+          <div class="column is-half">
+            <article class="takeaway-card mechanism-card repetition-card">
+              <h3>Repetition</h3>
+              <p>The same co-players face the base game across rounds, with past actions visible and each round followed by a probabilistic continuation.</p>
+            </article>
+          </div>
+          <div class="column is-half">
+            <article class="takeaway-card mechanism-card reputation-card">
+              <h3>Reputation</h3>
+              <p>Players repeatedly encounter different partners, while public interaction histories let them condition choices on behavior across the population.</p>
+            </article>
+          </div>
+          <div class="column is-half">
+            <article class="takeaway-card mechanism-card mediation-card">
+              <h3>Mediation</h3>
+              <p>Players propose and approve mediators; the selected public third party is available, and each player can either delegate its move or act independently.</p>
+            </article>
+          </div>
+          <div class="column is-half">
+            <article class="takeaway-card mechanism-card contracting-card">
+              <h3>Contracting</h3>
+              <p>Players propose and approve payment contracts; the selected contract changes action-contingent payoffs only if every player accepts it.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- End mechanism overview -->
+
+    <!-- Results summary -->
+    <section class="section hero is-light coopeval-results-summary">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-four-fifths">
+            <h2 class="title is-3">Contracting and Mediation Lead</h2>
+            <div class="content has-text-justified">
+              <p>
+                Across the four main social dilemmas, mechanisms differ sharply in heterogeneous LLM populations. The no-mechanism baseline stays near all-defection with a mean payoff of 0.072, while contracting reaches 0.801 and mediation reaches 0.695.
+              </p>
+              <p>
+                Repetition also helps, but the two reputation variants remain much weaker. The key takeaway is not just that mechanisms can help, but that theoretically cooperation-sustaining mechanisms are not equally easy for current LLM agents to use.
+              </p>
+            </div>
+          </div>
+        </div>
+        <figure class="result-table-figure">
+          <img src="static/images/result_all_mechanism.png" alt="Aggregate results table comparing all mechanisms and LLM agents" loading="lazy">
+          <figcaption>
+            Aggregate results across the four main social dilemmas. Mean and Fitness are normalized so 0 corresponds to the all-defect outcome and 1 to the cooperative outcome.
+          </figcaption>
+        </figure>
+        <div class="metric-bars" aria-label="Aggregated normalized mean payoff by mechanism">
+          <div class="metric-bar-row contracting-metric">
+            <span class="metric-label">Contracting</span>
+            <div class="metric-track"><span style="width: 80.1%"></span></div>
+            <strong>0.801</strong>
+          </div>
+          <div class="metric-bar-row mediation-metric">
+            <span class="metric-label">Mediation</span>
+            <div class="metric-track"><span style="width: 69.5%"></span></div>
+            <strong>0.695</strong>
+          </div>
+          <div class="metric-bar-row repetition-metric">
+            <span class="metric-label">Repetition</span>
+            <div class="metric-track"><span style="width: 58.7%"></span></div>
+            <strong>0.587</strong>
+          </div>
+          <div class="metric-bar-row reputation-metric">
+            <span class="metric-label">Reputation-</span>
+            <div class="metric-track"><span style="width: 32.1%"></span></div>
+            <strong>0.321</strong>
+          </div>
+          <div class="metric-bar-row reputation-metric">
+            <span class="metric-label">Reputation+</span>
+            <div class="metric-track"><span style="width: 22.7%"></span></div>
+            <strong>0.227</strong>
+          </div>
+          <div class="metric-bar-row no-mechanism-metric">
+            <span class="metric-label">No mechanism</span>
+            <div class="metric-track"><span style="width: 7.2%"></span></div>
+            <strong>0.072</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- End results summary -->
+
+    <!-- Justification profile -->
+    <section class="section coopeval-justifications">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-four-fifths">
+            <h2 class="title is-3">How Agents Justify Their Decisions</h2>
+            <div class="content has-text-justified">
+              <p>
+                CoopEval labels chain-of-thought explanations with an LLM judge across 15 possible justification categories. This shows not only what agents choose, but which arguments they use when choosing.
+              </p>
+              <p>
+                The dominant labels are individual utility maximization and strategic equilibrium focus: agents often justify cooperation as individually rational under the mechanism. Reputation has the highest uncertainty about other players, while reciprocity appears mainly in repetition, matching the difference between indirect and direct reciprocity.
+              </p>
+            </div>
+          </div>
+        </div>
+        <figure class="justification-figure">
+          <img src="static/images/justification_profile_per_mechanism.png" alt="Radar chart of justification profiles per mechanism" loading="lazy">
+          <figcaption>
+            Frequency of common justification categories in LLM reasoning, broken down by mechanism.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+    <!-- End justification profile -->
+
+    <!-- Evolutionary dynamics -->
+    <section class="section hero is-light">
+      <div class="container">
+        <h2 class="title is-3 has-text-centered">Evolutionary Dynamics</h2>
+        <div class="content has-text-justified evolution-copy">
+          <p>
+            Uniform-population payoffs are only the first view. CoopEval also asks what happens when higher-payoff agents take larger shares of the population over time.
+          </p>
+          <p>
+            The main pattern is encouraging for cooperation mechanisms. Repetition, mediation, and contracting often receive a large boost under evolutionary pressure, with many settings approaching cooperative outcomes. By contrast, the unmodified baseline worsens because more cooperative agents are selected against.
+          </p>
+        </div>
+        <div class="columns is-centered">
+          <div class="column is-half">
+            <figure class="plot-card">
+              <img src="static/images/contracting_public_goods_dynamics.png" alt="Contracting public goods population and fitness dynamics" loading="lazy">
+              <figcaption>Contracting in Public Goods.</figcaption>
+            </figure>
+          </div>
+          <div class="column is-half">
+            <figure class="plot-card">
+              <img src="static/images/mediation_trust_game_dynamics.png" alt="Mediation trust game population and fitness dynamics" loading="lazy">
+              <figcaption>Mediation in Trust Game.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- End evolutionary dynamics -->
+
+    <!-- BibTex citation -->
+    <section class="section" id="BibTeX">
+      <div class="container is-max-desktop content">
+        <div class="bibtex-header">
+          <h2 class="title">BibTeX</h2>
+          <button class="copy-bibtex-btn" onclick="copyBibTeX()" title="Copy BibTeX to clipboard">
+            <i class="fas fa-copy"></i>
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+        <pre id="bibtex-code"><code>@inproceedings{Tewolde2026coopeval,
+      title={CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas},
+      author={Emanuel Tewolde and Xiao Zhang and David Guzman Piedrahita and Vincent Conitzer and Zhijing Jin},
+      year={2026},
+      booktitle = "Proceedings of the Forty-Third International Conference on Machine Learning"
+}</code></pre>
+      </div>
+    </section>
+    <!-- End BibTex citation -->
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <p>
+              This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a> which was adopted from the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
+              You are free to borrow the source code of this website, we just ask that you link back to this page in the footer.
+              <br>
+              This website is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
