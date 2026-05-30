@@ -1,23 +1,13 @@
 # CoopEval Website
 
-This directory contains the static project website published by GitHub Pages.
+Welcome to the source code for the [CoopEval Project Website](https://xiao215.github.io/CoopEval/).
 
-The site is deployed by `.github/workflows/pages.yml` using GitHub Actions. The
-workflow uploads this `web/` directory as the Pages artifact, so the repository
-does not need to use GitHub's special `docs/` publishing mode.
+CoopEval is a benchmark for evaluating cooperation-sustaining mechanisms and LLM agents in social dilemmas. This directory contains the static HTML/CSS used to present our research, findings, and paper to the public.
 
-After enabling GitHub Pages with **Source: GitHub Actions**, pushes to `main`
-that touch `web/**` will publish the site at:
+## View the Site
 
-```text
-https://<username>.github.io/<repository-name>/
-```
+The website is live at: **[https://xiao215.github.io/CoopEval/](https://xiao215.github.io/CoopEval/)**
 
-For the public repository, that resolves to:
+## Deployment
 
-```text
-https://xiao215.github.io/CoopEval/
-```
-
-Keep asset paths relative, for example `static/images/...`, so the site works
-under the repository subpath.
+The site is automatically built and deployed via GitHub Actions whenever changes are pushed to the `main` branch.
