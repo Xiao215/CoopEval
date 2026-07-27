@@ -67,6 +67,7 @@
   <link rel="stylesheet" href="static/css/bulma.min.css">
   <link rel="stylesheet" href="static/css/index.css">
   <link rel="stylesheet" href="static/css/coopeval.css">
+  <link rel="stylesheet" href="static/css/tournament.css">
 
   <!-- Non-critical CSS - copied from Academic-project-page-template -->
   <link rel="preload" href="static/css/bulma-carousel.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -90,6 +91,7 @@
   <script defer src="static/js/bulma-carousel.min.js"></script>
   <script defer src="static/js/bulma-slider.min.js"></script>
   <script defer src="static/js/index.js"></script>
+  <script defer src="static/js/tournament.js"></script>
 
   <!-- Structured Data for Academic Papers -->
   <script type="application/ld+json">
@@ -264,6 +266,33 @@
               <h3>Contracting</h3>
               <p>Players can agree on zero-sum utility transfers between each other conditioned on actions.</p>
             </article>
+          </div>
+        </div>
+
+        <div class="tournament-block">
+          <h3 class="title is-4 has-text-centered">Mechanisms in Motion</h3>
+          <p class="section-lead is-centered">
+            Press play or drag the timeline to watch how each mechanism reshapes the interaction between agents over time.
+          </p>
+          <div class="tournament-widget">
+            <div class="tournament-tabs" role="tablist" aria-label="Choose a mechanism">
+              <button class="tournament-tab is-active" data-mech="repetition" role="tab" aria-selected="true">Repetition</button>
+              <button class="tournament-tab" data-mech="reputation" role="tab" aria-selected="false">Reputation</button>
+              <button class="tournament-tab" data-mech="mediation" role="tab" aria-selected="false">Mediation</button>
+              <button class="tournament-tab" data-mech="contracting" role="tab" aria-selected="false">Contracting</button>
+            </div>
+            <div class="tournament-stage">
+              <svg viewBox="0 0 720 300" role="img" aria-label="Animated illustration of the selected cooperation mechanism"></svg>
+            </div>
+            <p class="tournament-caption" aria-live="polite"></p>
+            <div class="tournament-controls">
+              <button class="tournament-play" aria-label="Play">
+                <svg class="tv-icon-play" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+                <svg class="tv-icon-pause" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/></svg>
+              </button>
+              <input class="tournament-slider" type="range" min="1" max="6" step="1" value="1" aria-label="Timeline">
+              <span class="tournament-step">1 / 6</span>
+            </div>
           </div>
         </div>
       </div>

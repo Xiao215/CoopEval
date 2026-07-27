@@ -1,0 +1,188 @@
+/* Mechanisms in Motion — interactive tournament illustration */
+
+.tournament-block {
+  margin-top: 2.75rem;
+}
+
+.tournament-block .section-lead {
+  margin-bottom: 1.25rem;
+}
+
+.tournament-widget {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  background: var(--background-primary);
+  box-shadow: var(--shadow-md);
+  padding: 1.25rem 1.25rem 1rem;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.tournament-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tournament-tab {
+  border: 1.5px solid var(--border-color);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 0.4rem 1.05rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.tournament-tab:hover {
+  border-color: #b6bfcc;
+  color: var(--text-primary);
+}
+
+.tournament-tab[data-mech="repetition"].is-active {
+  background: #edf6fa;
+  border-color: #2f5f8f;
+  color: #244d76;
+}
+
+.tournament-tab[data-mech="reputation"].is-active {
+  background: #fff7d4;
+  border-color: #a36f2e;
+  color: #805421;
+}
+
+.tournament-tab[data-mech="mediation"].is-active {
+  background: #fae5e8;
+  border-color: #ad4f5b;
+  color: #8b3b47;
+}
+
+.tournament-tab[data-mech="contracting"].is-active {
+  background: #e7f2e1;
+  border-color: #4f7748;
+  color: #3e6338;
+}
+
+.tournament-stage {
+  background: #fbfcfe;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.tournament-stage svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tournament-stage text {
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  user-select: none;
+}
+
+.tournament-caption {
+  min-height: 2.6em;
+  margin: 0.7rem 0.25rem 0.35rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.tournament-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.25rem 0.25rem 0.1rem;
+}
+
+.tournament-play {
+  flex: none;
+  width: 2.35rem;
+  height: 2.35rem;
+  border: none;
+  border-radius: 50%;
+  background: #2f5f8f;
+  color: #ffffff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.tournament-play:hover {
+  opacity: 0.88;
+  transform: scale(1.05);
+}
+
+.tournament-play .tv-icon-play {
+  margin-left: 2px;
+}
+
+.tournament-play .tv-icon-pause,
+.tournament-play.is-playing .tv-icon-play {
+  display: none;
+}
+
+.tournament-play.is-playing .tv-icon-pause {
+  display: block;
+}
+
+.tournament-slider {
+  flex: 1;
+  accent-color: #2f5f8f;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.tournament-step {
+  flex: none;
+  min-width: 3.1rem;
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Mediator pulse on the first step of the mediation scene */
+.tv-pulse {
+  animation: tv-pulse 1.3s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes tv-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-pulse {
+    animation: none;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .tournament-widget {
+    padding: 0.9rem 0.75rem 0.75rem;
+  }
+
+  .tournament-tab {
+    font-size: 0.84rem;
+    padding: 0.35rem 0.8rem;
+  }
+
+  .tournament-caption {
+    font-size: 0.88rem;
+    min-height: 3.4em;
+  }
+}
